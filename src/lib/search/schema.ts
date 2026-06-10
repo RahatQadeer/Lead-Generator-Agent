@@ -1,3 +1,4 @@
+import { isValidDomain, normalizeDomain } from "@/lib/search/exclusions";
 import type { SearchCriteria, SearchCriteriaInput } from "@/types/search";
 
 export type SearchValidationResult =
@@ -18,6 +19,25 @@ function parseOptionalInt(value: string): IntParseResult {
   const num = parseInt(value, 10);
   if (Number.isNaN(num)) return "invalid";
   return num;
+}
+
+function parseDomains(value: string): { domains: string[]; error?: string } {
+  const raw = parseTagList(value);
+  const domains: string[] = [];
+
+  for (const item of raw) {
+    const domain = normalizeDomain(item);
+    if (!isValidDomain(domain)) {
+      return { domains: [], error: `"${item}" is not a valid domain.` };
+    }
+    if (!domains.includes(domain)) domains.push(domain);
+  }
+
+  if (domains.length > 50) {
+    return { domains: [], error: "Maximum 50 excluded domains allowed." };
+  }
+
+  return { domains };
 }
 
 export function validateSearchCriteria(
@@ -45,7 +65,12 @@ export function validateSearchCriteria(
   const companySizeMin = rawMin === "invalid" ? null : rawMin;
   const companySizeMax = rawMax === "invalid" ? null : rawMax;
 
-  if (companySizeMin === null && companySizeMax === null && rawMin !== "invalid" && rawMax !== "invalid") {
+  if (
+    companySizeMin === null &&
+    companySizeMax === null &&
+    rawMin !== "invalid" &&
+    rawMax !== "invalid"
+  ) {
     errors.companySize = "Company size is required.";
   }
 
@@ -85,6 +110,37 @@ export function validateSearchCriteria(
     errors.jobTitles = "Maximum 10 job titles allowed.";
   }
 
+  const { domains: excludeDomains, error: domainError } = parseDomains(
+    input.excludeDomains
+  );
+  if (domainError) errors.excludeDomains = domainError;
+
+  const excludeIndustries = parseTagList(input.excludeIndustries);
+  const excludeKeywords = parseTagList(input.excludeKeywords);
+  const excludeCountries = parseTagList(input.excludeCountries);
+
+  if (excludeIndustries.length > 15) {
+    errors.excludeIndustries = "Maximum 15 excluded industries allowed.";
+  }
+
+  if (excludeKeywords.length > 20) {
+    errors.excludeKeywords = "Maximum 20 excluded keywords allowed.";
+  }
+
+  if (excludeCountries.length > 15) {
+    errors.excludeCountries = "Maximum 15 excluded countries allowed.";
+  }
+
+  if (excludeIndustries.includes(industry)) {
+    errors.excludeIndustries =
+      "Cannot exclude the same industry you are targeting.";
+  }
+
+  if (excludeCountries.includes(country)) {
+    errors.excludeCountries =
+      "Cannot exclude the same country you are targeting.";
+  }
+
   if (Object.keys(errors).length > 0) {
     return { success: false, errors };
   }
@@ -100,6 +156,12 @@ export function validateSearchCriteria(
       keywords,
       technologies,
       jobTitles,
+      exclusions: {
+        domains: excludeDomains,
+        industries: excludeIndustries,
+        keywords: excludeKeywords,
+        countries: excludeCountries,
+      },
     },
   };
 }

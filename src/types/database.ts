@@ -48,6 +48,10 @@ export interface Database {
           keywords: string[];
           technologies: string[];
           job_titles: string[];
+          exclude_domains: string[];
+          exclude_industries: string[];
+          exclude_keywords: string[];
+          exclude_countries: string[];
           status: string;
           created_at: string;
           updated_at: string;
@@ -63,6 +67,10 @@ export interface Database {
           keywords?: string[];
           technologies?: string[];
           job_titles?: string[];
+          exclude_domains?: string[];
+          exclude_industries?: string[];
+          exclude_keywords?: string[];
+          exclude_countries?: string[];
           status?: string;
           created_at?: string;
           updated_at?: string;
@@ -78,6 +86,10 @@ export interface Database {
           keywords?: string[];
           technologies?: string[];
           job_titles?: string[];
+          exclude_domains?: string[];
+          exclude_industries?: string[];
+          exclude_keywords?: string[];
+          exclude_countries?: string[];
           status?: string;
           created_at?: string;
           updated_at?: string;

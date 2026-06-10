@@ -14,12 +14,14 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
+  Ban,
 } from "lucide-react";
 import {
   deleteSearch,
   duplicateSearch,
   updateSearchStatus,
 } from "@/lib/search/actions";
+import { countExclusions, hasExclusions } from "@/lib/search/exclusions";
 import { formatCompanySize } from "@/lib/search/mapper";
 import { SearchStatusBadge } from "@/components/search/SearchStatusBadge";
 import { selectClassName } from "@/components/ui/Field";
@@ -78,6 +80,12 @@ export function SearchCard({
                 {search.name}
               </h3>
               <SearchStatusBadge status={search.status} />
+              {hasExclusions(search) && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-xs text-red-300">
+                  <Ban className="h-3 w-3" />
+                  {countExclusions(search.exclusions)} excluded
+                </span>
+              )}
               {isEditing && (
                 <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-xs text-cyan-300">
                   Editing
@@ -178,6 +186,27 @@ export function SearchCard({
               <TagGroup icon={Briefcase} label="All job titles" tags={search.jobTitles} />
             )}
 
+            {hasExclusions(search) && (
+              <div className="space-y-2 rounded-xl border border-red-500/10 bg-red-500/5 p-3">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-red-300">
+                  <Ban className="h-3 w-3" />
+                  Exclusion rules
+                </div>
+                {search.exclusions.domains.length > 0 && (
+                  <ExcludeTagGroup label="Domains" tags={search.exclusions.domains} />
+                )}
+                {search.exclusions.industries.length > 0 && (
+                  <ExcludeTagGroup label="Industries" tags={search.exclusions.industries} />
+                )}
+                {search.exclusions.keywords.length > 0 && (
+                  <ExcludeTagGroup label="Keywords" tags={search.exclusions.keywords} />
+                )}
+                {search.exclusions.countries.length > 0 && (
+                  <ExcludeTagGroup label="Countries" tags={search.exclusions.countries} />
+                )}
+              </div>
+            )}
+
             <div className="flex items-center gap-3 pt-2">
               <label htmlFor={`status-${search.id}`} className="text-xs text-slate-500">
                 Status
@@ -243,6 +272,24 @@ function TagGroup({
           <span
             key={tag}
             className="rounded-md border border-white/5 bg-white/5 px-2 py-0.5 text-xs text-slate-400"
+          >
+            {tag}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ExcludeTagGroup({ label, tags }: { label: string; tags: string[] }) {
+  return (
+    <div>
+      <span className="text-xs text-red-400/80">{label}</span>
+      <div className="mt-1 flex flex-wrap gap-1.5">
+        {tags.map((tag) => (
+          <span
+            key={tag}
+            className="rounded-md border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-xs text-red-300"
           >
             {tag}
           </span>

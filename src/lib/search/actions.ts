@@ -5,11 +5,29 @@ import { createClient } from "@/lib/supabase/server";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
 import { getSearchById } from "@/lib/search/queries";
 import { validateSearchCriteria } from "@/lib/search/schema";
-import type { SearchCriteriaInput, SearchStatus } from "@/types/search";
+import type { SearchCriteria, SearchCriteriaInput, SearchStatus } from "@/types/search";
 
 export type SearchActionResult =
   | { success: true }
   | { success: false; errors: Record<string, string> };
+
+function toDbPayload(criteria: SearchCriteria) {
+  return {
+    name: criteria.name,
+    industry: criteria.industry,
+    company_size_min: criteria.companySizeMin,
+    company_size_max: criteria.companySizeMax,
+    country: criteria.country,
+    keywords: criteria.keywords,
+    technologies: criteria.technologies,
+    job_titles: criteria.jobTitles,
+    exclude_domains: criteria.exclusions.domains,
+    exclude_industries: criteria.exclusions.industries,
+    exclude_keywords: criteria.exclusions.keywords,
+    exclude_countries: criteria.exclusions.countries,
+    updated_at: new Date().toISOString(),
+  };
+}
 
 export async function createSearch(
   input: SearchCriteriaInput
@@ -21,21 +39,12 @@ export async function createSearch(
     return { success: false, errors: validation.errors };
   }
 
-  const { data: criteria } = validation;
   const supabase = await createClient();
 
   const { error } = await supabase.from("searches").insert({
     user_id: user.id,
-    name: criteria.name,
-    industry: criteria.industry,
-    company_size_min: criteria.companySizeMin,
-    company_size_max: criteria.companySizeMax,
-    country: criteria.country,
-    keywords: criteria.keywords,
-    technologies: criteria.technologies,
-    job_titles: criteria.jobTitles,
+    ...toDbPayload(validation.data),
     status: "draft",
-    updated_at: new Date().toISOString(),
   });
 
   if (error) {
@@ -60,22 +69,11 @@ export async function updateSearch(
     return { success: false, errors: validation.errors };
   }
 
-  const { data: criteria } = validation;
   const supabase = await createClient();
 
   const { error } = await supabase
     .from("searches")
-    .update({
-      name: criteria.name,
-      industry: criteria.industry,
-      company_size_min: criteria.companySizeMin,
-      company_size_max: criteria.companySizeMax,
-      country: criteria.country,
-      keywords: criteria.keywords,
-      technologies: criteria.technologies,
-      job_titles: criteria.jobTitles,
-      updated_at: new Date().toISOString(),
-    })
+    .update(toDbPayload(validation.data))
     .eq("id", id)
     .eq("user_id", user.id);
 
@@ -113,6 +111,10 @@ export async function duplicateSearch(id: string): Promise<SearchActionResult> {
     keywords: search.keywords,
     technologies: search.technologies,
     job_titles: search.jobTitles,
+    exclude_domains: search.exclusions.domains,
+    exclude_industries: search.exclusions.industries,
+    exclude_keywords: search.exclusions.keywords,
+    exclude_countries: search.exclusions.countries,
     status: "draft",
     updated_at: new Date().toISOString(),
   });

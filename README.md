@@ -74,6 +74,17 @@ Run migration `supabase/migrations/002_searches.sql` in the Supabase SQL Editor.
 | Edit search | Click pencil on a saved search → form pre-fills → Save changes |
 | Validation | Client + server validation with per-field error messages |
 
+## SEARCH-004 — Exclusion Rules
+
+| Exclusion | Field | Validation |
+|-----------|-------|------------|
+| Domains | Tag input | Valid domain format, normalized |
+| Industries | Tag input | Cannot match target industry |
+| Keywords | Tag input | Optional |
+| Countries | Tag input | Cannot match target country |
+
+Run migration `supabase/migrations/003_search_exclusions.sql` in the Supabase SQL Editor.
+
 ## SEARCH-003 — Saved Searches
 
 | Feature | Implementation |

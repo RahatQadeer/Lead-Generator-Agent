@@ -9,6 +9,7 @@ import {
   Building2,
   Filter,
   Briefcase,
+  Ban,
 } from "lucide-react";
 import { createSearch, updateSearch } from "@/lib/search/actions";
 import {
@@ -32,6 +33,10 @@ const EMPTY_FORM: SearchCriteriaInput = {
   keywords: "",
   technologies: "",
   jobTitles: "",
+  excludeDomains: "",
+  excludeIndustries: "",
+  excludeKeywords: "",
+  excludeCountries: "",
 };
 
 interface SearchBuilderFormProps {
@@ -337,6 +342,82 @@ export function SearchBuilderForm({
         </Field>
       </BuilderSection>
 
+      <BuilderSection
+        step={4}
+        icon={Ban}
+        title="Exclusion rules"
+        description="Companies matching these will be skipped"
+        variant="exclude"
+      >
+        <div className="space-y-5">
+          <Field
+            label="Exclude domains"
+            htmlFor="excludeDomains"
+            error={errors.excludeDomains}
+            hint="e.g. competitor.com, bigcorp.io — no http:// needed"
+          >
+            <TagInput
+              id="excludeDomains"
+              value={form.excludeDomains}
+              onChange={(v) => updateField("excludeDomains", v)}
+              placeholder="Add domain and press Enter"
+              disabled={isPending}
+              variant="exclude"
+            />
+          </Field>
+
+          <Field
+            label="Exclude industries"
+            htmlFor="excludeIndustries"
+            error={errors.excludeIndustries}
+            hint="Industries to avoid even if they match other criteria"
+          >
+            <TagInput
+              id="excludeIndustries"
+              value={form.excludeIndustries}
+              onChange={(v) => updateField("excludeIndustries", v)}
+              placeholder="Add industry and press Enter"
+              suggestions={INDUSTRIES}
+              disabled={isPending}
+              variant="exclude"
+            />
+          </Field>
+
+          <Field
+            label="Exclude keywords"
+            htmlFor="excludeKeywords"
+            error={errors.excludeKeywords}
+            hint="Companies containing these terms will be filtered out"
+          >
+            <TagInput
+              id="excludeKeywords"
+              value={form.excludeKeywords}
+              onChange={(v) => updateField("excludeKeywords", v)}
+              placeholder="Add keyword and press Enter"
+              disabled={isPending}
+              variant="exclude"
+            />
+          </Field>
+
+          <Field
+            label="Exclude countries"
+            htmlFor="excludeCountries"
+            error={errors.excludeCountries}
+            hint="Countries to skip from results"
+          >
+            <TagInput
+              id="excludeCountries"
+              value={form.excludeCountries}
+              onChange={(v) => updateField("excludeCountries", v)}
+              placeholder="Add country and press Enter"
+              suggestions={COUNTRIES}
+              disabled={isPending}
+              variant="exclude"
+            />
+          </Field>
+        </div>
+      </BuilderSection>
+
       <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         {isEditing && (
           <button
@@ -380,18 +461,32 @@ function BuilderSection({
   icon: Icon,
   title,
   description,
+  variant = "default",
   children,
 }: {
   step: number;
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   description: string;
+  variant?: "default" | "exclude";
   children: React.ReactNode;
 }) {
+  const isExclude = variant === "exclude";
+
   return (
-    <section className="mb-6 border-b border-white/5 pb-6 last:mb-0 last:border-0 last:pb-0">
+    <section
+      className={`mb-6 border-b pb-6 last:mb-0 last:border-0 last:pb-0 ${
+        isExclude ? "border-red-500/10" : "border-white/5"
+      }`}
+    >
       <div className="mb-4 flex items-center gap-3">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-xs font-bold text-cyan-400">
+        <span
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
+            isExclude
+              ? "bg-red-500/10 text-red-400"
+              : "bg-cyan-500/10 text-cyan-400"
+          }`}
+        >
           {step}
         </span>
         <div className="flex items-center gap-2">

@@ -11,6 +11,7 @@ interface TagInputProps {
   placeholder?: string;
   suggestions?: readonly string[];
   disabled?: boolean;
+  variant?: "default" | "exclude";
 }
 
 export function TagInput({
@@ -20,7 +21,9 @@ export function TagInput({
   placeholder = "Type and press Enter",
   suggestions = [],
   disabled,
+  variant = "default",
 }: TagInputProps) {
+  const isExclude = variant === "exclude";
   const [draft, setDraft] = useState("");
   const tags = value
     .split(",")
@@ -56,14 +59,20 @@ export function TagInput({
         {tags.map((tag) => (
           <span
             key={tag}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-xs font-medium text-cyan-200"
+            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium ${
+              isExclude
+                ? "border-red-500/20 bg-red-500/10 text-red-200"
+                : "border-cyan-500/20 bg-cyan-500/10 text-cyan-200"
+            }`}
           >
             {tag}
             <button
               type="button"
               onClick={() => removeTag(tag)}
               disabled={disabled}
-              className="rounded text-cyan-400 hover:text-white disabled:opacity-50"
+              className={`rounded hover:text-white disabled:opacity-50 ${
+                isExclude ? "text-red-400" : "text-cyan-400"
+              }`}
               aria-label={`Remove ${tag}`}
             >
               <X className="h-3 w-3" />
@@ -103,7 +112,11 @@ export function TagInput({
               type="button"
               onClick={() => addTag(suggestion)}
               disabled={disabled}
-              className="rounded-full border border-white/5 bg-white/5 px-2.5 py-1 text-xs text-slate-400 transition-colors hover:border-cyan-500/20 hover:bg-cyan-500/10 hover:text-cyan-300 disabled:opacity-50"
+              className={`rounded-full border border-white/5 bg-white/5 px-2.5 py-1 text-xs text-slate-400 transition-colors disabled:opacity-50 ${
+                isExclude
+                  ? "hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-300"
+                  : "hover:border-cyan-500/20 hover:bg-cyan-500/10 hover:text-cyan-300"
+              }`}
             >
               + {suggestion}
             </button>

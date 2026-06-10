@@ -15,6 +15,12 @@ export function toSearchRecord(row: SearchRow): SearchRecord {
     keywords: row.keywords,
     technologies: row.technologies,
     jobTitles: row.job_titles,
+    exclusions: {
+      domains: row.exclude_domains ?? [],
+      industries: row.exclude_industries ?? [],
+      keywords: row.exclude_keywords ?? [],
+      countries: row.exclude_countries ?? [],
+    },
     status: row.status as SearchRecord["status"],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -31,6 +37,10 @@ export function toSearchCriteriaInput(search: SearchRecord): SearchCriteriaInput
     keywords: search.keywords.join(", "),
     technologies: search.technologies.join(", "),
     jobTitles: search.jobTitles.join(", "),
+    excludeDomains: search.exclusions.domains.join(", "),
+    excludeIndustries: search.exclusions.industries.join(", "),
+    excludeKeywords: search.exclusions.keywords.join(", "),
+    excludeCountries: search.exclusions.countries.join(", "),
   };
 }
 
