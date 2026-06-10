@@ -53,6 +53,25 @@ Open [http://localhost:3000](http://localhost:3000) — you'll be redirected to 
 | Logout | Sign out button in dashboard header |
 | Invalid login handled | Error banner on `/login` with friendly messages |
 
+## AUTH-003 — Protected Routes
+
+| Route | Page |
+|-------|------|
+| `/dashboard` | Overview & stats |
+| `/searches` | Company search criteria |
+| `/leads` | Lead pipeline |
+| `/emails` | Outreach campaigns |
+| `/analytics` | Performance insights |
+| `/settings` | Account settings |
+
+All routes require authentication. Unauthenticated access redirects to `/login` with the original path preserved.
+
+### Testing AUTH-003
+
+1. Sign out, then visit each protected URL — you should be redirected to login with a banner.
+2. Sign in — sidebar navigation should work across all pages.
+3. On mobile, open the hamburger menu and navigate between pages.
+
 ## AUTH-002 — Session Management
 
 | Criteria | Implementation |
@@ -73,14 +92,14 @@ Open [http://localhost:3000](http://localhost:3000) — you'll be redirected to 
 ```
 src/
 ├── app/
-│   ├── login/          # Login page
-│   ├── dashboard/      # Protected dashboard
-│   └── auth/callback/  # OAuth callback handler
+│   ├── (protected)/    # Auth-required pages (dashboard, searches, leads, …)
+│   ├── login/
+│   └── auth/callback/
 ├── components/
-│   ├── auth/           # Login, logout, error UI
-│   └── layout/         # Dashboard shell
+│   ├── auth/
+│   └── layout/         # AppShell, sidebar, page headers
 ├── lib/
-│   ├── supabase/       # Browser, server, middleware clients
-│   └── auth/           # Profile helpers
-└── middleware.ts       # Route protection
+│   ├── supabase/
+│   └── auth/           # Routes, session, auth context
+└── middleware.ts
 ```

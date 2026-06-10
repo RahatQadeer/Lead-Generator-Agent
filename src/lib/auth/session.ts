@@ -1,21 +1,24 @@
 import type { AuthError } from "@supabase/supabase-js";
 import type { NextRequest, NextResponse } from "next/server";
+import { isProtectedPath } from "@/lib/auth/routes";
 
 export type SessionErrorCode = "session_expired" | "invalid_session";
 
-const PROTECTED_PREFIXES = ["/dashboard"];
+export { isProtectedPath };
 
-export function isProtectedPath(pathname: string): boolean {
-  return PROTECTED_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
-  );
+/** True only for session token cookies — excludes PKCE code-verifier cookies used during OAuth. */
+export function hasSessionCookies(request: NextRequest): boolean {
+  return request.cookies.getAll().some((cookie) => {
+    if (!cookie.value.length) return false;
+    // PKCE verifier: sb-<ref>-auth-token-code-verifier[.N]
+    if (cookie.name.includes("-code-verifier")) return false;
+    // Session chunks: sb-<ref>-auth-token[.N]
+    return cookie.name.includes("-auth-token");
+  });
 }
 
-export function hasAuthCookies(request: NextRequest): boolean {
-  return request.cookies
-    .getAll()
-    .some((cookie) => cookie.name.includes("-auth-token") && cookie.value.length > 0);
-}
+/** @deprecated Use hasSessionCookies — kept as alias for clarity in middleware */
+export const hasAuthCookies = hasSessionCookies;
 
 export function classifyAuthError(error: AuthError | null): SessionErrorCode {
   if (!error) return "session_expired";
@@ -38,7 +41,7 @@ export function copyResponseCookies(
   target: NextResponse
 ): NextResponse {
   source.cookies.getAll().forEach((cookie) => {
-    target.cookies.set(cookie.name, cookie.value);
+    target.cookies.set(cookie);
   });
   return target;
 }

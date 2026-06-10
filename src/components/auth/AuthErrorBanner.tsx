@@ -3,13 +3,15 @@
 import { AlertCircle } from "lucide-react";
 
 const ERROR_MESSAGES: Record<string, string> = {
-  login_required: "Please sign in to access the dashboard.",
+  login_required: "Please sign in to access this page.",
   session_expired: "Your session has expired. Please sign in again.",
   invalid_session: "Your session is invalid. Please sign in again.",
   access_denied: "Sign-in was cancelled. Please try again.",
   missing_auth_code: "Authentication failed — no authorization code received.",
   session_creation_failed: "Could not create your session. Please try again.",
   auth_failed: "Authentication failed. Please try again.",
+  pkce_error:
+    "Sign-in session expired. Please try logging in again from the same browser.",
 };
 
 const INFO_CODES = new Set(["login_required", "session_expired"]);

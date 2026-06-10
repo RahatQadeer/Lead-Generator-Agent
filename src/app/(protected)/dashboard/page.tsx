@@ -1,35 +1,25 @@
-import { Users, Send, MessageSquare, TrendingUp } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
-import { requireAuth } from "@/lib/auth/require-auth";
 import {
-  DashboardShell,
-  DashboardWelcome,
-} from "@/components/layout/DashboardShell";
-import type { Profile } from "@/types/database";
+  LayoutDashboard,
+  Users,
+  Send,
+  MessageSquare,
+  TrendingUp,
+} from "lucide-react";
+import { getAuthContext } from "@/lib/auth/get-auth-context";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 export default async function DashboardPage() {
-  const user = await requireAuth("/dashboard");
-  const supabase = await createClient();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-  const displayProfile: Profile | null = profile ?? {
-    id: user.id,
-    email: user.email ?? "",
-    full_name:
-      user.user_metadata?.full_name ?? user.user_metadata?.name ?? null,
-    avatar_url: user.user_metadata?.avatar_url ?? null,
-    created_at: user.created_at,
-    updated_at: new Date().toISOString(),
-  };
+  const { profile } = await getAuthContext();
+  const firstName = profile.full_name?.split(" ")[0] ?? "there";
 
   return (
-    <DashboardShell profile={displayProfile}>
-      <DashboardWelcome profile={displayProfile} />
+    <>
+      <PageHeader
+        icon={LayoutDashboard}
+        label="Dashboard"
+        title={`Welcome back, ${firstName}`}
+        description="Your AI-powered sales assistant is ready. Start discovering leads and automating outreach from here."
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
@@ -61,9 +51,8 @@ export default async function DashboardPage() {
       <div className="mt-8 rounded-2xl border border-white/5 bg-slate-900/50 p-6 sm:p-8">
         <h2 className="text-lg font-semibold text-white">Getting started</h2>
         <p className="mt-2 text-sm text-slate-400">
-          You&apos;re signed in and ready to go. Upcoming features will let you
-          define target companies, discover decision-makers, and launch
-          AI-personalized outreach — all from this dashboard.
+          Define target companies, discover decision-makers, and launch
+          AI-personalized outreach — all from this platform.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <StepBadge step={1} label="Define search criteria" done />
@@ -72,7 +61,7 @@ export default async function DashboardPage() {
           <StepBadge step={4} label="Send outreach" />
         </div>
       </div>
-    </DashboardShell>
+    </>
   );
 }
 

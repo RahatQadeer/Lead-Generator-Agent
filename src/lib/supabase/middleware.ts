@@ -1,16 +1,30 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database";
+import { isAuthRoute } from "@/lib/auth/routes";
 import {
   buildLoginRedirect,
   classifyAuthError,
   copyResponseCookies,
-  hasAuthCookies,
+  hasSessionCookies,
   isProtectedPath,
 } from "@/lib/auth/session";
 
 export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+  const { pathname } = request.nextUrl;
+
+  // OAuth routes carry PKCE code-verifier cookies but no user session yet.
+  // Running signOut() here destroys the verifier and breaks the callback.
+  if (isAuthRoute(pathname)) {
+    return NextResponse.next({ request });
+  }
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", pathname);
+
+  let supabaseResponse = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,7 +38,9 @@ export async function updateSession(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
-          supabaseResponse = NextResponse.next({ request });
+          supabaseResponse = NextResponse.next({
+            request: { headers: requestHeaders },
+          });
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options)
           );
@@ -33,16 +49,13 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Validates the JWT and refreshes the session when the access token is expired
   const {
     data: { user },
     error: authError,
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
-  const staleSession = !user && hasAuthCookies(request);
+  const staleSession = !user && hasSessionCookies(request);
 
-  // Reject invalid or expired sessions and clear stale auth cookies
   if (staleSession) {
     await supabase.auth.signOut();
 

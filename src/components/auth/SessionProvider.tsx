@@ -3,14 +3,7 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-
-const PROTECTED_PREFIXES = ["/dashboard"];
-
-function isProtectedPath(pathname: string): boolean {
-  return PROTECTED_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
-  );
-}
+import { isProtectedPath } from "@/lib/auth/routes";
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();

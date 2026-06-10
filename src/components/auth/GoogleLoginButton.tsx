@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 interface GoogleLoginButtonProps {
   redirectTo?: string;
@@ -9,30 +8,11 @@ interface GoogleLoginButtonProps {
 
 export function GoogleLoginButton({ redirectTo = "/dashboard" }: GoogleLoginButtonProps) {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  async function handleGoogleLogin() {
+  function handleGoogleLogin() {
     setLoading(true);
-    setError(null);
-
-    const supabase = createClient();
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
-
-    const { error: authError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${siteUrl}/auth/callback?redirect=${encodeURIComponent(redirectTo)}`,
-        queryParams: {
-          access_type: "offline",
-          prompt: "consent",
-        },
-      },
-    });
-
-    if (authError) {
-      setError(authError.message);
-      setLoading(false);
-    }
+    const params = new URLSearchParams({ redirect: redirectTo });
+    window.location.href = `/auth/oauth?${params.toString()}`;
   }
 
   return (
@@ -46,11 +26,6 @@ export function GoogleLoginButton({ redirectTo = "/dashboard" }: GoogleLoginButt
         <GoogleIcon />
         {loading ? "Redirecting to Google…" : "Continue with Google"}
       </button>
-      {error && (
-        <p className="mt-3 text-center text-sm text-red-400" role="alert">
-          {error}
-        </p>
-      )}
     </div>
   );
 }
