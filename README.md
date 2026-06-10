@@ -74,6 +74,34 @@ Run migration `supabase/migrations/002_searches.sql` in the Supabase SQL Editor.
 | Edit search | Click pencil on a saved search → form pre-fills → Save changes |
 | Validation | Client + server validation with per-field error messages |
 
+## DISC-001 — Company Discovery Provider
+
+| Criteria | Implementation |
+|----------|----------------|
+| Fetch companies | `POST /api/companies/discover` with `searchId` |
+| Pagination | `page` + `perPage` params; `hasMore` in response |
+| Retry support | 3 attempts with exponential backoff on retryable errors |
+| Error handling | Typed errors: rate limit, auth, network, provider |
+
+**Providers:** `mock` (default) or `apollo` (set `COMPANY_DATA_PROVIDER=apollo` + `APOLLO_API_KEY`).
+
+**Apollo plan requirement:** Organization search (`/mixed_companies/search`) is only available on **paid** Apollo plans. Free plans and trials return `403` with `API_INACCESSIBLE` even when the API key is valid. Use `COMPANY_DATA_PROVIDER=mock` for local development until you upgrade at [app.apollo.io](https://app.apollo.io/).
+
+### Testing DISC-001
+
+1. Set `COMPANY_DATA_PROVIDER=mock` in `.env.local`
+2. Go to **Searches** → expand a saved search → click **Discover companies**
+3. Mock returns healthcare companies matching criteria
+4. Click **Load next page** to test pagination
+5. For Apollo: upgrade to a paid plan, create a Master API key (Settings → Integrations → API), set provider + key, restart dev server, run discovery again
+
+```bash
+# API test (while logged in — use browser session cookie)
+curl -X POST http://localhost:3000/api/companies/discover \
+  -H "Content-Type: application/json" \
+  -d '{"searchId":"<your-search-uuid>","page":1,"perPage":10}'
+```
+
 ## SEARCH-004 — Exclusion Rules
 
 | Exclusion | Field | Validation |

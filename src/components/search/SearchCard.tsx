@@ -23,6 +23,7 @@ import {
 } from "@/lib/search/actions";
 import { countExclusions, hasExclusions } from "@/lib/search/exclusions";
 import { formatCompanySize } from "@/lib/search/mapper";
+import { DiscoverPreview } from "@/components/search/DiscoverPreview";
 import { SearchStatusBadge } from "@/components/search/SearchStatusBadge";
 import { selectClassName } from "@/components/ui/Field";
 import type { SearchRecord, SearchStatus } from "@/types/search";
@@ -206,6 +207,8 @@ export function SearchCard({
                 )}
               </div>
             )}
+
+            <DiscoverPreview searchId={search.id} searchName={search.name} />
 
             <div className="flex items-center gap-3 pt-2">
               <label htmlFor={`status-${search.id}`} className="text-xs text-slate-500">
