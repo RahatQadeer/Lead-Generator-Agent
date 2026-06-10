@@ -102,6 +102,26 @@ curl -X POST http://localhost:3000/api/companies/discover \
   -d '{"searchId":"<your-search-uuid>","page":1,"perPage":10}'
 ```
 
+## DISC-002 — Company Filtering Engine
+
+| Filter | Match rule |
+|--------|------------|
+| Industry | Case-insensitive exact match on `company.industry` |
+| Size | `employeeCount` within `companySizeMin`–`companySizeMax` (unknown size passes) |
+| Country | Normalized location match on `company.country` |
+| Technology | All listed technologies must match via `technologies` field or name/domain/industry text |
+
+**Pipeline:** provider fetch → `applyCriteria` (inclusion) → `applyExclusions` (negative rules).
+
+**Module:** `src/lib/company-discovery/apply-criteria.ts` — shared by mock provider (pre-pagination) and discovery orchestrator (post-fetch safety net for Apollo).
+
+### Testing DISC-002
+
+1. Create a search with industry, country, size, and technology filters (e.g. Healthcare, United States, 201–500, React)
+2. Expand the search card → **Discover companies**
+3. Mock data returns only companies matching all four filters
+4. Add exclusion rules (SEARCH-004) to verify exclusion count appears separately from criteria filtering
+
 ## SEARCH-004 — Exclusion Rules
 
 | Exclusion | Field | Validation |

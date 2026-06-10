@@ -1,3 +1,4 @@
+import { applyCriteria } from "@/lib/company-discovery/apply-criteria";
 import type { CompanyDiscoveryProvider, ProviderSearchResult } from "@/lib/company-discovery/types";
 import type { CompanyDiscoveryParams, DiscoveredCompany } from "@/types/company";
 
@@ -12,6 +13,7 @@ const MOCK_COMPANIES: Omit<DiscoveredCompany, "id">[] = [
     state: "MA",
     linkedinUrl: "https://linkedin.com/company/abc-health",
     websiteUrl: "https://abchealth.com",
+    technologies: ["Salesforce", "AWS"],
   },
   {
     name: "MedTech Pro",
@@ -23,6 +25,7 @@ const MOCK_COMPANIES: Omit<DiscoveredCompany, "id">[] = [
     state: "CA",
     linkedinUrl: "https://linkedin.com/company/medtech-pro",
     websiteUrl: "https://medtechpro.com",
+    technologies: ["React", "AWS", "PostgreSQL"],
   },
   {
     name: "CareSync",
@@ -34,6 +37,7 @@ const MOCK_COMPANIES: Omit<DiscoveredCompany, "id">[] = [
     state: "TX",
     linkedinUrl: "https://linkedin.com/company/caresync",
     websiteUrl: "https://caresync.io",
+    technologies: ["Node.js", "HubSpot"],
   },
   {
     name: "HealthBridge",
@@ -45,6 +49,7 @@ const MOCK_COMPANIES: Omit<DiscoveredCompany, "id">[] = [
     state: "IL",
     linkedinUrl: null,
     websiteUrl: "https://healthbridge.com",
+    technologies: ["Salesforce", "Azure"],
   },
   {
     name: "NovaCare Systems",
@@ -56,6 +61,7 @@ const MOCK_COMPANIES: Omit<DiscoveredCompany, "id">[] = [
     state: "WA",
     linkedinUrl: null,
     websiteUrl: "https://novacare.com",
+    technologies: ["React", "Node.js", "Docker"],
   },
   {
     name: "Competitor Labs",
@@ -67,6 +73,7 @@ const MOCK_COMPANIES: Omit<DiscoveredCompany, "id">[] = [
     state: "CO",
     linkedinUrl: null,
     websiteUrl: "https://competitor.com",
+    technologies: ["WordPress"],
   },
   {
     name: "FinEdge",
@@ -78,6 +85,7 @@ const MOCK_COMPANIES: Omit<DiscoveredCompany, "id">[] = [
     state: null,
     linkedinUrl: null,
     websiteUrl: "https://finedge.com",
+    technologies: ["Salesforce", "Python"],
   },
   {
     name: "TechFlow",
@@ -89,37 +97,9 @@ const MOCK_COMPANIES: Omit<DiscoveredCompany, "id">[] = [
     state: "ON",
     linkedinUrl: null,
     websiteUrl: "https://techflow.io",
+    technologies: ["React", "Kubernetes", "PostgreSQL"],
   },
 ];
-
-function matchesCriteria(
-  company: Omit<DiscoveredCompany, "id">,
-  params: CompanyDiscoveryParams
-): boolean {
-  if (
-    params.industry &&
-    company.industry?.toLowerCase() !== params.industry.toLowerCase()
-  ) {
-    return false;
-  }
-
-  if (
-    params.country &&
-    company.country?.toLowerCase() !== params.country.toLowerCase()
-  ) {
-    return false;
-  }
-
-  if (params.companySizeMin !== null && company.employeeCount !== null) {
-    if (company.employeeCount < params.companySizeMin) return false;
-  }
-
-  if (params.companySizeMax !== null && company.employeeCount !== null) {
-    if (company.employeeCount > params.companySizeMax) return false;
-  }
-
-  return true;
-}
 
 export class MockCompanyDiscoveryProvider implements CompanyDiscoveryProvider {
   readonly name = "mock";
@@ -127,15 +107,20 @@ export class MockCompanyDiscoveryProvider implements CompanyDiscoveryProvider {
   async search(params: CompanyDiscoveryParams): Promise<ProviderSearchResult> {
     await new Promise((r) => setTimeout(r, 300));
 
-    const matched = MOCK_COMPANIES.filter((c) => matchesCriteria(c, params));
+    const allCompanies: DiscoveredCompany[] = MOCK_COMPANIES.map((company, i) => ({
+      ...company,
+      id: `mock-${i}`,
+    }));
+
+    const { companies: matched } = applyCriteria(allCompanies, params);
 
     const totalEntries = matched.length;
     const totalPages = Math.max(1, Math.ceil(totalEntries / params.perPage));
     const start = (params.page - 1) * params.perPage;
     const pageItems = matched.slice(start, start + params.perPage);
 
-    const companies: DiscoveredCompany[] = pageItems.map((c, i) => ({
-      ...c,
+    const companies: DiscoveredCompany[] = pageItems.map((company, i) => ({
+      ...company,
       id: `mock-${params.page}-${start + i}`,
     }));
 

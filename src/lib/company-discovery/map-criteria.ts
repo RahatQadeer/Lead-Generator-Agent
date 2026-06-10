@@ -11,7 +11,7 @@ export function mapSearchToDiscoveryParams(
     country: search.country,
     companySizeMin: search.companySizeMin,
     companySizeMax: search.companySizeMax,
-    keywords: [...search.keywords, search.industry, ...search.technologies],
+    keywords: search.keywords,
     technologies: search.technologies,
     exclusions: search.exclusions,
     page,
@@ -31,12 +31,4 @@ export function buildEmployeeRange(
 
 export function normalizeLocation(country: string): string {
   return country.toLowerCase().replace(/\s+/g, " ").trim();
-}
-
-export function buildKeywordTags(params: CompanyDiscoveryParams): string[] {
-  const tags = new Set<string>();
-  params.keywords.forEach((k) => tags.add(k.toLowerCase()));
-  params.technologies.forEach((t) => tags.add(t.toLowerCase()));
-  if (params.industry) tags.add(params.industry.toLowerCase());
-  return Array.from(tags);
 }

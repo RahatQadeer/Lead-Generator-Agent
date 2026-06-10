@@ -21,6 +21,7 @@ interface DiscoverResponse {
     hasMore: boolean;
   };
   meta?: {
+    filteredCount: number;
     excludedCount: number;
     attempts: number;
   };
@@ -131,6 +132,11 @@ export function DiscoverPreview({ searchId, searchName }: DiscoverPreviewProps) 
             <span>
               {result.pagination?.totalEntries} total matches
             </span>
+            {(result.meta?.filteredCount ?? 0) > 0 && (
+              <span className="text-amber-300">
+                {result.meta?.filteredCount} filtered by criteria
+              </span>
+            )}
             {(result.meta?.excludedCount ?? 0) > 0 && (
               <span className="text-red-300">
                 {result.meta?.excludedCount} excluded by rules

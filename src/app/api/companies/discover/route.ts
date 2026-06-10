@@ -72,6 +72,7 @@ export async function POST(request: Request) {
       companies: result.companies,
       pagination: result.pagination,
       meta: {
+        filteredCount: result.filteredCount,
         excludedCount: result.excludedCount,
         attempts: result.attempts,
         searchId: search.id,

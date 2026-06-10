@@ -1,7 +1,6 @@
 import { CompanyDiscoveryError } from "@/lib/company-discovery/errors";
 import {
   buildEmployeeRange,
-  buildKeywordTags,
   normalizeLocation,
 } from "@/lib/company-discovery/map-criteria";
 import type { CompanyDiscoveryProvider, ProviderSearchResult } from "@/lib/company-discovery/types";
@@ -48,6 +47,7 @@ function mapApolloOrg(org: ApolloOrganization): DiscoveredCompany {
     state: org.state ?? null,
     linkedinUrl: org.linkedin_url ?? null,
     websiteUrl: org.website_url ?? null,
+    technologies: null,
   };
 }
 
@@ -72,8 +72,22 @@ function buildApolloUrl(params: CompanyDiscoveryParams): string {
     );
   }
 
-  for (const tag of buildKeywordTags(params)) {
-    url.searchParams.append("q_organization_keyword_tags[]", tag);
+  if (params.industry) {
+    url.searchParams.append(
+      "q_organization_keyword_tags[]",
+      params.industry.toLowerCase()
+    );
+  }
+
+  for (const keyword of params.keywords) {
+    url.searchParams.append("q_organization_keyword_tags[]", keyword.toLowerCase());
+  }
+
+  for (const technology of params.technologies) {
+    url.searchParams.append(
+      "q_organization_keyword_tags[]",
+      technology.toLowerCase()
+    );
   }
 
   for (const country of params.exclusions.countries) {

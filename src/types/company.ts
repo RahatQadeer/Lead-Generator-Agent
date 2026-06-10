@@ -11,6 +11,7 @@ export interface DiscoveredCompany {
   state: string | null;
   linkedinUrl: string | null;
   websiteUrl: string | null;
+  technologies: string[] | null;
 }
 
 export interface CompanyDiscoveryParams {
@@ -37,5 +38,6 @@ export interface CompanyDiscoveryResult {
   companies: DiscoveredCompany[];
   pagination: CompanyDiscoveryPagination;
   provider: string;
+  filteredCount: number;
   excludedCount: number;
 }

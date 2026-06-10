@@ -1,3 +1,4 @@
+import { applyCriteria } from "@/lib/company-discovery/apply-criteria";
 import { applyExclusions } from "@/lib/company-discovery/apply-exclusions";
 import { isCompanyDiscoveryError } from "@/lib/company-discovery/errors";
 import { createCompanyDiscoveryProvider } from "@/lib/company-discovery/factory";
@@ -14,8 +15,13 @@ export async function discoverCompanies(
     { maxAttempts: 3, baseDelayMs: 600, maxDelayMs: 5000 }
   );
 
-  const { companies, excludedCount } = applyExclusions(
+  const { companies: criteriaMatched, filteredCount } = applyCriteria(
     result.companies,
+    params
+  );
+
+  const { companies, excludedCount } = applyExclusions(
+    criteriaMatched,
     params.exclusions
   );
 
@@ -23,6 +29,7 @@ export async function discoverCompanies(
     companies,
     pagination: result.pagination,
     provider: provider.name,
+    filteredCount,
     excludedCount,
     attempts,
   };
