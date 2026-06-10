@@ -14,7 +14,7 @@ export default async function SearchesPage() {
         icon={Search}
         label="Searches"
         title="Search builder"
-        description="Create and edit company search criteria — industry, size, location, technologies, and decision-makers."
+        description="Create, save, and manage company search criteria — industry, size, location, technologies, and decision-makers."
       />
       <SearchBuilder initialSearches={searches} />
     </>

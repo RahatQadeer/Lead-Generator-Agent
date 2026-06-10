@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
+import { getSearchById } from "@/lib/search/queries";
 import { validateSearchCriteria } from "@/lib/search/schema";
-import type { SearchCriteriaInput } from "@/types/search";
+import type { SearchCriteriaInput, SearchStatus } from "@/types/search";
 
 export type SearchActionResult =
   | { success: true }
@@ -82,6 +83,68 @@ export async function updateSearch(
     return {
       success: false,
       errors: { form: "Failed to update search. Please try again." },
+    };
+  }
+
+  revalidatePath("/searches");
+  return { success: true };
+}
+
+export async function duplicateSearch(id: string): Promise<SearchActionResult> {
+  const { user } = await getAuthContext();
+  const search = await getSearchById(user.id, id);
+
+  if (!search) {
+    return { success: false, errors: { form: "Search not found." } };
+  }
+
+  const supabase = await createClient();
+  const copyName = search.name.endsWith(" (copy)")
+    ? `${search.name} 2`
+    : `${search.name} (copy)`;
+
+  const { error } = await supabase.from("searches").insert({
+    user_id: user.id,
+    name: copyName,
+    industry: search.industry,
+    company_size_min: search.companySizeMin,
+    company_size_max: search.companySizeMax,
+    country: search.country,
+    keywords: search.keywords,
+    technologies: search.technologies,
+    job_titles: search.jobTitles,
+    status: "draft",
+    updated_at: new Date().toISOString(),
+  });
+
+  if (error) {
+    return {
+      success: false,
+      errors: { form: "Failed to duplicate search." },
+    };
+  }
+
+  revalidatePath("/searches");
+  return { success: true };
+}
+
+export async function updateSearchStatus(
+  id: string,
+  status: SearchStatus
+): Promise<SearchActionResult> {
+  const { user } = await getAuthContext();
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("searches")
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("user_id", user.id);
+
+  if (error) {
+    return {
+      success: false,
+      errors: { form: "Failed to update search status." },
     };
   }
 

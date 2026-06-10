@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CheckCircle2 } from "lucide-react";
 import { SearchBuilderForm } from "@/components/search/SearchBuilderForm";
-import { SearchCard } from "@/components/search/SearchCard";
+import { SavedSearchesPanel } from "@/components/search/SavedSearchesPanel";
 import type { SearchRecord } from "@/types/search";
 
 interface SearchBuilderProps {
@@ -11,15 +12,27 @@ interface SearchBuilderProps {
 }
 
 export function SearchBuilder({ initialSearches }: SearchBuilderProps) {
+  const router = useRouter();
   const [editingSearch, setEditingSearch] = useState<SearchRecord | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  function handleRefresh() {
+    router.refresh();
+  }
 
   function handleEdit(search: SearchRecord) {
     setEditingSearch(search);
+    setSuccessMessage(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function handleSaved() {
+  function handleSaved(wasEditing: boolean) {
     setEditingSearch(null);
+    setSuccessMessage(
+      wasEditing ? "Search updated successfully." : "Search saved successfully."
+    );
+    router.refresh();
+    setTimeout(() => setSuccessMessage(null), 4000);
   }
 
   function handleCancelEdit() {
@@ -27,47 +40,34 @@ export function SearchBuilder({ initialSearches }: SearchBuilderProps) {
   }
 
   return (
-    <div className="grid gap-8 xl:grid-cols-5">
-      <div className="xl:col-span-2">
-        <SearchBuilderForm
-          editingSearch={editingSearch}
-          onCancelEdit={handleCancelEdit}
-          onSaved={handleSaved}
-        />
-      </div>
+    <div className="space-y-6">
+      {successMessage && (
+        <div
+          role="status"
+          className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200"
+        >
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+          {successMessage}
+        </div>
+      )}
 
-      <div className="xl:col-span-3">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
-            Saved searches ({initialSearches.length})
-          </h2>
-          {editingSearch && (
-            <span className="text-xs text-cyan-400">Editing a search</span>
-          )}
+      <div className="grid gap-8 xl:grid-cols-5">
+        <div className="xl:col-span-2">
+          <SearchBuilderForm
+            editingSearch={editingSearch}
+            onCancelEdit={handleCancelEdit}
+            onSaved={handleSaved}
+          />
         </div>
 
-        {initialSearches.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-white/10 bg-slate-900/30 px-6 py-12 text-center">
-            <Search className="mx-auto h-8 w-8 text-slate-600" />
-            <p className="mt-3 text-sm font-medium text-slate-400">
-              No searches yet
-            </p>
-            <p className="mt-1 text-xs text-slate-500">
-              Use the builder to create your first search
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {initialSearches.map((search) => (
-              <SearchCard
-                key={search.id}
-                search={search}
-                isEditing={editingSearch?.id === search.id}
-                onEdit={() => handleEdit(search)}
-              />
-            ))}
-          </div>
-        )}
+        <div className="xl:col-span-3">
+          <SavedSearchesPanel
+            searches={initialSearches}
+            editingId={editingSearch?.id ?? null}
+            onEdit={handleEdit}
+            onRefresh={handleRefresh}
+          />
+        </div>
       </div>
     </div>
   );

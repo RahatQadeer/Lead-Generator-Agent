@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import {
   Building2,
   Globe,
@@ -10,111 +10,195 @@ import {
   Cpu,
   Trash2,
   Pencil,
+  Copy,
   Loader2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
-import { deleteSearch } from "@/lib/search/actions";
+import {
+  deleteSearch,
+  duplicateSearch,
+  updateSearchStatus,
+} from "@/lib/search/actions";
 import { formatCompanySize } from "@/lib/search/mapper";
-import type { SearchRecord } from "@/types/search";
+import { SearchStatusBadge } from "@/components/search/SearchStatusBadge";
+import { selectClassName } from "@/components/ui/Field";
+import type { SearchRecord, SearchStatus } from "@/types/search";
 
 interface SearchCardProps {
   search: SearchRecord;
   isEditing?: boolean;
   onEdit: () => void;
+  onRefresh: () => void;
 }
 
-export function SearchCard({ search, isEditing, onEdit }: SearchCardProps) {
+export function SearchCard({
+  search,
+  isEditing,
+  onEdit,
+  onRefresh,
+}: SearchCardProps) {
+  const [expanded, setExpanded] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  function runAction(action: () => Promise<unknown>) {
+    startTransition(async () => {
+      await action();
+      onRefresh();
+    });
+  }
 
   function handleDelete() {
     if (!confirm(`Delete "${search.name}"?`)) return;
-    startTransition(async () => {
-      await deleteSearch(search.id);
-    });
+    runAction(() => deleteSearch(search.id));
+  }
+
+  function handleDuplicate() {
+    runAction(() => duplicateSearch(search.id));
+  }
+
+  function handleStatusChange(status: SearchStatus) {
+    if (status === search.status) return;
+    runAction(() => updateSearchStatus(search.id, status));
   }
 
   return (
     <article
-      className={`rounded-2xl border bg-slate-900/50 p-5 transition-colors ${
+      className={`rounded-2xl border bg-slate-900/50 transition-colors ${
         isEditing
           ? "border-cyan-500/30 ring-1 ring-cyan-500/20"
           : "border-white/5 hover:border-white/10"
       }`}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="truncate text-base font-semibold text-white">
-              {search.name}
-            </h3>
-            <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs capitalize text-slate-400">
-              {search.status}
-            </span>
-            {isEditing && (
-              <span className="shrink-0 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-xs text-cyan-300">
-                Editing
-              </span>
-            )}
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="truncate text-base font-semibold text-white">
+                {search.name}
+              </h3>
+              <SearchStatusBadge status={search.status} />
+              {isEditing && (
+                <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-xs text-cyan-300">
+                  Editing
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-slate-500">
+              Saved{" "}
+              {new Date(search.createdAt).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
+              {" · "}
+              Updated{" "}
+              {new Date(search.updatedAt).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+              })}
+            </p>
           </div>
-          <p className="mt-1 text-xs text-slate-500">
-            Updated{" "}
-            {new Date(search.updatedAt).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </p>
+
+          <div className="flex shrink-0 gap-1">
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-white/5 hover:text-white"
+              aria-label={expanded ? "Collapse details" : "Expand details"}
+            >
+              {expanded ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={handleDuplicate}
+              disabled={isPending}
+              className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-50"
+              aria-label={`Duplicate ${search.name}`}
+            >
+              <Copy className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={onEdit}
+              disabled={isPending || isEditing}
+              className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-cyan-500/10 hover:text-cyan-400 disabled:opacity-50"
+              aria-label={`Edit ${search.name}`}
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isPending}
+              className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
+              aria-label={`Delete ${search.name}`}
+            >
+              {isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+            </button>
+          </div>
         </div>
-        <div className="flex shrink-0 gap-1">
-          <button
-            type="button"
-            onClick={onEdit}
-            disabled={isPending || isEditing}
-            className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-cyan-500/10 hover:text-cyan-400 disabled:opacity-50"
-            aria-label={`Edit ${search.name}`}
-          >
-            <Pencil className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={handleDelete}
-            disabled={isPending}
-            className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
-            aria-label={`Delete ${search.name}`}
-          >
-            {isPending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Trash2 className="h-4 w-4" />
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <CriteriaRow icon={Building2} label="Industry" value={search.industry} />
+          <CriteriaRow icon={Globe} label="Country" value={search.country} />
+          <CriteriaRow
+            icon={Users}
+            label="Company size"
+            value={formatCompanySize(search.companySizeMin, search.companySizeMax)}
+          />
+          <CriteriaRow
+            icon={Briefcase}
+            label="Job titles"
+            value={
+              search.jobTitles.length > 2 && !expanded
+                ? `${search.jobTitles.slice(0, 2).join(", ")} +${search.jobTitles.length - 2}`
+                : search.jobTitles.join(", ") || "—"
+            }
+          />
+        </div>
+
+        {expanded && (
+          <div className="mt-4 space-y-3 border-t border-white/5 pt-4">
+            {search.keywords.length > 0 && (
+              <TagGroup icon={Tag} label="Keywords" tags={search.keywords} />
             )}
-          </button>
-        </div>
-      </div>
+            {search.technologies.length > 0 && (
+              <TagGroup icon={Cpu} label="Technologies" tags={search.technologies} />
+            )}
+            {search.jobTitles.length > 0 && (
+              <TagGroup icon={Briefcase} label="All job titles" tags={search.jobTitles} />
+            )}
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        <CriteriaRow icon={Building2} label="Industry" value={search.industry} />
-        <CriteriaRow icon={Globe} label="Country" value={search.country} />
-        <CriteriaRow
-          icon={Users}
-          label="Company size"
-          value={formatCompanySize(search.companySizeMin, search.companySizeMax)}
-        />
-        <CriteriaRow
-          icon={Briefcase}
-          label="Job titles"
-          value={search.jobTitles.join(", ") || "—"}
-        />
+            <div className="flex items-center gap-3 pt-2">
+              <label htmlFor={`status-${search.id}`} className="text-xs text-slate-500">
+                Status
+              </label>
+              <select
+                id={`status-${search.id}`}
+                value={search.status}
+                onChange={(e) =>
+                  handleStatusChange(e.target.value as SearchStatus)
+                }
+                disabled={isPending}
+                className={`${selectClassName} max-w-[160px] py-2 text-xs`}
+              >
+                <option value="draft">Draft</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+          </div>
+        )}
       </div>
-
-      {(search.keywords.length > 0 || search.technologies.length > 0) && (
-        <div className="mt-4 space-y-2 border-t border-white/5 pt-4">
-          {search.keywords.length > 0 && (
-            <TagGroup icon={Tag} label="Keywords" tags={search.keywords} />
-          )}
-          {search.technologies.length > 0 && (
-            <TagGroup icon={Cpu} label="Technologies" tags={search.technologies} />
-          )}
-        </div>
-      )}
     </article>
   );
 }

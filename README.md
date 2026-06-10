@@ -74,6 +74,26 @@ Run migration `supabase/migrations/002_searches.sql` in the Supabase SQL Editor.
 | Edit search | Click pencil on a saved search → form pre-fills → Save changes |
 | Validation | Client + server validation with per-field error messages |
 
+## SEARCH-003 — Saved Searches
+
+| Feature | Implementation |
+|---------|----------------|
+| Persist searches | Supabase `searches` table with RLS |
+| List saved searches | Filterable panel with status tabs |
+| Filter & sort | By status, name/industry/country, newest/oldest/name |
+| Duplicate | Copy button creates draft clone |
+| Status management | Draft / Active / Completed dropdown |
+| Expand details | View full criteria on each card |
+
+### Testing SEARCH-003
+
+1. Create searches — they appear in Saved searches panel.
+2. Filter by Draft / Active / Completed tabs.
+3. Search by name in the filter box.
+4. Click **Duplicate** — a copy appears as draft.
+5. Expand a card — change status, view all criteria.
+6. Delete a search — removed from list after refresh.
+
 ### Testing SEARCH-002
 
 1. Create a search — fill all required fields, submit.

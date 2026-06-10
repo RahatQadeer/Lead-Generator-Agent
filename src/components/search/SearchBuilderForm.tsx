@@ -37,7 +37,7 @@ const EMPTY_FORM: SearchCriteriaInput = {
 interface SearchBuilderFormProps {
   editingSearch: SearchRecord | null;
   onCancelEdit: () => void;
-  onSaved: () => void;
+  onSaved: (wasEditing: boolean) => void;
 }
 
 export function SearchBuilderForm({
@@ -98,8 +98,9 @@ export function SearchBuilderForm({
         return;
       }
 
+      const wasEditing = isEditing;
       setForm(EMPTY_FORM);
-      onSaved();
+      onSaved(wasEditing);
     });
   }
 
