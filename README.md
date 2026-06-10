@@ -175,6 +175,39 @@ curl -X POST http://localhost:3000/api/contacts/discover \
   -d '{"searchId":"<your-search-uuid>","page":1,"perPage":10}'
 ```
 
+## LEAD-002 — Enrich Lead Profiles
+
+| Field | Source |
+|-------|--------|
+| Name | `full_name` from contact + enrichment provider |
+| Role | Job title (`title`) |
+| Company | Company name from joined `companies` row |
+| LinkedIn | `linkedin_url` — filled by enrichment if missing |
+| Location | `city`, `state`, `country` formatted as location string |
+
+**API:** `POST /api/leads/enrich` with `searchId`
+
+**Providers:** `mock` (default) or `apollo` (`people/match` — paid plan required).
+
+**Pipeline:** load contacts for search → enrich profiles → persist to `contacts` table.
+
+**Persistence:** `supabase/migrations/006_contacts_enrichment.sql` adds enrichment columns.
+
+Run migrations `004`–`006` before testing.
+
+### Testing LEAD-002
+
+1. Discover companies → discover decision-makers on a search
+2. Click **Enrich lead profiles** — mock fills LinkedIn + location per contact
+3. Visit **Leads** page to see all enriched profiles
+4. Re-run enrichment to refresh profile data
+
+```bash
+curl -X POST http://localhost:3000/api/leads/enrich \
+  -H "Content-Type: application/json" \
+  -d '{"searchId":"<your-search-uuid>"}'
+```
+
 ## SEARCH-004 — Exclusion Rules
 
 | Exclusion | Field | Validation |

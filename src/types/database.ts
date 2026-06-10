@@ -180,6 +180,12 @@ export interface Database {
           title: string;
           email: string | null;
           linkedin_url: string | null;
+          company_name: string | null;
+          city: string | null;
+          state: string | null;
+          country: string | null;
+          enriched_at: string | null;
+          enrichment_provider: string | null;
           first_discovered_at: string;
           last_seen_at: string;
           created_at: string;
@@ -199,6 +205,12 @@ export interface Database {
           title: string;
           email?: string | null;
           linkedin_url?: string | null;
+          company_name?: string | null;
+          city?: string | null;
+          state?: string | null;
+          country?: string | null;
+          enriched_at?: string | null;
+          enrichment_provider?: string | null;
           first_discovered_at?: string;
           last_seen_at?: string;
           created_at?: string;
@@ -218,6 +230,12 @@ export interface Database {
           title?: string;
           email?: string | null;
           linkedin_url?: string | null;
+          company_name?: string | null;
+          city?: string | null;
+          state?: string | null;
+          country?: string | null;
+          enriched_at?: string | null;
+          enrichment_provider?: string | null;
           first_discovered_at?: string;
           last_seen_at?: string;
           created_at?: string;

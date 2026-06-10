@@ -1,21 +1,35 @@
 import { Users } from "lucide-react";
+import { LeadsList } from "@/components/leads/LeadsList";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/layout/EmptyState";
+import { getEnrichedLeadsByUserId } from "@/lib/contacts/queries";
+import { createClient } from "@/lib/supabase/server";
 
-export default function LeadsPage() {
+export default async function LeadsPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const leads = user ? await getEnrichedLeadsByUserId(user.id) : [];
+
   return (
     <>
       <PageHeader
         icon={Users}
         label="Leads"
         title="Lead pipeline"
-        description="Review discovered companies, scored leads, and decision-maker contacts."
+        description="Review enriched lead profiles with name, role, company, LinkedIn, and location."
       />
-      <EmptyState
-        icon={Users}
-        title="No leads yet"
-        description="Run a company search to discover qualified leads and key contacts at target organizations."
-      />
+      {leads.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="No enriched leads yet"
+          description="Run company discovery, find decision-makers, then enrich lead profiles from a saved search."
+        />
+      ) : (
+        <LeadsList leads={leads} />
+      )}
     </>
   );
 }

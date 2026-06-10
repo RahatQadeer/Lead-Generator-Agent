@@ -1,8 +1,16 @@
 import { getContactDedupKey } from "@/lib/contact-discovery/apply-dedup";
+import { formatLocation } from "@/lib/lead-enrichment/format-location";
 import type { Database } from "@/types/database";
 import type { DiscoveredContact } from "@/types/contact";
+import type { EnrichedLead, LeadEnrichmentInput } from "@/types/lead";
 
 type ContactInsert = Database["public"]["Tables"]["contacts"]["Insert"];
+type ContactRow = Database["public"]["Tables"]["contacts"]["Row"];
+type CompanyRow = Database["public"]["Tables"]["companies"]["Row"];
+
+export type ContactWithCompany = ContactRow & {
+  companies: Pick<CompanyRow, "name" | "city" | "state" | "country"> | null;
+};
 
 export function toContactInsert(
   userId: string,
@@ -28,5 +36,62 @@ export function toContactInsert(
     linkedin_url: contact.linkedinUrl,
     last_seen_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
+  };
+}
+
+export function toLeadEnrichmentInput(
+  contact: ContactWithCompany
+): LeadEnrichmentInput {
+  const company = contact.companies;
+
+  return {
+    id: contact.id,
+    fullName: contact.full_name,
+    title: contact.title,
+    email: contact.email,
+    linkedinUrl: contact.linkedin_url,
+    companyId: contact.company_id,
+    companyName: company?.name ?? contact.company_name ?? "Unknown",
+    companyCity: company?.city ?? contact.city,
+    companyState: company?.state ?? contact.state,
+    companyCountry: company?.country ?? contact.country,
+  };
+}
+
+export function toEnrichedLeadUpdate(
+  lead: EnrichedLead,
+  provider: string
+): Database["public"]["Tables"]["contacts"]["Update"] {
+  return {
+    full_name: lead.name,
+    title: lead.role,
+    company_name: lead.company,
+    linkedin_url: lead.linkedin,
+    city: lead.city,
+    state: lead.state,
+    country: lead.country,
+    enriched_at: lead.enrichedAt,
+    enrichment_provider: provider,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+export function toEnrichedLead(contact: ContactRow): EnrichedLead | null {
+  if (!contact.enriched_at) return null;
+
+  return {
+    id: contact.id,
+    name: contact.full_name,
+    role: contact.title,
+    company: contact.company_name ?? "Unknown",
+    linkedin: contact.linkedin_url,
+    city: contact.city,
+    state: contact.state,
+    country: contact.country,
+    location: formatLocation(contact.city, contact.state, contact.country),
+    email: contact.email,
+    companyId: contact.company_id,
+    searchId: contact.search_id,
+    enrichedAt: contact.enriched_at,
   };
 }

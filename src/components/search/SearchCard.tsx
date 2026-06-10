@@ -25,6 +25,7 @@ import { countExclusions, hasExclusions } from "@/lib/search/exclusions";
 import { formatCompanySize } from "@/lib/search/mapper";
 import { ContactsPreview } from "@/components/search/ContactsPreview";
 import { DiscoverPreview } from "@/components/search/DiscoverPreview";
+import { EnrichLeadsPreview } from "@/components/search/EnrichLeadsPreview";
 import { SearchStatusBadge } from "@/components/search/SearchStatusBadge";
 import { selectClassName } from "@/components/ui/Field";
 import type { SearchRecord, SearchStatus } from "@/types/search";
@@ -215,6 +216,11 @@ export function SearchCard({
               searchId={search.id}
               searchName={search.name}
               jobTitles={search.jobTitles}
+            />
+
+            <EnrichLeadsPreview
+              searchId={search.id}
+              searchName={search.name}
             />
 
             <div className="flex items-center gap-3 pt-2">
