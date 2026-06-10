@@ -143,6 +143,38 @@ Run migration `004_companies.sql` in the Supabase SQL Editor before testing cros
 3. Run discovery again on the same or a different search with overlapping companies
 4. UI shows `duplicates skipped (N already in pipeline)` for known matches
 
+## LEAD-001 — Discover Company Decision Makers
+
+| Criteria | Implementation |
+|----------|----------------|
+| Job titles | `searches.job_titles` → title filter (CEO, Founder, CTO, Marketing Director, VP Sales) |
+| Company scope | Persisted `companies` for the search (`search_id`) |
+| Pagination | `page` + `perPage` params; `hasMore` in response |
+| Dedup | Email, LinkedIn URL, or name+company fallback |
+| API | `POST /api/contacts/discover` with `searchId` |
+
+**Providers:** `mock` (default) or `apollo` (`mixed_people/search` — paid plan required).
+
+**Pipeline:** load companies → provider people search → title filter → dedup → persist contacts.
+
+**Persistence:** `supabase/migrations/005_contacts.sql`
+
+Run migrations `004_companies.sql` and `005_contacts.sql` before testing.
+
+### Testing LEAD-001
+
+1. Create a search with job titles: CEO, Founder, CTO, Marketing Director, VP Sales
+2. Expand the search card → **Discover companies** (saves companies to DB)
+3. Click **Discover decision-makers** — mock returns contacts per company domain
+4. Re-run contact discovery → duplicates skipped for known contacts
+5. If no companies exist, API returns `NO_COMPANIES` with guidance
+
+```bash
+curl -X POST http://localhost:3000/api/contacts/discover \
+  -H "Content-Type: application/json" \
+  -d '{"searchId":"<your-search-uuid>","page":1,"perPage":10}'
+```
+
 ## SEARCH-004 — Exclusion Rules
 
 | Exclusion | Field | Validation |

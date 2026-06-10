@@ -1,6 +1,8 @@
 import { toCompanyInsert } from "@/lib/companies/mapper";
+import { toContactDiscoveryTargetCompany } from "@/lib/contact-discovery/map-criteria";
 import { createClient } from "@/lib/supabase/server";
 import type { DiscoveredCompany } from "@/types/company";
+import type { ContactDiscoveryTargetCompany } from "@/types/contact";
 
 export async function getKnownCompanyDedupKeys(
   userId: string
@@ -38,4 +40,22 @@ export async function upsertDiscoveredCompanies(
   if (error) {
     console.error("Failed to persist discovered companies:", error.message);
   }
+}
+
+export async function getCompaniesBySearchId(
+  userId: string,
+  searchId: string
+): Promise<ContactDiscoveryTargetCompany[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("companies")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("search_id", searchId)
+    .order("name", { ascending: true });
+
+  if (error || !data) return [];
+
+  return data.map(toContactDiscoveryTargetCompany);
 }

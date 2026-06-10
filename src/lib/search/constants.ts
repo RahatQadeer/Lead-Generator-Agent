@@ -50,6 +50,7 @@ export const JOB_TITLE_SUGGESTIONS = [
   "VP Engineering",
   "VP Sales",
   "VP Marketing",
+  "Marketing Director",
   "Head of Product",
   "Marketing Manager",
   "Sales Director",
