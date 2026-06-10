@@ -122,6 +122,27 @@ curl -X POST http://localhost:3000/api/companies/discover \
 3. Mock data returns only companies matching all four filters
 4. Add exclusion rules (SEARCH-004) to verify exclusion count appears separately from criteria filtering
 
+## DISC-003 — Duplicate Company Detection
+
+| Detection | Rule |
+|-----------|------|
+| Identity key | Normalized `domain` (primary), or `name + country` fallback |
+| In-batch | Duplicate domains/names within the same discovery response are skipped |
+| Cross-search | Companies already saved for the user are skipped as known duplicates |
+
+**Pipeline:** provider fetch → `applyCriteria` → `applyExclusions` → `applyDedup` → persist new companies.
+
+**Persistence:** `supabase/migrations/004_companies.sql` — `companies` table with unique `(user_id, dedup_key)`.
+
+Run migration `004_companies.sql` in the Supabase SQL Editor before testing cross-search dedup.
+
+### Testing DISC-003
+
+1. Run migration `004_companies.sql`
+2. Discover companies on a search — results are saved to `companies`
+3. Run discovery again on the same or a different search with overlapping companies
+4. UI shows `duplicates skipped (N already in pipeline)` for known matches
+
 ## SEARCH-004 — Exclusion Rules
 
 | Exclusion | Field | Validation |

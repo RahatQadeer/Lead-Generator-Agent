@@ -1,12 +1,18 @@
 import { applyCriteria } from "@/lib/company-discovery/apply-criteria";
+import { applyDedup } from "@/lib/company-discovery/apply-dedup";
 import { applyExclusions } from "@/lib/company-discovery/apply-exclusions";
 import { isCompanyDiscoveryError } from "@/lib/company-discovery/errors";
 import { createCompanyDiscoveryProvider } from "@/lib/company-discovery/factory";
 import { withRetry } from "@/lib/company-discovery/retry";
-import type { CompanyDiscoveryParams, CompanyDiscoveryResult } from "@/types/company";
+import type {
+  CompanyDiscoveryParams,
+  CompanyDiscoveryResult,
+  DiscoverCompaniesOptions,
+} from "@/types/company";
 
 export async function discoverCompanies(
-  params: CompanyDiscoveryParams
+  params: CompanyDiscoveryParams,
+  options: DiscoverCompaniesOptions = {}
 ): Promise<CompanyDiscoveryResult & { attempts: number }> {
   const provider = createCompanyDiscoveryProvider();
 
@@ -20,10 +26,17 @@ export async function discoverCompanies(
     params
   );
 
-  const { companies, excludedCount } = applyExclusions(
+  const { companies: exclusionMatched, excludedCount } = applyExclusions(
     criteriaMatched,
     params.exclusions
   );
+
+  const {
+    companies,
+    duplicateCount,
+    batchDuplicateCount,
+    knownDuplicateCount,
+  } = applyDedup(exclusionMatched, options.knownDedupKeys);
 
   return {
     companies,
@@ -31,6 +44,9 @@ export async function discoverCompanies(
     provider: provider.name,
     filteredCount,
     excludedCount,
+    duplicateCount,
+    batchDuplicateCount,
+    knownDuplicateCount,
     attempts,
   };
 }

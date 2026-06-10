@@ -40,4 +40,11 @@ export interface CompanyDiscoveryResult {
   provider: string;
   filteredCount: number;
   excludedCount: number;
+  duplicateCount: number;
+  batchDuplicateCount: number;
+  knownDuplicateCount: number;
+}
+
+export interface DiscoverCompaniesOptions {
+  knownDedupKeys?: ReadonlySet<string>;
 }

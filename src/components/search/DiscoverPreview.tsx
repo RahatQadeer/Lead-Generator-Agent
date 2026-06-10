@@ -23,6 +23,9 @@ interface DiscoverResponse {
   meta?: {
     filteredCount: number;
     excludedCount: number;
+    duplicateCount: number;
+    batchDuplicateCount: number;
+    knownDuplicateCount: number;
     attempts: number;
   };
   error?: {
@@ -135,6 +138,13 @@ export function DiscoverPreview({ searchId, searchName }: DiscoverPreviewProps) 
             {(result.meta?.filteredCount ?? 0) > 0 && (
               <span className="text-amber-300">
                 {result.meta?.filteredCount} filtered by criteria
+              </span>
+            )}
+            {(result.meta?.duplicateCount ?? 0) > 0 && (
+              <span className="text-violet-300">
+                {result.meta?.duplicateCount} duplicates skipped
+                {(result.meta?.knownDuplicateCount ?? 0) > 0 &&
+                  ` (${result.meta?.knownDuplicateCount} already in pipeline)`}
               </span>
             )}
             {(result.meta?.excludedCount ?? 0) > 0 && (
