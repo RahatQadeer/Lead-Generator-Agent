@@ -53,6 +53,19 @@ Open [http://localhost:3000](http://localhost:3000) — you'll be redirected to 
 | Logout | Sign out button in dashboard header |
 | Invalid login handled | Error banner on `/login` with friendly messages |
 
+## SEARCH-001 — Search Criteria Engine
+
+| Criteria | Field |
+|----------|-------|
+| Industry | Dropdown select |
+| Company size | Presets + min/max employees |
+| Country | Dropdown select |
+| Keywords | Tag input |
+| Technologies | Tag input with suggestions |
+| Job titles | Tag input with suggestions (required) |
+
+Run migration `supabase/migrations/002_searches.sql` in the Supabase SQL Editor.
+
 ## AUTH-003 — Protected Routes
 
 | Route | Page |
