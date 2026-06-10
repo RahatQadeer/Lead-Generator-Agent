@@ -1,6 +1,6 @@
-import { redirect } from "next/navigation";
 import { Users, Send, MessageSquare, TrendingUp } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { requireAuth } from "@/lib/auth/require-auth";
 import {
   DashboardShell,
   DashboardWelcome,
@@ -8,15 +8,8 @@ import {
 import type { Profile } from "@/types/database";
 
 export default async function DashboardPage() {
+  const user = await requireAuth("/dashboard");
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login?error=login_required&redirect=/dashboard");
-  }
 
   const { data: profile } = await supabase
     .from("profiles")

@@ -1,6 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database";
+import {
+  buildLoginRedirect,
+  classifyAuthError,
+  copyResponseCookies,
+  hasAuthCookies,
+  isProtectedPath,
+} from "@/lib/auth/session";
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -26,25 +33,41 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
+  // Validates the JWT and refreshes the session when the access token is expired
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+  const staleSession = !user && hasAuthCookies(request);
 
-  if (!user && pathname.startsWith("/dashboard")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("redirect", pathname);
-    url.searchParams.set("error", "login_required");
-    return NextResponse.redirect(url);
+  // Reject invalid or expired sessions and clear stale auth cookies
+  if (staleSession) {
+    await supabase.auth.signOut();
+
+    if (isProtectedPath(pathname)) {
+      const loginUrl = buildLoginRedirect(
+        request,
+        classifyAuthError(authError),
+        pathname
+      );
+      const redirectResponse = NextResponse.redirect(loginUrl);
+      return copyResponseCookies(supabaseResponse, redirectResponse);
+    }
+  }
+
+  if (!user && isProtectedPath(pathname)) {
+    const loginUrl = buildLoginRedirect(request, "login_required", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   if (user && pathname === "/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     url.search = "";
-    return NextResponse.redirect(url);
+    const redirectResponse = NextResponse.redirect(url);
+    return copyResponseCookies(supabaseResponse, redirectResponse);
   }
 
   return supabaseResponse;

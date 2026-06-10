@@ -53,6 +53,21 @@ Open [http://localhost:3000](http://localhost:3000) — you'll be redirected to 
 | Logout | Sign out button in dashboard header |
 | Invalid login handled | Error banner on `/login` with friendly messages |
 
+## AUTH-002 — Session Management
+
+| Criteria | Implementation |
+|----------|----------------|
+| Session persists on refresh | Middleware calls `getUser()` to validate & refresh tokens; refreshed cookies returned on every request |
+| Session expiration supported | Expired sessions detected in middleware + client `SessionProvider`; user redirected with `session_expired` banner |
+| Invalid sessions rejected | Stale/invalid cookies cleared via `signOut()`; user redirected with `invalid_session` banner |
+
+### Testing AUTH-002
+
+1. **Persist on refresh** — Sign in, open `/dashboard`, hard-refresh (Cmd+Shift+R). You should stay logged in.
+2. **Session expiration** — Sign in, clear only the access token cookie in DevTools (keep refresh token), refresh page. Middleware should refresh the session OR redirect with "session expired".
+3. **Invalid session** — Sign in, corrupt the `sb-*-auth-token` cookie value in DevTools, visit `/dashboard`. You should be redirected to `/login` with "Your session is invalid."
+4. **API check** — `GET /api/auth/session` returns `{ authenticated: true, expiresAt }` when logged in, `401` when not.
+
 ## Project Structure
 
 ```
