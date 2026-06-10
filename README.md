@@ -66,6 +66,22 @@ Open [http://localhost:3000](http://localhost:3000) — you'll be redirected to 
 
 Run migration `supabase/migrations/002_searches.sql` in the Supabase SQL Editor.
 
+## SEARCH-002 — Search Builder UI
+
+| Criteria | Implementation |
+|----------|----------------|
+| Create search | 3-step builder form with server action |
+| Edit search | Click pencil on a saved search → form pre-fills → Save changes |
+| Validation | Client + server validation with per-field error messages |
+
+### Testing SEARCH-002
+
+1. Create a search — fill all required fields, submit.
+2. Click **Edit** on a saved search — form loads with existing values.
+3. Change criteria and click **Save changes**.
+4. Click **Cancel** during edit — form resets to create mode.
+5. Submit empty form — see validation errors on required fields.
+
 ## AUTH-003 — Protected Routes
 
 | Route | Page |

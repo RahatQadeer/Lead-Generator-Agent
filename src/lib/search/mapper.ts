@@ -1,5 +1,5 @@
 import type { Database } from "@/types/database";
-import type { SearchRecord } from "@/types/search";
+import type { SearchCriteriaInput, SearchRecord } from "@/types/search";
 
 type SearchRow = Database["public"]["Tables"]["searches"]["Row"];
 
@@ -18,6 +18,19 @@ export function toSearchRecord(row: SearchRow): SearchRecord {
     status: row.status as SearchRecord["status"],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+export function toSearchCriteriaInput(search: SearchRecord): SearchCriteriaInput {
+  return {
+    name: search.name,
+    industry: search.industry,
+    companySizeMin: search.companySizeMin?.toString() ?? "",
+    companySizeMax: search.companySizeMax?.toString() ?? "",
+    country: search.country,
+    keywords: search.keywords.join(", "),
+    technologies: search.technologies.join(", "),
+    jobTitles: search.jobTitles.join(", "),
   };
 }
 

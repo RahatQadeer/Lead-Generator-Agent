@@ -9,6 +9,7 @@ import {
   Tag,
   Cpu,
   Trash2,
+  Pencil,
   Loader2,
 } from "lucide-react";
 import { deleteSearch } from "@/lib/search/actions";
@@ -17,9 +18,11 @@ import type { SearchRecord } from "@/types/search";
 
 interface SearchCardProps {
   search: SearchRecord;
+  isEditing?: boolean;
+  onEdit: () => void;
 }
 
-export function SearchCard({ search }: SearchCardProps) {
+export function SearchCard({ search, isEditing, onEdit }: SearchCardProps) {
   const [isPending, startTransition] = useTransition();
 
   function handleDelete() {
@@ -30,7 +33,13 @@ export function SearchCard({ search }: SearchCardProps) {
   }
 
   return (
-    <article className="rounded-2xl border border-white/5 bg-slate-900/50 p-5 transition-colors hover:border-white/10">
+    <article
+      className={`rounded-2xl border bg-slate-900/50 p-5 transition-colors ${
+        isEditing
+          ? "border-cyan-500/30 ring-1 ring-cyan-500/20"
+          : "border-white/5 hover:border-white/10"
+      }`}
+    >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -40,29 +49,45 @@ export function SearchCard({ search }: SearchCardProps) {
             <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs capitalize text-slate-400">
               {search.status}
             </span>
+            {isEditing && (
+              <span className="shrink-0 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-xs text-cyan-300">
+                Editing
+              </span>
+            )}
           </div>
           <p className="mt-1 text-xs text-slate-500">
-            Created{" "}
-            {new Date(search.createdAt).toLocaleDateString("en-US", {
+            Updated{" "}
+            {new Date(search.updatedAt).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
               year: "numeric",
             })}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleDelete}
-          disabled={isPending}
-          className="shrink-0 rounded-lg p-2 text-slate-500 transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
-          aria-label={`Delete ${search.name}`}
-        >
-          {isPending ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Trash2 className="h-4 w-4" />
-          )}
-        </button>
+        <div className="flex shrink-0 gap-1">
+          <button
+            type="button"
+            onClick={onEdit}
+            disabled={isPending || isEditing}
+            className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-cyan-500/10 hover:text-cyan-400 disabled:opacity-50"
+            aria-label={`Edit ${search.name}`}
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={isPending}
+            className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
+            aria-label={`Delete ${search.name}`}
+          >
+            {isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4" />
+            )}
+          </button>
+        </div>
       </div>
 
       <div className="mt-4 grid gap-2 sm:grid-cols-2">

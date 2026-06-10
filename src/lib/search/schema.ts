@@ -11,10 +11,13 @@ function parseTagList(value: string): string[] {
     .filter(Boolean);
 }
 
-function parseOptionalInt(value: string): number | null {
+type IntParseResult = number | null | "invalid";
+
+function parseOptionalInt(value: string): IntParseResult {
   if (!value.trim()) return null;
   const num = parseInt(value, 10);
-  return Number.isNaN(num) ? null : num;
+  if (Number.isNaN(num)) return "invalid";
+  return num;
 }
 
 export function validateSearchCriteria(
@@ -24,7 +27,7 @@ export function validateSearchCriteria(
 
   const name = input.name.trim();
   if (!name) errors.name = "Search name is required.";
-  if (name.length > 100) errors.name = "Name must be 100 characters or less.";
+  else if (name.length > 100) errors.name = "Name must be 100 characters or less.";
 
   const industry = input.industry.trim();
   if (!industry) errors.industry = "Industry is required.";
@@ -32,11 +35,26 @@ export function validateSearchCriteria(
   const country = input.country.trim();
   if (!country) errors.country = "Country is required.";
 
-  const companySizeMin = parseOptionalInt(input.companySizeMin);
-  const companySizeMax = parseOptionalInt(input.companySizeMax);
+  const rawMin = parseOptionalInt(input.companySizeMin);
+  const rawMax = parseOptionalInt(input.companySizeMax);
 
-  if (companySizeMin === null && companySizeMax === null) {
+  if (rawMin === "invalid" || rawMax === "invalid") {
+    errors.companySize = "Company size must be a valid number.";
+  }
+
+  const companySizeMin = rawMin === "invalid" ? null : rawMin;
+  const companySizeMax = rawMax === "invalid" ? null : rawMax;
+
+  if (companySizeMin === null && companySizeMax === null && rawMin !== "invalid" && rawMax !== "invalid") {
     errors.companySize = "Company size is required.";
+  }
+
+  if (companySizeMin !== null && companySizeMin < 1) {
+    errors.companySize = "Minimum company size must be at least 1.";
+  }
+
+  if (companySizeMax !== null && companySizeMax < 1) {
+    errors.companySize = "Maximum company size must be at least 1.";
   }
 
   if (
@@ -53,6 +71,18 @@ export function validateSearchCriteria(
 
   if (jobTitles.length === 0) {
     errors.jobTitles = "At least one job title is required.";
+  }
+
+  if (keywords.length > 20) {
+    errors.keywords = "Maximum 20 keywords allowed.";
+  }
+
+  if (technologies.length > 20) {
+    errors.technologies = "Maximum 20 technologies allowed.";
+  }
+
+  if (jobTitles.length > 10) {
+    errors.jobTitles = "Maximum 10 job titles allowed.";
   }
 
   if (Object.keys(errors).length > 0) {
