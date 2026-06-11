@@ -1,4 +1,5 @@
 import { getToneLabel } from "@/lib/email-generation/tone-guidance";
+import { SendEmailButton } from "@/components/emails/SendEmailButton";
 import type { SavedEmail } from "@/types/email-generation";
 
 interface EmailDraftCardProps {
@@ -11,7 +12,7 @@ export function EmailDraftCard({ email }: EmailDraftCardProps) {
   return (
     <article className="rounded-xl border border-white/10 bg-slate-900/50 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-white">
             {personalization.leadName}
             {personalization.leadRole ? ` · ${personalization.leadRole}` : ""}
@@ -20,9 +21,15 @@ export function EmailDraftCard({ email }: EmailDraftCardProps) {
             {personalization.leadCompany}
             {personalization.industry ? ` · ${personalization.industry}` : ""}
           </p>
+          {email.recipientEmail && (
+            <p className="mt-0.5 text-xs text-slate-500">To: {email.recipientEmail}</p>
+          )}
           <p className="mt-0.5 text-xs text-slate-600">
             {email.provider}
             {email.model ? ` · ${email.model}` : ""}
+            {email.sentAt
+              ? ` · Sent ${new Date(email.sentAt).toLocaleDateString()}`
+              : ""}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -52,6 +59,15 @@ export function EmailDraftCard({ email }: EmailDraftCardProps) {
       <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-300">
         {email.body}
       </p>
+
+      {email.status === "draft" && (
+        <div className="mt-4 flex justify-end border-t border-white/5 pt-4">
+          <SendEmailButton
+            emailId={email.id}
+            recipientEmail={email.recipientEmail}
+          />
+        </div>
+      )}
     </article>
   );
 }

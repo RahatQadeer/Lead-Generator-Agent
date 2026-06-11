@@ -7,7 +7,7 @@ import type { Database } from "@/types/database";
 type OutreachEmailRow = Database["public"]["Tables"]["outreach_emails"]["Row"];
 
 type OutreachEmailWithContact = OutreachEmailRow & {
-  contacts: { full_name: string; title: string } | null;
+  contacts: { full_name: string; title: string; email: string | null } | null;
 };
 
 export async function getSearchKeywordsForContact(
@@ -76,6 +76,35 @@ export async function saveGeneratedEmail(
   );
 }
 
+function mapOutreachEmailRow(row: OutreachEmailWithContact): SavedEmail {
+  const saved = toSavedEmail(row, row.contacts?.full_name ?? "Unknown");
+  if (row.contacts?.title) {
+    saved.personalization.leadRole = row.contacts.title;
+  }
+  if (!saved.recipientEmail && row.contacts?.email) {
+    saved.recipientEmail = row.contacts.email;
+  }
+  return saved;
+}
+
+export async function getOutreachEmailById(
+  userId: string,
+  emailId: string
+): Promise<SavedEmail | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("outreach_emails")
+    .select("*, contacts(full_name, title, email)")
+    .eq("id", emailId)
+    .eq("user_id", userId)
+    .single();
+
+  if (error || !data) return null;
+
+  return mapOutreachEmailRow(data as OutreachEmailWithContact);
+}
+
 export async function getOutreachEmailsByUserId(
   userId: string
 ): Promise<SavedEmail[]> {
@@ -83,17 +112,55 @@ export async function getOutreachEmailsByUserId(
 
   const { data, error } = await supabase
     .from("outreach_emails")
-    .select("*, contacts(full_name, title)")
+    .select("*, contacts(full_name, title, email)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   if (error || !data) return [];
 
-  return (data as OutreachEmailWithContact[]).map((row) => {
-    const saved = toSavedEmail(row, row.contacts?.full_name ?? "Unknown");
-    if (row.contacts?.title) {
-      saved.personalization.leadRole = row.contacts.title;
-    }
-    return saved;
-  });
+  return (data as OutreachEmailWithContact[]).map(mapOutreachEmailRow);
+}
+
+export async function markOutreachEmailSent(
+  userId: string,
+  emailId: string,
+  input: {
+    recipientEmail: string;
+    gmailMessageId: string;
+    sentAt: string;
+  }
+): Promise<SavedEmail | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("outreach_emails")
+    .update({
+      status: "sent",
+      recipient_email: input.recipientEmail,
+      gmail_message_id: input.gmailMessageId,
+      sent_at: input.sentAt,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", emailId)
+    .eq("user_id", userId)
+    .select("*, contacts(full_name, title, email)")
+    .single();
+
+  if (error || !data) return null;
+
+  return mapOutreachEmailRow(data as OutreachEmailWithContact);
+}
+
+export async function getSentEmailCount(userId: string): Promise<number> {
+  const supabase = await createClient();
+
+  const { count, error } = await supabase
+    .from("outreach_emails")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("status", "sent");
+
+  if (error || count === null) return 0;
+
+  return count;
 }

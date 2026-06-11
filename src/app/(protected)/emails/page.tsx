@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { getOutreachEmailsByUserId } from "@/lib/emails/queries";
 import { getConfiguredEmailProviderName } from "@/lib/email-generation/factory";
+import { getConfiguredSendingProviderName } from "@/lib/email-sending/factory";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function EmailsPage() {
@@ -13,7 +14,8 @@ export default async function EmailsPage() {
   } = await supabase.auth.getUser();
 
   const emails = user ? await getOutreachEmailsByUserId(user.id) : [];
-  const provider = getConfiguredEmailProviderName();
+  const generationProvider = getConfiguredEmailProviderName();
+  const sendingProvider = getConfiguredSendingProviderName();
 
   return (
     <>
@@ -24,7 +26,9 @@ export default async function EmailsPage() {
         description="Review AI-generated emails, edit before sending, and track delivery status."
       />
       <p className="mb-4 text-xs text-slate-500">
-        Provider: <span className="text-slate-300">{provider}</span>
+        Generation: <span className="text-slate-300">{generationProvider}</span>
+        {" · "}
+        Sending: <span className="text-slate-300">{sendingProvider}</span>
       </p>
       {emails.length === 0 ? (
         <EmptyState

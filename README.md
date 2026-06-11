@@ -272,6 +272,41 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## EMAIL-004 — Gmail Sending
+
+| Criteria | Implementation |
+|----------|----------------|
+| Provider abstraction | `mock` (default) or `gmail` via `GMAIL_SENDING_PROVIDER` |
+| Gmail API | `users.messages.send` with OAuth refresh token |
+| OAuth scopes | `gmail.send` added to Google login flow |
+| Token storage | `gmail_connections` table (refresh token from Supabase session) |
+| Status tracking | `outreach_emails.status` → `sent`, plus `sent_at`, `gmail_message_id` |
+
+**API:**
+- `POST /api/emails/send` with `{ emailId }`
+- `GET /api/gmail/status` — connection status
+
+**UI:** **Send via Gmail** on draft cards (Emails page), Gmail connection card on **Settings**.
+
+**Migrations:** `012_gmail_connections.sql`, `013_outreach_emails_send_tracking.sql`
+
+### Gmail setup
+
+1. In [Google Cloud Console](https://console.cloud.google.com), enable **Gmail API**
+2. Add `gmail.send` scope to your OAuth consent screen
+3. In **Supabase → Authentication → Providers → Google**, enable **Save provider refresh token**
+4. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` in `.env.local` (same OAuth client as Supabase)
+5. Run migrations `012` and `013`
+6. Sign in via **Settings → Connect Gmail** (re-consent grants send scope)
+7. For real sends: `GMAIL_SENDING_PROVIDER=gmail`; use `mock` to mark sent without API calls
+
+### Testing EMAIL-004
+
+1. Generate a draft on **Leads**
+2. Go to **Emails** → click **Send via Gmail** on a draft
+3. With `GMAIL_SENDING_PROVIDER=mock`, status becomes `sent` without a real email
+4. Dashboard **Emails sent** count updates
+
 ## EMAIL-003 — Email Tone Selection
 
 | Tone | Style |

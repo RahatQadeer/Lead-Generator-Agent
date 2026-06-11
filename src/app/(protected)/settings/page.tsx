@@ -1,4 +1,5 @@
 import { Settings } from "lucide-react";
+import { GmailConnectionCard } from "@/components/settings/GmailConnectionCard";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
 import { PageHeader } from "@/components/layout/PageHeader";
 
@@ -13,6 +14,10 @@ export default async function SettingsPage() {
         title="Account settings"
         description="Manage your profile and platform preferences."
       />
+
+      <div className="mb-6">
+        <GmailConnectionCard />
+      </div>
 
       <div className="max-w-xl rounded-2xl border border-white/5 bg-slate-900/50 p-6 sm:p-8">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">

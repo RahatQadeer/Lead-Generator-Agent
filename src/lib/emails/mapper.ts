@@ -40,6 +40,9 @@ export function toSavedEmail(
     status: row.status as SavedEmail["status"],
     generatedAt: row.created_at,
     createdAt: row.created_at,
+    recipientEmail: row.recipient_email,
+    sentAt: row.sent_at,
+    gmailMessageId: row.gmail_message_id,
     personalization: {
       leadName,
       leadRole: "",

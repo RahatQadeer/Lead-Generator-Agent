@@ -35,6 +35,9 @@ export interface SavedEmail extends GeneratedEmail {
   contactId: string;
   status: EmailDraftStatus;
   createdAt: string;
+  recipientEmail: string | null;
+  sentAt: string | null;
+  gmailMessageId: string | null;
 }
 
 export interface EmailGenerationPreview {
