@@ -272,6 +272,32 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## EMAIL-002 — Personalized Outreach Emails
+
+| Input | Source |
+|-------|--------|
+| Lead | Contact name + role |
+| Company | Linked company record |
+| Industry | Company industry |
+| Pain points | Auto-inferred from industry, role, tech stack, and search keywords — editable before generate |
+
+**API:**
+- `GET /api/emails/context?contactId=<uuid>` — preview personalization inputs
+- `POST /api/emails/generate` with `{ contactId, painPoints?: string[] }`
+
+**Module:** `src/lib/email-generation/infer-pain-points.ts`, updated prompts and mock provider.
+
+**Persistence:** `supabase/migrations/010_outreach_emails_personalization.sql` — stores `lead_company`, `industry`, `pain_points` per draft.
+
+Run migration `010` before testing.
+
+### Testing EMAIL-002
+
+1. Go to **Leads** → click **Generate email**
+2. Review auto-filled lead, company, industry, and pain points
+3. Edit pain points if needed → **Generate personalized draft**
+4. Visit **Emails** to see subject, body, and pain points used
+
 ## EMAIL-001 — OpenAI Email Generation Provider
 
 | Criteria | Implementation |

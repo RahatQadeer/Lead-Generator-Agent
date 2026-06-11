@@ -17,6 +17,9 @@ export function toOutreachEmailInsert(
     provider: email.provider,
     model: email.model,
     status: "draft",
+    lead_company: email.personalization.leadCompany,
+    industry: email.personalization.industry,
+    pain_points: email.personalization.painPoints,
     updated_at: new Date().toISOString(),
   };
 }
@@ -28,7 +31,6 @@ export function toSavedEmail(
   return {
     id: row.id,
     contactId: row.contact_id,
-    leadName,
     subject: row.subject,
     body: row.body,
     provider: row.provider,
@@ -36,5 +38,12 @@ export function toSavedEmail(
     status: row.status as SavedEmail["status"],
     generatedAt: row.created_at,
     createdAt: row.created_at,
+    personalization: {
+      leadName,
+      leadRole: "",
+      leadCompany: row.lead_company ?? "Unknown",
+      industry: row.industry,
+      painPoints: row.pain_points ?? [],
+    },
   };
 }

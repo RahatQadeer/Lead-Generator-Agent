@@ -134,6 +134,13 @@ export class OpenAIEmailGenerationProvider implements EmailGenerationProvider {
       provider: this.name,
       model: this.model,
       generatedAt: new Date().toISOString(),
+      personalization: {
+        leadName: context.leadName,
+        leadRole: context.leadRole,
+        leadCompany: context.leadCompany,
+        industry: context.industry,
+        painPoints: context.painPoints,
+      },
     };
   }
 }

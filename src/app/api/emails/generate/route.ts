@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
-import { getContactById, saveGeneratedEmail } from "@/lib/emails/queries";
+import {
+  getContactById,
+  getSearchKeywordsForContact,
+  saveGeneratedEmail,
+} from "@/lib/emails/queries";
 import {
   generateOutreachEmail,
   toEmailGenerationErrorResponse,
 } from "@/lib/email-generation/generate";
 import { mapContactToEmailContext } from "@/lib/email-generation/map-context";
+import { parsePainPointsInput } from "@/lib/email-generation/parse-pain-points";
 import { EmailGenerationError } from "@/lib/email-generation/errors";
 import { getConfiguredEmailProviderName } from "@/lib/email-generation/factory";
 import { createClient } from "@/lib/supabase/server";
@@ -33,6 +38,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const contactId = body.contactId as string | undefined;
     const tone = body.tone === "friendly" ? "friendly" : "professional";
+    const painPoints = parsePainPointsInput(body.painPoints);
 
     if (!contactId) {
       return NextResponse.json(
@@ -77,7 +83,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const context = mapContactToEmailContext(contact, { tone });
+    const searchKeywords = await getSearchKeywordsForContact(
+      user.id,
+      contact.search_id
+    );
+
+    const context = mapContactToEmailContext(contact, {
+      tone,
+      painPoints,
+      searchKeywords,
+    });
     const generated = await generateOutreachEmail(context);
     const saved = await saveGeneratedEmail(user.id, contactId, generated);
 
@@ -89,7 +104,7 @@ export async function POST(request: Request) {
         model: generated.model,
         attempts: generated.attempts,
         contactId,
-        leadName: contact.full_name,
+        personalization: generated.personalization,
       },
     });
   } catch (error) {

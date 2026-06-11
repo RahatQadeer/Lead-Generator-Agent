@@ -7,8 +7,28 @@ import type { Database } from "@/types/database";
 type OutreachEmailRow = Database["public"]["Tables"]["outreach_emails"]["Row"];
 
 type OutreachEmailWithContact = OutreachEmailRow & {
-  contacts: { full_name: string } | null;
+  contacts: { full_name: string; title: string } | null;
 };
+
+export async function getSearchKeywordsForContact(
+  userId: string,
+  searchId: string | null
+): Promise<string[]> {
+  if (!searchId) return [];
+
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("searches")
+    .select("keywords")
+    .eq("id", searchId)
+    .eq("user_id", userId)
+    .single();
+
+  if (error || !data) return [];
+
+  return data.keywords ?? [];
+}
 
 export async function getContactById(
   userId: string,
@@ -50,7 +70,10 @@ export async function saveGeneratedEmail(
 
   const contact = await getContactById(userId, contactId);
 
-  return toSavedEmail(data, contact?.full_name ?? "Unknown");
+  return toSavedEmail(
+    data,
+    contact?.full_name ?? email.personalization.leadName
+  );
 }
 
 export async function getOutreachEmailsByUserId(
@@ -60,13 +83,17 @@ export async function getOutreachEmailsByUserId(
 
   const { data, error } = await supabase
     .from("outreach_emails")
-    .select("*, contacts(full_name)")
+    .select("*, contacts(full_name, title)")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
   if (error || !data) return [];
 
-  return (data as OutreachEmailWithContact[]).map((row) =>
-    toSavedEmail(row, row.contacts?.full_name ?? "Unknown")
-  );
+  return (data as OutreachEmailWithContact[]).map((row) => {
+    const saved = toSavedEmail(row, row.contacts?.full_name ?? "Unknown");
+    if (row.contacts?.title) {
+      saved.personalization.leadRole = row.contacts.title;
+    }
+    return saved;
+  });
 }
