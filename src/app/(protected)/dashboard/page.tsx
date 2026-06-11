@@ -3,9 +3,11 @@ import { DashboardGettingStarted } from "@/components/dashboard/DashboardGetting
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { DashboardQuickLinks } from "@/components/dashboard/DashboardQuickLinks";
 import { DashboardStatsPanel } from "@/components/dashboard/DashboardStatsPanel";
+import { EmailMetricsPanel } from "@/components/dashboard/EmailMetricsPanel";
 import { LeadMetricsPanel } from "@/components/dashboard/LeadMetricsPanel";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
+import { getEmailMetrics } from "@/lib/dashboard/email-metrics";
 import { getLeadMetrics } from "@/lib/dashboard/lead-metrics";
 import {
   getDashboardStats,
@@ -14,9 +16,10 @@ import {
 
 export default async function DashboardPage() {
   const { profile, user } = await getAuthContext();
-  const [stats, leadMetrics] = await Promise.all([
+  const [stats, leadMetrics, emailMetrics] = await Promise.all([
     getDashboardStats(user.id),
     getLeadMetrics(user.id),
+    getEmailMetrics(user.id),
   ]);
   const steps = getOnboardingSteps(stats);
   const firstName = profile.full_name?.split(" ")[0] ?? "there";
@@ -35,6 +38,7 @@ export default async function DashboardPage() {
         aside={<DashboardQuickLinks />}
       >
         <LeadMetricsPanel metrics={leadMetrics} />
+        <EmailMetricsPanel metrics={emailMetrics} />
         <DashboardGettingStarted steps={steps} />
       </DashboardLayout>
     </>

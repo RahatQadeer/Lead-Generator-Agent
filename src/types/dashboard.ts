@@ -42,3 +42,44 @@ export interface LeadMetrics {
   scoreBuckets: LeadScoreBucket[];
   topLeads: TopLeadMetric[];
 }
+
+export interface EmailToneMetric {
+  tone: string;
+  label: string;
+  count: number;
+}
+
+export interface RecentCampaignMetric {
+  id: string;
+  name: string;
+  status: string;
+  sentCount: number;
+  totalCount: number;
+  failedCount: number;
+}
+
+export interface RecentReplyMetric {
+  id: string;
+  subject: string;
+  leadName: string;
+  repliedAt: string;
+  snippet: string | null;
+}
+
+export interface EmailMetrics {
+  generatedCount: number;
+  draftCount: number;
+  sentCount: number;
+  repliedCount: number;
+  awaitingReplyCount: number;
+  conversionRate: number | null;
+  campaignCount: number;
+  campaignEmailsSent: number;
+  campaignEmailsFailed: number;
+  followUpScheduled: number;
+  followUpCancelled: number;
+  followUpWithSuggestion: number;
+  toneBreakdown: EmailToneMetric[];
+  recentCampaigns: RecentCampaignMetric[];
+  recentReplies: RecentReplyMetric[];
+}

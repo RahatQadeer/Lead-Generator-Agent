@@ -272,6 +272,28 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## DASH-003 — Display Email Metrics
+
+| Metric | Source |
+|--------|--------|
+| Generated / drafts | `outreach_emails` by status |
+| Sent / replies / conversion | Sent emails + `reply_status` |
+| Follow-ups | `follow_ups` scheduled, cancelled, suggestions |
+| Tone breakdown | Email `tone` distribution |
+| Recent campaigns | `outreach_campaigns` (last 5) |
+| Recent replies | Replied emails with snippets |
+
+**Module:** `src/lib/dashboard/email-metrics.ts` — `getEmailMetrics()`
+
+**UI:** `EmailMetricsPanel` on **Dashboard** and **Analytics**
+
+### Testing DASH-003
+
+1. Generate emails → **Generated** count updates
+2. Send outreach → **Sent** and campaign stats populate
+3. **Check for replies** → **Replies** and recent reply list update
+4. Generate follow-up suggestions → **AI suggestions** count increases
+
 ## DASH-002 — Display Lead Metrics
 
 | Metric | Source |
