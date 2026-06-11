@@ -10,6 +10,7 @@ interface GenerateEmailButtonProps {
   contactId: string;
   leadName: string;
   hasEmail: boolean;
+  followUpsPaused?: boolean;
 }
 
 function formatPainPoints(points: string[]): string {
@@ -27,6 +28,7 @@ export function GenerateEmailButton({
   contactId,
   leadName,
   hasEmail,
+  followUpsPaused = false,
 }: GenerateEmailButtonProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -94,6 +96,12 @@ export function GenerateEmailButton({
   if (!hasEmail) {
     return (
       <p className="text-xs text-slate-600">No email — cannot generate outreach</p>
+    );
+  }
+
+  if (followUpsPaused) {
+    return (
+      <p className="text-xs text-amber-400">Follow-ups stopped — lead replied</p>
     );
   }
 

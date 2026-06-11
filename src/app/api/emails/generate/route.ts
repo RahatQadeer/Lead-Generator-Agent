@@ -11,6 +11,8 @@ import {
 import { mapContactToEmailContext } from "@/lib/email-generation/map-context";
 import { parsePainPointsInput } from "@/lib/email-generation/parse-pain-points";
 import { parseEmailTone } from "@/lib/email-generation/parse-tone";
+import { assertContactCanReceiveOutreach } from "@/lib/follow-ups/guards";
+import { isFollowUpBlockedError } from "@/lib/follow-ups/errors";
 import { EmailGenerationError } from "@/lib/email-generation/errors";
 import { getConfiguredEmailProviderName } from "@/lib/email-generation/factory";
 import { createClient } from "@/lib/supabase/server";
@@ -84,6 +86,8 @@ export async function POST(request: Request) {
       );
     }
 
+    await assertContactCanReceiveOutreach(user.id, contactId);
+
     const searchKeywords = await getSearchKeywordsForContact(
       user.id,
       contact.search_id
@@ -109,6 +113,20 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
+    if (isFollowUpBlockedError(error)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: error.code,
+            message: error.message,
+            retryable: false,
+          },
+        },
+        { status: error.statusCode }
+      );
+    }
+
     const response = toEmailGenerationErrorResponse(error);
     const status =
       error instanceof EmailGenerationError ? error.statusCode : 500;

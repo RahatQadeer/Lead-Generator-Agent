@@ -141,6 +141,8 @@ export class ApolloLeadEnrichmentProvider implements LeadEnrichmentProvider {
         companyId: input.companyId,
         searchId: null,
         enrichedAt,
+        followUpsPaused: false,
+        followUpsPausedReason: null,
       });
     }
 

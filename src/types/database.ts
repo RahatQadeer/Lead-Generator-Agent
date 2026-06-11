@@ -195,6 +195,9 @@ export interface Database {
           lead_score: number | null;
           lead_score_factors: Json | null;
           lead_scored_at: string | null;
+          follow_ups_paused: boolean;
+          follow_ups_paused_reason: string | null;
+          follow_ups_paused_at: string | null;
           first_discovered_at: string;
           last_seen_at: string;
           created_at: string;
@@ -229,6 +232,9 @@ export interface Database {
           lead_score?: number | null;
           lead_score_factors?: Json | null;
           lead_scored_at?: string | null;
+          follow_ups_paused?: boolean;
+          follow_ups_paused_reason?: string | null;
+          follow_ups_paused_at?: string | null;
           first_discovered_at?: string;
           last_seen_at?: string;
           created_at?: string;
@@ -263,8 +269,53 @@ export interface Database {
           lead_score?: number | null;
           lead_score_factors?: Json | null;
           lead_scored_at?: string | null;
+          follow_ups_paused?: boolean;
+          follow_ups_paused_reason?: string | null;
+          follow_ups_paused_at?: string | null;
           first_discovered_at?: string;
           last_seen_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      follow_ups: {
+        Row: {
+          id: string;
+          user_id: string;
+          contact_id: string;
+          source_email_id: string;
+          sequence_number: number;
+          scheduled_at: string;
+          status: string;
+          cancel_reason: string | null;
+          cancelled_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          contact_id: string;
+          source_email_id: string;
+          sequence_number?: number;
+          scheduled_at: string;
+          status?: string;
+          cancel_reason?: string | null;
+          cancelled_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          contact_id?: string;
+          source_email_id?: string;
+          sequence_number?: number;
+          scheduled_at?: string;
+          status?: string;
+          cancel_reason?: string | null;
+          cancelled_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };

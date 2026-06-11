@@ -35,6 +35,8 @@ export interface EnrichedLead {
   companyId: string;
   searchId: string | null;
   enrichedAt: string;
+  followUpsPaused: boolean;
+  followUpsPausedReason: string | null;
 }
 
 export interface LeadEnrichmentResult {

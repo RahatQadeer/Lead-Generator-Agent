@@ -1,3 +1,4 @@
+import { scheduleDefaultFollowUp } from "@/lib/follow-ups/schedule";
 import { markOutreachEmailSent } from "@/lib/emails/queries";
 import { EmailSendingError } from "@/lib/email-sending/errors";
 import {
@@ -36,5 +37,8 @@ export async function sendOutreachDraft(
     campaignId,
   });
 
-  return saved ?? draft;
+  const sentEmail = saved ?? draft;
+  await scheduleDefaultFollowUp(userId, sentEmail.contactId, sentEmail.id);
+
+  return sentEmail;
 }

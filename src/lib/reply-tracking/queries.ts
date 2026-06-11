@@ -1,3 +1,4 @@
+import { stopFollowUpsAfterReply } from "@/lib/follow-ups/queries";
 import { createClient } from "@/lib/supabase/server";
 import type {
   DetectedReply,
@@ -78,7 +79,10 @@ export async function saveDetectedReplies(
 
     if (error) {
       console.error(`Failed to save reply for ${reply.emailId}:`, error.message);
+      continue;
     }
+
+    await stopFollowUpsAfterReply(userId, reply.emailId);
   }
 }
 

@@ -1,3 +1,4 @@
+import { getPausedContactIds } from "@/lib/follow-ups/queries";
 import { toOutreachEmailInsert, toSavedEmail } from "@/lib/emails/mapper";
 import type { ContactWithCompany } from "@/lib/contacts/mapper";
 import { createClient } from "@/lib/supabase/server";
@@ -142,7 +143,11 @@ export async function getDraftOutreachEmails(
 
   if (error || !data) return [];
 
-  return (data as OutreachEmailWithContact[]).map(mapOutreachEmailRow);
+  const pausedContactIds = await getPausedContactIds(userId);
+
+  return (data as OutreachEmailWithContact[])
+    .filter((row) => !pausedContactIds.has(row.contact_id))
+    .map(mapOutreachEmailRow);
 }
 
 export async function markOutreachEmailSent(

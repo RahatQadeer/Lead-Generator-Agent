@@ -272,6 +272,26 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## TRACK-002 — Stop Follow-ups After Reply
+
+| Criteria | Implementation |
+|----------|----------------|
+| Follow-up scheduling | Auto-schedule 3 days after initial send |
+| Reply trigger | Cancels pending follow-ups + pauses contact |
+| Outreach guard | Block new email generation for replied contacts |
+| Campaign guard | Exclude paused contacts from batch sends |
+
+**Tables:** `follow_ups`, `contacts.follow_ups_paused_*`
+
+**Migration:** `017_follow_ups.sql`
+
+### Testing TRACK-002
+
+1. Send outreach (mock) → follow-up scheduled in queue
+2. **Check for replies** (mock) → pending follow-ups cancelled
+3. Lead shows **Follow-ups stopped** — cannot generate new emails
+4. **Send all drafts** skips paused contacts
+
 ## TRACK-001 — Detect Email Replies
 
 | Criteria | Implementation |

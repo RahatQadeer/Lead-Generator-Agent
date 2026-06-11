@@ -1,4 +1,5 @@
 import { getToneLabel } from "@/lib/email-generation/tone-guidance";
+import { FollowUpStoppedBadge } from "@/components/emails/FollowUpStoppedBadge";
 import { ReplyBadge } from "@/components/emails/ReplyBadge";
 import { SendEmailButton } from "@/components/emails/SendEmailButton";
 import type { SavedEmail } from "@/types/email-generation";
@@ -43,6 +44,9 @@ export function EmailDraftCard({ email, sendingProvider }: EmailDraftCardProps) 
             replyStatus={email.replyStatus}
             repliedAt={email.repliedAt}
           />
+          {email.replyStatus === "replied" && (
+            <FollowUpStoppedBadge reason="replied" />
+          )}
           <span className="rounded-full border border-slate-500/30 bg-slate-500/10 px-2 py-0.5 text-xs capitalize text-slate-300">
             {email.status}
           </span>
