@@ -272,6 +272,26 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## DASH-001 — Dashboard Layout
+
+| Criteria | Implementation |
+|----------|----------------|
+| Layout shell | `DashboardLayout` — stats row + main/aside grid |
+| Stat cards | `DashboardStatCard` + `DashboardStatsGrid` |
+| Sections | `DashboardSection` for titled panels |
+| Stats query | `getDashboardStats()` — searches, leads, sent, replies, conversion |
+| Onboarding | `DashboardGettingStarted` — progress-linked steps |
+| Quick links | Sidebar panel to Searches, Leads, Emails, Analytics |
+
+**Pages:** `/dashboard` (overview + getting started), `/analytics` (same layout shell)
+
+### Testing DASH-001
+
+1. Sign in → **Dashboard** shows 4 stat cards and getting-started steps
+2. Complete workflow steps — badges turn cyan as you create searches, enrich leads, send emails
+3. **Quick links** panel navigates to each workflow page
+4. **Analytics** uses the same stats grid with a metrics overview panel
+
 ## TRACK-003 — Generate Follow-up Suggestions
 
 | Criteria | Implementation |
