@@ -1,3 +1,4 @@
+import { getToneLabel } from "@/lib/email-generation/tone-guidance";
 import type { SavedEmail } from "@/types/email-generation";
 
 interface EmailDraftCardProps {
@@ -24,9 +25,14 @@ export function EmailDraftCard({ email }: EmailDraftCardProps) {
             {email.model ? ` · ${email.model}` : ""}
           </p>
         </div>
-        <span className="rounded-full border border-slate-500/30 bg-slate-500/10 px-2 py-0.5 text-xs capitalize text-slate-300">
-          {email.status}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-xs text-violet-300">
+            {getToneLabel(personalization.tone)}
+          </span>
+          <span className="rounded-full border border-slate-500/30 bg-slate-500/10 px-2 py-0.5 text-xs capitalize text-slate-300">
+            {email.status}
+          </span>
+        </div>
       </div>
 
       {personalization.painPoints.length > 0 && (

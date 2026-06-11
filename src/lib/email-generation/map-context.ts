@@ -1,13 +1,15 @@
 import { formatLocation } from "@/lib/lead-enrichment/format-location";
 import { inferPainPoints } from "@/lib/email-generation/infer-pain-points";
+import { parseEmailTone } from "@/lib/email-generation/parse-tone";
 import type { ContactWithCompany } from "@/lib/contacts/mapper";
-import type { EmailGenerationContext } from "@/types/email-generation";
+import type { EmailGenerationContext, EmailTone } from "@/types/email-generation";
 
 const DEFAULT_SENDER = "RightTail Software";
+const DEFAULT_TONE: EmailTone = "professional";
 
 interface MapContextOptions {
   senderCompanyName?: string;
-  tone?: "professional" | "friendly";
+  tone?: EmailTone;
   painPoints?: string[];
   searchKeywords?: string[];
 }
@@ -36,13 +38,13 @@ export function mapContactToEmailContext(
     leadCompany,
     industry,
     painPoints,
+    tone: options.tone ?? DEFAULT_TONE,
     leadLocation: formatLocation(
       contact.city ?? company?.city ?? null,
       contact.state ?? company?.state ?? null,
       contact.country ?? company?.country ?? null
     ),
     senderCompanyName: options.senderCompanyName ?? DEFAULT_SENDER,
-    tone: options.tone ?? "professional",
   };
 }
 
@@ -57,5 +59,6 @@ export function toEmailGenerationPreview(
     leadCompany: context.leadCompany,
     industry: context.industry,
     painPoints: context.painPoints,
+    defaultTone: context.tone,
   };
 }

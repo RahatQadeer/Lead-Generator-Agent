@@ -10,6 +10,7 @@ import {
 } from "@/lib/email-generation/generate";
 import { mapContactToEmailContext } from "@/lib/email-generation/map-context";
 import { parsePainPointsInput } from "@/lib/email-generation/parse-pain-points";
+import { parseEmailTone } from "@/lib/email-generation/parse-tone";
 import { EmailGenerationError } from "@/lib/email-generation/errors";
 import { getConfiguredEmailProviderName } from "@/lib/email-generation/factory";
 import { createClient } from "@/lib/supabase/server";
@@ -37,7 +38,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const contactId = body.contactId as string | undefined;
-    const tone = body.tone === "friendly" ? "friendly" : "professional";
+    const tone = parseEmailTone(body.tone);
     const painPoints = parsePainPointsInput(body.painPoints);
 
     if (!contactId) {

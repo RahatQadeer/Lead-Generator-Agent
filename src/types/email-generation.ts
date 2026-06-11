@@ -1,15 +1,24 @@
+export const EMAIL_TONES = [
+  "professional",
+  "friendly",
+  "formal",
+  "direct",
+] as const;
+
+export type EmailTone = (typeof EMAIL_TONES)[number];
+
 export interface EmailPersonalization {
   leadName: string;
   leadRole: string;
   leadCompany: string;
   industry: string | null;
   painPoints: string[];
+  tone: EmailTone;
 }
 
 export interface EmailGenerationContext extends EmailPersonalization {
   leadLocation: string | null;
   senderCompanyName: string;
-  tone: "professional" | "friendly";
 }
 
 export interface GeneratedEmail {
@@ -35,6 +44,7 @@ export interface EmailGenerationPreview {
   leadCompany: string;
   industry: string | null;
   painPoints: string[];
+  defaultTone: EmailTone;
 }
 
 export type EmailDraftStatus = "draft" | "sent" | "archived";

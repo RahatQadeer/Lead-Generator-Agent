@@ -1,5 +1,6 @@
 import type { Database } from "@/types/database";
-import type { GeneratedEmail, SavedEmail } from "@/types/email-generation";
+import type { EmailTone, GeneratedEmail, SavedEmail } from "@/types/email-generation";
+import { parseEmailTone } from "@/lib/email-generation/parse-tone";
 
 type OutreachEmailRow = Database["public"]["Tables"]["outreach_emails"]["Row"];
 type OutreachEmailInsert = Database["public"]["Tables"]["outreach_emails"]["Insert"];
@@ -20,6 +21,7 @@ export function toOutreachEmailInsert(
     lead_company: email.personalization.leadCompany,
     industry: email.personalization.industry,
     pain_points: email.personalization.painPoints,
+    tone: email.personalization.tone,
     updated_at: new Date().toISOString(),
   };
 }
@@ -44,6 +46,7 @@ export function toSavedEmail(
       leadCompany: row.lead_company ?? "Unknown",
       industry: row.industry,
       painPoints: row.pain_points ?? [],
+      tone: parseEmailTone(row.tone),
     },
   };
 }

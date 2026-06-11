@@ -283,6 +283,7 @@ export interface Database {
           lead_company: string | null;
           industry: string | null;
           pain_points: string[];
+          tone: string;
           created_at: string;
           updated_at: string;
         };
@@ -298,6 +299,7 @@ export interface Database {
           lead_company?: string | null;
           industry?: string | null;
           pain_points?: string[];
+          tone?: string;
           created_at?: string;
           updated_at?: string;
         };
@@ -313,6 +315,7 @@ export interface Database {
           lead_company?: string | null;
           industry?: string | null;
           pain_points?: string[];
+          tone?: string;
           created_at?: string;
           updated_at?: string;
         };

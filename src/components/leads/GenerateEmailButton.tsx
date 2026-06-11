@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { Mail, Loader2, X } from "lucide-react";
-import type { EmailGenerationPreview } from "@/types/email-generation";
+import { getToneLabel } from "@/lib/email-generation/tone-guidance";
+import type { EmailGenerationPreview, EmailTone } from "@/types/email-generation";
+import { EMAIL_TONES } from "@/types/email-generation";
 
 interface GenerateEmailButtonProps {
   contactId: string;
@@ -32,6 +34,7 @@ export function GenerateEmailButton({
   const [message, setMessage] = useState<string | null>(null);
   const [preview, setPreview] = useState<EmailGenerationPreview | null>(null);
   const [painPointsText, setPainPointsText] = useState("");
+  const [tone, setTone] = useState<EmailTone>("professional");
 
   async function loadContext() {
     setLoadingContext(true);
@@ -48,6 +51,7 @@ export function GenerateEmailButton({
 
       setPreview(data.preview);
       setPainPointsText(formatPainPoints(data.preview.painPoints));
+      setTone(data.preview.defaultTone);
       setOpen(true);
     } catch {
       setMessage("Failed to load personalization context.");
@@ -66,7 +70,7 @@ export function GenerateEmailButton({
       const res = await fetch("/api/emails/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contactId, painPoints }),
+        body: JSON.stringify({ contactId, painPoints, tone }),
       });
 
       const data = await res.json();
@@ -76,7 +80,9 @@ export function GenerateEmailButton({
         return;
       }
 
-      setMessage(`Personalized draft saved for ${leadName}. View it on the Emails page.`);
+      setMessage(
+        `${getToneLabel(tone)} draft saved for ${leadName}. View it on the Emails page.`
+      );
       setOpen(false);
     } catch {
       setMessage("Failed to connect to email generation service.");
@@ -145,6 +151,25 @@ export function GenerateEmailButton({
                 </dd>
               </div>
               <div>
+                <dt className="text-slate-500">Tone</dt>
+                <dd className="mt-1 flex flex-wrap gap-1.5">
+                  {EMAIL_TONES.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setTone(option)}
+                      className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
+                        tone === option
+                          ? "border-cyan-500/40 bg-cyan-500/20 text-cyan-200"
+                          : "border-white/10 bg-slate-900 text-slate-400 hover:border-white/20 hover:text-slate-200"
+                      }`}
+                    >
+                      {getToneLabel(option)}
+                    </button>
+                  ))}
+                </dd>
+              </div>
+              <div>
                 <label htmlFor={`pain-points-${contactId}`} className="text-slate-500">
                   Pain points
                 </label>
@@ -177,7 +202,7 @@ export function GenerateEmailButton({
             ) : (
               <>
                 <Mail className="h-3.5 w-3.5" />
-                Generate personalized draft
+                Generate {getToneLabel(tone).toLowerCase()} draft
               </>
             )}
           </button>

@@ -272,6 +272,30 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## EMAIL-003 — Email Tone Selection
+
+| Tone | Style |
+|------|-------|
+| Professional | Polished and businesslike (default) |
+| Friendly | Conversational and approachable |
+| Formal | Traditional business correspondence |
+| Direct | Brief, value-led, minimal filler |
+
+**API:** `POST /api/emails/generate` with `{ contactId, tone?: "professional" | "friendly" | "formal" | "direct" }`
+
+**UI:** Tone picker in the generate-email panel on **Leads**.
+
+**Persistence:** `supabase/migrations/011_outreach_emails_tone.sql`
+
+Run migration `011` before testing.
+
+### Testing EMAIL-003
+
+1. Go to **Leads** → **Generate email**
+2. Select a tone (Professional, Friendly, Formal, or Direct)
+3. Generate the draft and compare subject/body style on **Emails**
+4. With mock provider, each tone uses a distinct template
+
 ## EMAIL-002 — Personalized Outreach Emails
 
 | Input | Source |
@@ -283,7 +307,7 @@ curl -X POST http://localhost:3000/api/leads/score \
 
 **API:**
 - `GET /api/emails/context?contactId=<uuid>` — preview personalization inputs
-- `POST /api/emails/generate` with `{ contactId, painPoints?: string[] }`
+- `POST /api/emails/generate` with `{ contactId, painPoints?: string[], tone?: string }`
 
 **Module:** `src/lib/email-generation/infer-pain-points.ts`, updated prompts and mock provider.
 

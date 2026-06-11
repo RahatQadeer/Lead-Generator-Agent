@@ -140,6 +140,7 @@ export class OpenAIEmailGenerationProvider implements EmailGenerationProvider {
         leadCompany: context.leadCompany,
         industry: context.industry,
         painPoints: context.painPoints,
+        tone: context.tone,
       },
     };
   }
