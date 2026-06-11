@@ -192,6 +192,9 @@ export interface Database {
           email_verification_provider: string | null;
           email_verification_message: string | null;
           email_verified_at: string | null;
+          lead_score: number | null;
+          lead_score_factors: Json | null;
+          lead_scored_at: string | null;
           first_discovered_at: string;
           last_seen_at: string;
           created_at: string;
@@ -223,6 +226,9 @@ export interface Database {
           email_verification_provider?: string | null;
           email_verification_message?: string | null;
           email_verified_at?: string | null;
+          lead_score?: number | null;
+          lead_score_factors?: Json | null;
+          lead_scored_at?: string | null;
           first_discovered_at?: string;
           last_seen_at?: string;
           created_at?: string;
@@ -254,6 +260,9 @@ export interface Database {
           email_verification_provider?: string | null;
           email_verification_message?: string | null;
           email_verified_at?: string | null;
+          lead_score?: number | null;
+          lead_score_factors?: Json | null;
+          lead_scored_at?: string | null;
           first_discovered_at?: string;
           last_seen_at?: string;
           created_at?: string;

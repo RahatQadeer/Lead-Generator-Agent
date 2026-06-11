@@ -5,13 +5,27 @@ import type { DiscoveredContact } from "@/types/contact";
 import type { EmailVerificationStatus } from "@/types/email-verification";
 import type { VerifiedEmail } from "@/types/email-verification";
 import type { EnrichedLead, LeadEnrichmentInput } from "@/types/lead";
+import type { LeadScoringInput } from "@/types/lead-scoring";
+import type { LeadScoreFactors } from "@/types/lead-scoring";
+import type { ScoredLeadResult } from "@/types/lead-scoring";
 
 type ContactInsert = Database["public"]["Tables"]["contacts"]["Insert"];
 type ContactRow = Database["public"]["Tables"]["contacts"]["Row"];
 type CompanyRow = Database["public"]["Tables"]["companies"]["Row"];
 
 export type ContactWithCompany = ContactRow & {
-  companies: Pick<CompanyRow, "name" | "city" | "state" | "country"> | null;
+  companies: Pick<
+    CompanyRow,
+    | "name"
+    | "city"
+    | "state"
+    | "country"
+    | "industry"
+    | "employee_count"
+    | "technologies"
+    | "domain"
+    | "website_url"
+  > | null;
 };
 
 export function toContactInsert(
@@ -97,6 +111,10 @@ export function toEnrichedLead(contact: ContactRow): EnrichedLead | null {
     emailVerificationStatus:
       (contact.email_verification_status as EmailVerificationStatus | null) ?? null,
     emailVerifiedAt: contact.email_verified_at,
+    leadScore: contact.lead_score,
+    leadScoreFactors:
+      (contact.lead_score_factors as LeadScoreFactors | null) ?? null,
+    leadScoredAt: contact.lead_scored_at,
     companyId: contact.company_id,
     searchId: contact.search_id,
     enrichedAt: contact.enriched_at,
@@ -124,5 +142,34 @@ export function toEmailVerificationInput(
   return {
     contactId: contact.id,
     email: contact.email,
+  };
+}
+
+export function toLeadScoringInput(contact: ContactWithCompany): LeadScoringInput {
+  const company = contact.companies;
+
+  return {
+    contactId: contact.id,
+    role: contact.title,
+    company: {
+      name: company?.name ?? contact.company_name ?? "Unknown",
+      domain: company?.domain ?? null,
+      industry: company?.industry ?? null,
+      employeeCount: company?.employee_count ?? null,
+      country: company?.country ?? contact.country,
+      websiteUrl: company?.website_url ?? null,
+      technologies: company?.technologies ?? [],
+    },
+  };
+}
+
+export function toLeadScoreUpdate(
+  result: ScoredLeadResult
+): Database["public"]["Tables"]["contacts"]["Update"] {
+  return {
+    lead_score: result.score,
+    lead_score_factors: result.factors,
+    lead_scored_at: result.scoredAt,
+    updated_at: new Date().toISOString(),
   };
 }

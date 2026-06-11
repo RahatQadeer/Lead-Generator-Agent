@@ -26,6 +26,7 @@ import { formatCompanySize } from "@/lib/search/mapper";
 import { ContactsPreview } from "@/components/search/ContactsPreview";
 import { DiscoverPreview } from "@/components/search/DiscoverPreview";
 import { EnrichLeadsPreview } from "@/components/search/EnrichLeadsPreview";
+import { ScoreLeadsPreview } from "@/components/search/ScoreLeadsPreview";
 import { VerifyEmailsPreview } from "@/components/search/VerifyEmailsPreview";
 import { SearchStatusBadge } from "@/components/search/SearchStatusBadge";
 import { selectClassName } from "@/components/ui/Field";
@@ -225,6 +226,11 @@ export function SearchCard({
             />
 
             <VerifyEmailsPreview
+              searchId={search.id}
+              searchName={search.name}
+            />
+
+            <ScoreLeadsPreview
               searchId={search.id}
               searchName={search.name}
             />

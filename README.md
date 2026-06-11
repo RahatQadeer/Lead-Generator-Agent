@@ -239,6 +239,39 @@ curl -X POST http://localhost:3000/api/leads/verify-emails \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## LEAD-004 — Lead Scoring Engine
+
+| Factor | Weight | Match rule |
+|--------|--------|------------|
+| Industry Match | 20% | Company industry vs search industry |
+| Company Size | 20% | Employee count within search size range |
+| Location Match | 20% | Company country vs search country |
+| Job Role Match | 20% | Contact title vs search job titles |
+| Technology Match | 20% | Company technologies vs search technologies |
+
+**Score:** 1–10 (average of factor scores mapped to scale).
+
+**API:** `POST /api/leads/score` with `searchId`
+
+**Module:** `src/lib/lead-scoring/score-lead.ts` — reuses company criteria + title matching.
+
+**Persistence:** `supabase/migrations/008_contacts_lead_scoring.sql`
+
+Run migration `008` before testing.
+
+### Testing LEAD-004
+
+1. Complete discovery → contacts → enrich → verify (optional)
+2. Click **Score leads** on a search card
+3. View per-lead score breakdown (Industry, Size, Location, Role, Technology %)
+4. Visit **Leads** page — score badges appear on enriched leads
+
+```bash
+curl -X POST http://localhost:3000/api/leads/score \
+  -H "Content-Type: application/json" \
+  -d '{"searchId":"<your-search-uuid>"}'
+```
+
 ## SEARCH-004 — Exclusion Rules
 
 | Exclusion | Field | Validation |

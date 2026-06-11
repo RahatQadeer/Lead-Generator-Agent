@@ -5,6 +5,8 @@ import {
   toEnrichedLead,
   toEnrichedLeadUpdate,
   toLeadEnrichmentInput,
+  toLeadScoreUpdate,
+  toLeadScoringInput,
   type ContactWithCompany,
 } from "@/lib/contacts/mapper";
 import { createClient } from "@/lib/supabase/server";
@@ -12,6 +14,7 @@ import type { DiscoveredContact } from "@/types/contact";
 import type { EmailVerificationInput } from "@/types/email-verification";
 import type { VerifiedEmail } from "@/types/email-verification";
 import type { EnrichedLead } from "@/types/lead";
+import type { ScoredLeadResult } from "@/types/lead-scoring";
 
 export async function getKnownContactDedupKeys(
   userId: string
@@ -59,7 +62,9 @@ export async function getContactsBySearchId(
 
   const { data, error } = await supabase
     .from("contacts")
-    .select("*, companies(name, city, state, country)")
+    .select(
+      "*, companies(name, city, state, country, industry, employee_count, technologies, domain, website_url)"
+    )
     .eq("user_id", userId)
     .eq("search_id", searchId)
     .order("full_name", { ascending: true });
@@ -118,6 +123,34 @@ export function toEmailVerificationInputs(
   contacts: ContactWithCompany[]
 ): EmailVerificationInput[] {
   return contacts.map(toEmailVerificationInput);
+}
+
+export function toLeadScoringInputs(
+  contacts: ContactWithCompany[]
+): ReturnType<typeof toLeadScoringInput>[] {
+  return contacts.map(toLeadScoringInput);
+}
+
+export async function saveLeadScores(
+  userId: string,
+  results: ScoredLeadResult[]
+): Promise<void> {
+  const supabase = await createClient();
+
+  for (const result of results) {
+    const { error } = await supabase
+      .from("contacts")
+      .update(toLeadScoreUpdate(result))
+      .eq("id", result.contactId)
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error(
+        `Failed to save lead score for ${result.contactId}:`,
+        error.message
+      );
+    }
+  }
 }
 
 export async function saveEmailVerificationResults(

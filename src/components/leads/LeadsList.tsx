@@ -1,5 +1,6 @@
 import { Building2, Link2, MapPin } from "lucide-react";
 import { EmailVerificationBadge } from "@/components/leads/EmailVerificationBadge";
+import { LeadScoreBadge } from "@/components/leads/LeadScoreBadge";
 import type { EnrichedLead } from "@/types/lead";
 
 interface LeadsListProps {
@@ -19,8 +20,11 @@ export function LeadsList({ leads }: LeadsListProps) {
             className="rounded-xl border border-white/10 bg-slate-900/50 p-4"
           >
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                <p className="text-base font-semibold text-white">{lead.name}</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-base font-semibold text-white">{lead.name}</p>
+                  <LeadScoreBadge score={lead.leadScore} />
+                </div>
                 <p className="text-sm text-violet-300">{lead.role}</p>
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-400">
                   <span className="inline-flex items-center gap-1.5">

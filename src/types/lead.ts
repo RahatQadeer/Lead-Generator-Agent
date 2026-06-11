@@ -1,4 +1,5 @@
 import type { EmailVerificationStatus } from "@/types/email-verification";
+import type { LeadScoreFactors } from "@/types/lead-scoring";
 
 export interface LeadEnrichmentInput {
   id: string;
@@ -28,6 +29,9 @@ export interface EnrichedLead {
   emailDomainValid: boolean | null;
   emailVerificationStatus: EmailVerificationStatus | null;
   emailVerifiedAt: string | null;
+  leadScore: number | null;
+  leadScoreFactors: LeadScoreFactors | null;
+  leadScoredAt: string | null;
   companyId: string;
   searchId: string | null;
   enrichedAt: string;
