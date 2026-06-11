@@ -272,6 +272,32 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## SET-004 — Configure Lead Scoring Rules
+
+| Criteria | Implementation |
+|----------|----------------|
+| Per-user weights | `lead_scoring_settings` — five factor weights (0–100%) |
+| Default rules | 20% each: industry, company size, location, job role, technology |
+| Validation | Weights must sum to 100% |
+| Scoring engine | `computeLeadScore()` uses weighted average of factor scores |
+| Resolution | User settings → default weights |
+
+**API:**
+- `GET /api/lead-scoring/status` — current weights
+- `PUT /api/lead-scoring/settings` — save factor weights
+- `DELETE /api/lead-scoring/settings` — reset to defaults
+
+**UI:** **Settings** → Lead scoring rules card
+
+**Migration:** `022_lead_scoring_settings.sql`
+
+### Testing SET-004
+
+1. Run migration `022` in Supabase
+2. **Settings** → adjust weights (e.g. 40% job role, 15% each for others)
+3. **Score leads** on a search — scores reflect new weights
+4. **Reset to defaults** restores 20% per factor
+
 ## SET-003 — Manage Outlook Configuration
 
 | Criteria | Implementation |

@@ -582,6 +582,36 @@ export interface Database {
         };
         Relationships: [];
       };
+      lead_scoring_settings: {
+        Row: {
+          user_id: string;
+          industry_weight: number;
+          company_size_weight: number;
+          location_weight: number;
+          job_role_weight: number;
+          technology_weight: number;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          industry_weight?: number;
+          company_size_weight?: number;
+          location_weight?: number;
+          job_role_weight?: number;
+          technology_weight?: number;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          industry_weight?: number;
+          company_size_weight?: number;
+          location_weight?: number;
+          job_role_weight?: number;
+          technology_weight?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
