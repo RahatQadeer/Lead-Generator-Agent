@@ -4,7 +4,7 @@ import { assertSendingProviderReady } from "@/lib/email-sending/assert-provider-
 import { EmailSendingError } from "@/lib/email-sending/errors";
 import { sendOutreachDraft } from "@/lib/email-sending/send-draft";
 import { toEmailSendingErrorResponse } from "@/lib/email-sending/send";
-import { getConfiguredSendingProviderName } from "@/lib/email-sending/factory";
+import { resolveSendingProvider } from "@/lib/email-sending/resolve-provider";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const provider = getConfiguredSendingProviderName();
+    const provider = await resolveSendingProvider(user.id);
     await assertSendingProviderReady(user.id, provider);
 
     const saved = await sendOutreachDraft(

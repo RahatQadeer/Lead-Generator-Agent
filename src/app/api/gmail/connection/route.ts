@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
+import { deleteGmailConnection } from "@/lib/gmail/connection";
 import { getGmailSettingsStatus } from "@/lib/gmail/settings";
 import { createClient } from "@/lib/supabase/server";
 
-export async function GET() {
+export async function DELETE() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -18,14 +19,8 @@ export async function GET() {
     );
   }
 
+  await deleteGmailConnection(user.id);
   const status = await getGmailSettingsStatus(user.id, user.email);
 
-  return NextResponse.json({
-    success: true,
-    status: {
-      ...status,
-      gmailAddress: status.accountAddress,
-      provider: status.effectiveProvider,
-    },
-  });
+  return NextResponse.json({ success: true, status });
 }

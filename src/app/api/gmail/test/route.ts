@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { getGmailSettingsStatus } from "@/lib/gmail/settings";
+import { testGmailConnection } from "@/lib/gmail/test-connection";
 import { createClient } from "@/lib/supabase/server";
 
-export async function GET() {
+export async function POST() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -18,14 +18,10 @@ export async function GET() {
     );
   }
 
-  const status = await getGmailSettingsStatus(user.id, user.email);
+  const result = await testGmailConnection(user.id);
 
   return NextResponse.json({
-    success: true,
-    status: {
-      ...status,
-      gmailAddress: status.accountAddress,
-      provider: status.effectiveProvider,
-    },
+    success: result.success,
+    result,
   });
 }

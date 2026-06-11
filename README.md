@@ -272,6 +272,35 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## SET-002 — Manage Gmail Configuration
+
+| Criteria | Implementation |
+|----------|----------------|
+| Per-user provider | `gmail_settings.sending_provider` (mock \| gmail) |
+| OAuth connection | Existing `gmail_connections` + connect/reconnect flow |
+| Provider resolution | User preference → Gmail connection → mock fallback |
+| Disconnect | `DELETE /api/gmail/connection` |
+| Test connection | `POST /api/gmail/test` — Gmail profile API |
+
+**API:**
+- `GET /api/gmail/status` — connection + effective provider
+- `PUT /api/gmail/settings` — save sending provider preference
+- `DELETE /api/gmail/settings` — reset to environment defaults
+- `DELETE /api/gmail/connection` — remove OAuth tokens
+- `POST /api/gmail/test` — verify Gmail API access
+
+**UI:** **Settings** → Gmail sending card
+
+**Migration:** `020_gmail_settings.sql`
+
+### Testing SET-002
+
+1. Run migration `020` in Supabase
+2. **Settings** → save **Mock** → send email uses mock provider
+3. **Connect Gmail** → OAuth flow → status shows connected account
+4. Save **Gmail** provider → **Test connection** → profile success
+5. **Disconnect** removes tokens; effective provider falls back to mock
+
 ## SET-001 — Manage OpenAI Configuration
 
 | Criteria | Implementation |

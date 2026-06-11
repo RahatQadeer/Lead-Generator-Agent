@@ -54,6 +54,19 @@ export async function saveGmailConnection(
   }
 }
 
+export async function deleteGmailConnection(userId: string): Promise<void> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("gmail_connections")
+    .delete()
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("Failed to delete Gmail connection:", error.message);
+  }
+}
+
 export async function updateGmailAccessToken(
   userId: string,
   accessToken: string,

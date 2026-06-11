@@ -1,5 +1,5 @@
 import { EmailSendingError, isEmailSendingError } from "@/lib/email-sending/errors";
-import { getConfiguredSendingProviderName } from "@/lib/email-sending/factory";
+import { resolveSendingProvider } from "@/lib/email-sending/resolve-provider";
 import { sendViaGmail } from "@/lib/email-sending/gmail-sender";
 import { sendViaMock } from "@/lib/email-sending/mock-sender";
 import { sendViaOutlook } from "@/lib/email-sending/outlook-sender";
@@ -9,7 +9,7 @@ export async function sendOutreachEmail(
   userId: string,
   input: SendOutreachInput
 ): Promise<SendOutreachResult> {
-  const provider = getConfiguredSendingProviderName();
+  const provider = await resolveSendingProvider(userId);
 
   if (provider === "gmail") {
     return sendViaGmail(userId, input);

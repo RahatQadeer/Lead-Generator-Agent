@@ -19,7 +19,7 @@ import { getReplySummary } from "@/lib/reply-tracking/queries";
 import { getConfiguredReplyTrackingProvider } from "@/lib/reply-tracking/factory";
 import { getOutreachEmailsByUserId } from "@/lib/emails/queries";
 import { resolveEmailGenerationConfig } from "@/lib/openai/settings";
-import { getConfiguredSendingProviderName } from "@/lib/email-sending/factory";
+import { resolveSendingProvider } from "@/lib/email-sending/resolve-provider";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function EmailsPage() {
@@ -46,7 +46,9 @@ export default async function EmailsPage() {
     ? await resolveEmailGenerationConfig(user.id)
     : { provider: "mock" as const, apiKey: null, model: "gpt-4o-mini", keySource: "none" as const };
   const generationProvider = generationConfig.provider;
-  const sendingProvider = getConfiguredSendingProviderName();
+  const sendingProvider = user
+    ? await resolveSendingProvider(user.id)
+    : "mock";
   const replyProvider = getConfiguredReplyTrackingProvider();
 
   return (
