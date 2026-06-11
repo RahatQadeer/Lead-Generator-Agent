@@ -270,6 +270,45 @@ export interface Database {
         };
         Relationships: [];
       };
+      outreach_emails: {
+        Row: {
+          id: string;
+          user_id: string;
+          contact_id: string;
+          subject: string;
+          body: string;
+          provider: string;
+          model: string | null;
+          status: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          contact_id: string;
+          subject: string;
+          body: string;
+          provider: string;
+          model?: string | null;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          contact_id?: string;
+          subject?: string;
+          body?: string;
+          provider?: string;
+          model?: string | null;
+          status?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

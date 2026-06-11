@@ -272,6 +272,36 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## EMAIL-001 — OpenAI Email Generation Provider
+
+| Criteria | Implementation |
+|----------|----------------|
+| Provider abstraction | `mock` (default) or `openai` via `EMAIL_GENERATION_PROVIDER` |
+| OpenAI integration | Chat Completions API (`gpt-4o-mini` default) |
+| Retry support | 3 attempts with exponential backoff on retryable errors |
+| Persistence | `outreach_emails` table stores draft subject + body |
+
+**API:** `POST /api/emails/generate` with `{ contactId, tone? }`
+
+**Module:** `src/lib/email-generation/` — factory, mock provider, OpenAI provider, prompt builder.
+
+**Persistence:** `supabase/migrations/009_outreach_emails.sql`
+
+Run migration `009` before testing.
+
+### Testing EMAIL-001
+
+1. Complete lead pipeline (discover → contacts → enrich)
+2. Go to **Leads** → click **Generate email** on a lead with an email address
+3. Visit **Emails** page to review saved drafts
+4. For OpenAI: set `EMAIL_GENERATION_PROVIDER=openai` and `OPENAI_API_KEY`, restart dev server
+
+```bash
+curl -X POST http://localhost:3000/api/emails/generate \
+  -H "Content-Type: application/json" \
+  -d '{"contactId":"<contact-uuid>"}'
+```
+
 ## SEARCH-004 — Exclusion Rules
 
 | Exclusion | Field | Validation |

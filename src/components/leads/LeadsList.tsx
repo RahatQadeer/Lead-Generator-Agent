@@ -1,5 +1,6 @@
 import { Building2, Link2, MapPin } from "lucide-react";
 import { EmailVerificationBadge } from "@/components/leads/EmailVerificationBadge";
+import { GenerateEmailButton } from "@/components/leads/GenerateEmailButton";
 import { LeadScoreBadge } from "@/components/leads/LeadScoreBadge";
 import type { EnrichedLead } from "@/types/lead";
 
@@ -45,17 +46,24 @@ export function LeadsList({ leads }: LeadsListProps) {
                   </div>
                 )}
               </div>
-              {lead.linkedin && (
-                <a
-                  href={lead.linkedin}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-xs font-medium text-blue-300 transition-colors hover:bg-blue-500/20"
-                >
-                  <Link2 className="h-3.5 w-3.5" />
-                  LinkedIn
-                </a>
-              )}
+              <div className="flex shrink-0 flex-col items-end gap-2">
+                <GenerateEmailButton
+                  contactId={lead.id}
+                  leadName={lead.name}
+                  hasEmail={Boolean(lead.email)}
+                />
+                {lead.linkedin && (
+                  <a
+                    href={lead.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-xs font-medium text-blue-300 transition-colors hover:bg-blue-500/20"
+                  >
+                    <Link2 className="h-3.5 w-3.5" />
+                    LinkedIn
+                  </a>
+                )}
+              </div>
             </div>
           </li>
         ))}
