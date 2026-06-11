@@ -2,6 +2,8 @@ import { getContactDedupKey } from "@/lib/contact-discovery/apply-dedup";
 import { formatLocation } from "@/lib/lead-enrichment/format-location";
 import type { Database } from "@/types/database";
 import type { DiscoveredContact } from "@/types/contact";
+import type { EmailVerificationStatus } from "@/types/email-verification";
+import type { VerifiedEmail } from "@/types/email-verification";
 import type { EnrichedLead, LeadEnrichmentInput } from "@/types/lead";
 
 type ContactInsert = Database["public"]["Tables"]["contacts"]["Insert"];
@@ -90,8 +92,37 @@ export function toEnrichedLead(contact: ContactRow): EnrichedLead | null {
     country: contact.country,
     location: formatLocation(contact.city, contact.state, contact.country),
     email: contact.email,
+    emailSyntaxValid: contact.email_syntax_valid,
+    emailDomainValid: contact.email_domain_valid,
+    emailVerificationStatus:
+      (contact.email_verification_status as EmailVerificationStatus | null) ?? null,
+    emailVerifiedAt: contact.email_verified_at,
     companyId: contact.company_id,
     searchId: contact.search_id,
     enrichedAt: contact.enriched_at,
+  };
+}
+
+export function toEmailVerificationUpdate(
+  result: VerifiedEmail
+): Database["public"]["Tables"]["contacts"]["Update"] {
+  return {
+    email: result.email,
+    email_syntax_valid: result.syntaxValid,
+    email_domain_valid: result.domainValid,
+    email_verification_status: result.status,
+    email_verification_provider: result.provider,
+    email_verification_message: result.message,
+    email_verified_at: result.verifiedAt,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+export function toEmailVerificationInput(
+  contact: ContactWithCompany
+): { contactId: string; email: string | null } {
+  return {
+    contactId: contact.id,
+    email: contact.email,
   };
 }

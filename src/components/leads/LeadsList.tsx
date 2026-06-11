@@ -1,4 +1,5 @@
 import { Building2, Link2, MapPin } from "lucide-react";
+import { EmailVerificationBadge } from "@/components/leads/EmailVerificationBadge";
 import type { EnrichedLead } from "@/types/lead";
 
 interface LeadsListProps {
@@ -34,7 +35,10 @@ export function LeadsList({ leads }: LeadsListProps) {
                   )}
                 </div>
                 {lead.email && (
-                  <p className="mt-1 text-xs text-slate-500">{lead.email}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <p className="text-xs text-slate-500">{lead.email}</p>
+                    <EmailVerificationBadge status={lead.emailVerificationStatus} />
+                  </div>
                 )}
               </div>
               {lead.linkedin && (

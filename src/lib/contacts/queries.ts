@@ -1,5 +1,7 @@
 import {
   toContactInsert,
+  toEmailVerificationInput,
+  toEmailVerificationUpdate,
   toEnrichedLead,
   toEnrichedLeadUpdate,
   toLeadEnrichmentInput,
@@ -7,6 +9,8 @@ import {
 } from "@/lib/contacts/mapper";
 import { createClient } from "@/lib/supabase/server";
 import type { DiscoveredContact } from "@/types/contact";
+import type { EmailVerificationInput } from "@/types/email-verification";
+import type { VerifiedEmail } from "@/types/email-verification";
 import type { EnrichedLead } from "@/types/lead";
 
 export async function getKnownContactDedupKeys(
@@ -108,4 +112,32 @@ export function toLeadEnrichmentInputs(
   contacts: ContactWithCompany[]
 ): ReturnType<typeof toLeadEnrichmentInput>[] {
   return contacts.map(toLeadEnrichmentInput);
+}
+
+export function toEmailVerificationInputs(
+  contacts: ContactWithCompany[]
+): EmailVerificationInput[] {
+  return contacts.map(toEmailVerificationInput);
+}
+
+export async function saveEmailVerificationResults(
+  userId: string,
+  results: VerifiedEmail[]
+): Promise<void> {
+  const supabase = await createClient();
+
+  for (const result of results) {
+    const { error } = await supabase
+      .from("contacts")
+      .update(toEmailVerificationUpdate(result))
+      .eq("id", result.contactId)
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error(
+        `Failed to save email verification for ${result.contactId}:`,
+        error.message
+      );
+    }
+  }
 }

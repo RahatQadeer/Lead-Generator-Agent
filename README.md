@@ -208,6 +208,37 @@ curl -X POST http://localhost:3000/api/leads/enrich \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## LEAD-003 — Email Verification
+
+| Step | Implementation |
+|------|----------------|
+| Syntax validation | RFC-style format check before any API call |
+| Domain validation | MX/A record lookup (mock uses predictable rules) |
+| Verification API | `mock` (default) or `hunter` (`/v2/email-verifier`) |
+
+**API:** `POST /api/leads/verify-emails` with `searchId`
+
+**Pipeline:** syntax check → domain check → provider API → persist status on `contacts`.
+
+**Statuses:** `valid`, `invalid`, `invalid_syntax`, `invalid_domain`, `risky`, `unknown`, `no_email`
+
+**Persistence:** `supabase/migrations/007_contacts_email_verification.sql`
+
+Run migration `007` before testing.
+
+### Testing LEAD-003
+
+1. Discover companies → decision-makers → enrich profiles
+2. Click **Verify emails** on a search card
+3. Mock marks standard emails as **Verified**; use `invalid@...` or `risky@...` local parts to test failures
+4. Visit **Leads** — verification badges appear next to emails
+
+```bash
+curl -X POST http://localhost:3000/api/leads/verify-emails \
+  -H "Content-Type: application/json" \
+  -d '{"searchId":"<your-search-uuid>"}'
+```
+
 ## SEARCH-004 — Exclusion Rules
 
 | Exclusion | Field | Validation |

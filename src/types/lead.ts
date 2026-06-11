@@ -1,3 +1,5 @@
+import type { EmailVerificationStatus } from "@/types/email-verification";
+
 export interface LeadEnrichmentInput {
   id: string;
   fullName: string;
@@ -22,6 +24,10 @@ export interface EnrichedLead {
   state: string | null;
   country: string | null;
   email: string | null;
+  emailSyntaxValid: boolean | null;
+  emailDomainValid: boolean | null;
+  emailVerificationStatus: EmailVerificationStatus | null;
+  emailVerifiedAt: string | null;
   companyId: string;
   searchId: string | null;
   enrichedAt: string;

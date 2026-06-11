@@ -186,6 +186,12 @@ export interface Database {
           country: string | null;
           enriched_at: string | null;
           enrichment_provider: string | null;
+          email_syntax_valid: boolean | null;
+          email_domain_valid: boolean | null;
+          email_verification_status: string | null;
+          email_verification_provider: string | null;
+          email_verification_message: string | null;
+          email_verified_at: string | null;
           first_discovered_at: string;
           last_seen_at: string;
           created_at: string;
@@ -211,6 +217,12 @@ export interface Database {
           country?: string | null;
           enriched_at?: string | null;
           enrichment_provider?: string | null;
+          email_syntax_valid?: boolean | null;
+          email_domain_valid?: boolean | null;
+          email_verification_status?: string | null;
+          email_verification_provider?: string | null;
+          email_verification_message?: string | null;
+          email_verified_at?: string | null;
           first_discovered_at?: string;
           last_seen_at?: string;
           created_at?: string;
@@ -236,6 +248,12 @@ export interface Database {
           country?: string | null;
           enriched_at?: string | null;
           enrichment_provider?: string | null;
+          email_syntax_valid?: boolean | null;
+          email_domain_valid?: boolean | null;
+          email_verification_status?: string | null;
+          email_verification_provider?: string | null;
+          email_verification_message?: string | null;
+          email_verified_at?: string | null;
           first_discovered_at?: string;
           last_seen_at?: string;
           created_at?: string;
