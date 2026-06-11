@@ -288,6 +288,11 @@ export interface Database {
           gmail_message_id: string | null;
           recipient_email: string | null;
           campaign_id: string | null;
+          reply_status: string;
+          replied_at: string | null;
+          reply_snippet: string | null;
+          provider_thread_id: string | null;
+          reply_checked_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -308,6 +313,11 @@ export interface Database {
           gmail_message_id?: string | null;
           recipient_email?: string | null;
           campaign_id?: string | null;
+          reply_status?: string;
+          replied_at?: string | null;
+          reply_snippet?: string | null;
+          provider_thread_id?: string | null;
+          reply_checked_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -328,6 +338,11 @@ export interface Database {
           gmail_message_id?: string | null;
           recipient_email?: string | null;
           campaign_id?: string | null;
+          reply_status?: string;
+          replied_at?: string | null;
+          reply_snippet?: string | null;
+          provider_thread_id?: string | null;
+          reply_checked_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };

@@ -1,5 +1,5 @@
 const MICROSOFT_AUTH_BASE = "https://login.microsoftonline.com";
-const MICROSOFT_GRAPH_SCOPE = "offline_access Mail.Send User.Read";
+const MICROSOFT_GRAPH_SCOPE = "offline_access Mail.Send Mail.Read User.Read";
 
 export function getMicrosoftTenantId(): string {
   return process.env.MICROSOFT_TENANT_ID?.trim() || "common";

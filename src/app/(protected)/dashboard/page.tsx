@@ -7,11 +7,13 @@ import {
 } from "lucide-react";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
 import { getSentEmailCount } from "@/lib/emails/queries";
+import { getReplyCount } from "@/lib/reply-tracking/queries";
 import { PageHeader } from "@/components/layout/PageHeader";
 
 export default async function DashboardPage() {
   const { profile, user } = await getAuthContext();
   const sentCount = await getSentEmailCount(user.id);
+  const replyCount = await getReplyCount(user.id);
   const firstName = profile.full_name?.split(" ")[0] ?? "there";
 
   return (
@@ -39,8 +41,14 @@ export default async function DashboardPage() {
         <StatCard
           icon={MessageSquare}
           label="Replies"
-          value="—"
-          hint="Awaiting outreach"
+          value={replyCount > 0 ? String(replyCount) : "—"}
+          hint={
+            replyCount > 0
+              ? "Leads responded"
+              : sentCount > 0
+                ? "Check Emails page"
+                : "Awaiting outreach"
+          }
         />
         <StatCard
           icon={TrendingUp}

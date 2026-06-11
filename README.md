@@ -272,6 +272,32 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## TRACK-001 — Detect Email Replies
+
+| Criteria | Implementation |
+|----------|----------------|
+| Provider abstraction | `mock` (default), `gmail`, or `outlook` via `REPLY_TRACKING_PROVIDER` |
+| Gmail detection | Search inbox for messages from recipient after send date |
+| Outlook detection | Microsoft Graph filter on received messages from recipient |
+| Persistence | `reply_status`, `replied_at`, `reply_snippet` on `outreach_emails` |
+
+**API:**
+- `POST /api/replies/detect` — scan sent emails for replies
+- `GET /api/replies/status` — reply summary counts
+
+**UI:** **Check for replies** on **Emails**, **Replied** badge + preview, dashboard **Replies** stat.
+
+**Migration:** `016_outreach_email_replies.sql`
+
+### Testing TRACK-001
+
+1. Send outreach emails (mock or real)
+2. **Emails** → **Check for replies**
+3. With `REPLY_TRACKING_PROVIDER=mock`, ~1/3 of sent emails are marked as replied
+4. Dashboard **Replies** count updates
+
+For Gmail/Outlook: reconnect account after scope updates (`gmail.readonly`, `Mail.Read`).
+
 ## EMAIL-006 — Send Outreach Campaigns
 
 | Criteria | Implementation |
