@@ -3,8 +3,10 @@ import { DashboardGettingStarted } from "@/components/dashboard/DashboardGetting
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { DashboardQuickLinks } from "@/components/dashboard/DashboardQuickLinks";
 import { DashboardStatsPanel } from "@/components/dashboard/DashboardStatsPanel";
+import { LeadMetricsPanel } from "@/components/dashboard/LeadMetricsPanel";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
+import { getLeadMetrics } from "@/lib/dashboard/lead-metrics";
 import {
   getDashboardStats,
   getOnboardingSteps,
@@ -12,7 +14,10 @@ import {
 
 export default async function DashboardPage() {
   const { profile, user } = await getAuthContext();
-  const stats = await getDashboardStats(user.id);
+  const [stats, leadMetrics] = await Promise.all([
+    getDashboardStats(user.id),
+    getLeadMetrics(user.id),
+  ]);
   const steps = getOnboardingSteps(stats);
   const firstName = profile.full_name?.split(" ")[0] ?? "there";
 
@@ -29,6 +34,7 @@ export default async function DashboardPage() {
         stats={<DashboardStatsPanel stats={stats} />}
         aside={<DashboardQuickLinks />}
       >
+        <LeadMetricsPanel metrics={leadMetrics} />
         <DashboardGettingStarted steps={steps} />
       </DashboardLayout>
     </>

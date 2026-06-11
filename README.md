@@ -272,6 +272,28 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## DASH-002 — Display Lead Metrics
+
+| Metric | Source |
+|--------|--------|
+| Discovered / enriched | `contacts` counts |
+| Scored + average | `lead_score` on contacts |
+| With email / verified | `email`, `email_verification_status` |
+| High quality (8+) | Scored contacts |
+| Score distribution | Buckets: Low, Fair, Good, Hot |
+| Top leads | Top 5 by score |
+
+**Module:** `src/lib/dashboard/lead-metrics.ts` — `getLeadMetrics()`
+
+**UI:** `LeadMetricsPanel` on **Dashboard** and **Analytics**
+
+### Testing DASH-002
+
+1. Discover contacts → **Discovered** count updates
+2. Enrich leads → enriched hint under Discovered
+3. **Score leads** → distribution chart and top leads appear
+4. Verify emails → **verified** count updates under With email
+
 ## DASH-001 — Dashboard Layout
 
 | Criteria | Implementation |

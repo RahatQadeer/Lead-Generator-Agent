@@ -2,9 +2,11 @@ import { BarChart3 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { DashboardStatsPanelWithSearches } from "@/components/dashboard/DashboardStatsPanel";
 import { DashboardSection } from "@/components/dashboard/DashboardSection";
+import { LeadMetricsPanel } from "@/components/dashboard/LeadMetricsPanel";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
+import { getLeadMetrics } from "@/lib/dashboard/lead-metrics";
 import { getDashboardStats } from "@/lib/dashboard/queries";
 import {
   formatConversionRate,
@@ -13,8 +15,14 @@ import {
 
 export default async function AnalyticsPage() {
   const { user } = await getAuthContext();
-  const stats = await getDashboardStats(user.id);
-  const hasData = stats.emailsSent > 0 || stats.leadCount > 0;
+  const [stats, leadMetrics] = await Promise.all([
+    getDashboardStats(user.id),
+    getLeadMetrics(user.id),
+  ]);
+  const hasData =
+    stats.emailsSent > 0 ||
+    leadMetrics.discoveredCount > 0 ||
+    stats.leadCount > 0;
 
   return (
     <>
@@ -27,37 +35,40 @@ export default async function AnalyticsPage() {
 
       <DashboardLayout stats={<DashboardStatsPanelWithSearches stats={stats} />}>
         {hasData ? (
-          <DashboardSection
-            title="Overview"
-            description="Detailed charts and trends will appear here in future updates."
-          >
-            <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Metric
-                label="Leads enriched"
-                value={formatStatValue(stats.leadCount)}
-              />
-              <Metric
-                label="Emails sent"
-                value={formatStatValue(stats.emailsSent)}
-              />
-              <Metric
-                label="Replies"
-                value={formatStatValue(stats.replyCount)}
-              />
-              <Metric
-                label="Conversion rate"
-                value={formatConversionRate(stats.conversionRate)}
-              />
-              <Metric
-                label="Draft emails"
-                value={formatStatValue(stats.draftCount)}
-              />
-              <Metric
-                label="Campaigns"
-                value={formatStatValue(stats.campaignCount)}
-              />
-            </dl>
-          </DashboardSection>
+          <div className="space-y-6">
+            <LeadMetricsPanel metrics={leadMetrics} />
+            <DashboardSection
+              title="Outreach performance"
+              description="Email and campaign activity across your pipeline."
+            >
+              <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <Metric
+                  label="Emails sent"
+                  value={formatStatValue(stats.emailsSent)}
+                />
+                <Metric
+                  label="Replies"
+                  value={formatStatValue(stats.replyCount)}
+                />
+                <Metric
+                  label="Conversion rate"
+                  value={formatConversionRate(stats.conversionRate)}
+                />
+                <Metric
+                  label="Draft emails"
+                  value={formatStatValue(stats.draftCount)}
+                />
+                <Metric
+                  label="Campaigns"
+                  value={formatStatValue(stats.campaignCount)}
+                />
+                <Metric
+                  label="Contacts paused"
+                  value={formatStatValue(leadMetrics.pausedCount)}
+                />
+              </dl>
+            </DashboardSection>
+          </div>
         ) : (
           <EmptyState
             icon={BarChart3}
