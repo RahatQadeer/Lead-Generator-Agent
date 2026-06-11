@@ -272,6 +272,35 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## SET-005 — Manage Email Templates
+
+| Criteria | Implementation |
+|----------|----------------|
+| Per-user templates | `email_templates` — name, tone, subject/body patterns |
+| Placeholders | `{{firstName}}`, `{{company}}`, `{{painPoint}}`, etc. |
+| Default per tone | One default template per tone per user |
+| Mock provider | Renders placeholders directly from template |
+| OpenAI provider | Uses template as structure guidance in prompt |
+| Generation | Optional `templateId` or auto-resolve default for tone |
+
+**API:**
+- `GET /api/email-templates` — list templates + placeholders
+- `POST /api/email-templates` — create template
+- `GET /api/email-templates/[id]` — get template
+- `PUT /api/email-templates/[id]` — update template
+- `DELETE /api/email-templates/[id]` — delete template
+
+**UI:** **Settings** → Email templates card; template picker on **Leads** generate panel
+
+**Migration:** `023_email_templates.sql`
+
+### Testing SET-005
+
+1. Run migration `023` in Supabase
+2. **Settings** → create a template with placeholders → mark as default
+3. **Leads** → **Generate email** → pick template or use default
+4. **Emails** page shows draft using your template structure
+
 ## SET-004 — Configure Lead Scoring Rules
 
 | Criteria | Implementation |

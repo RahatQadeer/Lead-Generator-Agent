@@ -37,6 +37,10 @@ export function GenerateEmailButton({
   const [preview, setPreview] = useState<EmailGenerationPreview | null>(null);
   const [painPointsText, setPainPointsText] = useState("");
   const [tone, setTone] = useState<EmailTone>("professional");
+  const [templates, setTemplates] = useState<
+    Array<{ id: string; name: string; tone: EmailTone; isDefault: boolean }>
+  >([]);
+  const [templateId, setTemplateId] = useState<string>("");
 
   async function loadContext() {
     setLoadingContext(true);
@@ -54,6 +58,12 @@ export function GenerateEmailButton({
       setPreview(data.preview);
       setPainPointsText(formatPainPoints(data.preview.painPoints));
       setTone(data.preview.defaultTone);
+      setTemplates(data.templates ?? []);
+      const defaultForTone = (data.templates ?? []).find(
+        (template: { tone: EmailTone; isDefault: boolean }) =>
+          template.tone === data.preview.defaultTone && template.isDefault
+      );
+      setTemplateId(defaultForTone?.id ?? "");
       setOpen(true);
     } catch {
       setMessage("Failed to load personalization context.");
@@ -72,7 +82,12 @@ export function GenerateEmailButton({
       const res = await fetch("/api/emails/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contactId, painPoints, tone }),
+        body: JSON.stringify({
+          contactId,
+          painPoints,
+          tone,
+          templateId: templateId || undefined,
+        }),
       });
 
       const data = await res.json();
@@ -165,7 +180,14 @@ export function GenerateEmailButton({
                     <button
                       key={option}
                       type="button"
-                      onClick={() => setTone(option)}
+                      onClick={() => {
+                        setTone(option);
+                        const defaultForTone = templates.find(
+                          (template) =>
+                            template.tone === option && template.isDefault
+                        );
+                        setTemplateId(defaultForTone?.id ?? "");
+                      }}
                       className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
                         tone === option
                           ? "border-cyan-500/40 bg-cyan-500/20 text-cyan-200"
@@ -177,6 +199,33 @@ export function GenerateEmailButton({
                   ))}
                 </dd>
               </div>
+              {templates.filter((template) => template.tone === tone).length >
+                0 && (
+                <div>
+                  <label
+                    htmlFor={`template-${contactId}`}
+                    className="text-slate-500"
+                  >
+                    Template
+                  </label>
+                  <select
+                    id={`template-${contactId}`}
+                    value={templateId}
+                    onChange={(e) => setTemplateId(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-white/10 bg-slate-900 px-3 py-2 text-sm text-slate-200 focus:border-cyan-500/40 focus:outline-none"
+                  >
+                    <option value="">Built-in / AI default</option>
+                    {templates
+                      .filter((template) => template.tone === tone)
+                      .map((template) => (
+                        <option key={template.id} value={template.id}>
+                          {template.name}
+                          {template.isDefault ? " (default)" : ""}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label htmlFor={`pain-points-${contactId}`} className="text-slate-500">
                   Pain points

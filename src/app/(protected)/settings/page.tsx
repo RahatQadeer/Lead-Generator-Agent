@@ -1,4 +1,5 @@
 import { Settings } from "lucide-react";
+import { EmailTemplatesSettingsCard } from "@/components/settings/EmailTemplatesSettingsCard";
 import { GmailSettingsCard } from "@/components/settings/GmailSettingsCard";
 import { OpenAISettingsCard } from "@/components/settings/OpenAISettingsCard";
 import { LeadScoringSettingsCard } from "@/components/settings/LeadScoringSettingsCard";
@@ -23,6 +24,7 @@ export default async function SettingsPage() {
         <GmailSettingsCard />
         <OutlookSettingsCard />
         <LeadScoringSettingsCard />
+        <EmailTemplatesSettingsCard />
       </div>
 
       <div className="max-w-xl rounded-2xl border border-white/5 bg-slate-900/50 p-6 sm:p-8">
