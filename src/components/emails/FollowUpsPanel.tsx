@@ -19,7 +19,8 @@ export function FollowUpsPanel({ summary }: FollowUpsPanelProps) {
       <p className="text-sm font-medium text-white">Follow-up queue</p>
       <p className="mt-1 text-xs text-slate-400">
         New follow-ups are scheduled {DEFAULT_FOLLOW_UP_DELAY_DAYS} days after
-        send. Replies automatically cancel pending follow-ups.
+        send. Generate AI suggestions below, then save as a draft to send.
+        Replies automatically cancel pending follow-ups.
       </p>
       <dl className="mt-3 grid gap-3 text-xs sm:grid-cols-3">
         <div>

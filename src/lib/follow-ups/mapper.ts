@@ -24,6 +24,20 @@ export function toFollowUpInsert(
   };
 }
 
+function toFollowUpSuggestion(row: FollowUpRow): FollowUp["suggestion"] {
+  if (!row.suggested_subject || !row.suggested_body || !row.suggested_at) {
+    return null;
+  }
+
+  return {
+    subject: row.suggested_subject,
+    body: row.suggested_body,
+    provider: row.suggestion_provider ?? "unknown",
+    model: row.suggestion_model,
+    suggestedAt: row.suggested_at,
+  };
+}
+
 export function toFollowUp(row: FollowUpRow): FollowUp {
   return {
     id: row.id,
@@ -35,5 +49,7 @@ export function toFollowUp(row: FollowUpRow): FollowUp {
     cancelReason: row.cancel_reason as FollowUp["cancelReason"],
     cancelledAt: row.cancelled_at,
     createdAt: row.created_at,
+    suggestion: toFollowUpSuggestion(row),
+    draftEmailId: row.draft_email_id,
   };
 }

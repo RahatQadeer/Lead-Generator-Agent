@@ -1,5 +1,6 @@
 import { Mail } from "lucide-react";
 import { CheckRepliesPanel } from "@/components/emails/CheckRepliesPanel";
+import { FollowUpQueueList } from "@/components/emails/FollowUpQueueList";
 import { FollowUpsPanel } from "@/components/emails/FollowUpsPanel";
 import { CampaignHistory } from "@/components/emails/CampaignHistory";
 import { EmailDraftCard } from "@/components/emails/EmailDraftCard";
@@ -10,7 +11,10 @@ import {
   getCampaignSummary,
   getOutreachCampaignsByUserId,
 } from "@/lib/email-campaigns/queries";
-import { getFollowUpSummary } from "@/lib/follow-ups/queries";
+import {
+  getFollowUpSummary,
+  getScheduledFollowUpsWithContext,
+} from "@/lib/follow-ups/queries";
 import { getReplySummary } from "@/lib/reply-tracking/queries";
 import { getConfiguredReplyTrackingProvider } from "@/lib/reply-tracking/factory";
 import { getOutreachEmailsByUserId } from "@/lib/emails/queries";
@@ -35,6 +39,9 @@ export default async function EmailsPage() {
   const followUpSummary = user
     ? await getFollowUpSummary(user.id)
     : { scheduledCount: 0, cancelledCount: 0, pausedContactCount: 0 };
+  const scheduledFollowUps = user
+    ? await getScheduledFollowUpsWithContext(user.id)
+    : [];
   const generationProvider = getConfiguredEmailProviderName();
   const sendingProvider = getConfiguredSendingProviderName();
   const replyProvider = getConfiguredReplyTrackingProvider();
@@ -57,6 +64,7 @@ export default async function EmailsPage() {
 
       <CheckRepliesPanel summary={replySummary} />
       <FollowUpsPanel summary={followUpSummary} />
+      <FollowUpQueueList followUps={scheduledFollowUps} />
       <SendCampaignPanel summary={summary} sendingProvider={sendingProvider} />
       <CampaignHistory campaigns={campaigns} />
 

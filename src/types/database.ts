@@ -290,6 +290,12 @@ export interface Database {
           status: string;
           cancel_reason: string | null;
           cancelled_at: string | null;
+          suggested_subject: string | null;
+          suggested_body: string | null;
+          suggestion_provider: string | null;
+          suggestion_model: string | null;
+          suggested_at: string | null;
+          draft_email_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -303,6 +309,12 @@ export interface Database {
           status?: string;
           cancel_reason?: string | null;
           cancelled_at?: string | null;
+          suggested_subject?: string | null;
+          suggested_body?: string | null;
+          suggestion_provider?: string | null;
+          suggestion_model?: string | null;
+          suggested_at?: string | null;
+          draft_email_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -316,6 +328,12 @@ export interface Database {
           status?: string;
           cancel_reason?: string | null;
           cancelled_at?: string | null;
+          suggested_subject?: string | null;
+          suggested_body?: string | null;
+          suggestion_provider?: string | null;
+          suggestion_model?: string | null;
+          suggested_at?: string | null;
+          draft_email_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };

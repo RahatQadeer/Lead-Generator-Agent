@@ -5,7 +5,9 @@ import type {
   FollowUpCancelReason,
   FollowUpPauseReason,
   FollowUpSummary,
+  ScheduledFollowUpWithContext,
 } from "@/types/follow-up";
+import type { GeneratedFollowUpSuggestion } from "@/types/follow-up-suggestion";
 
 export async function isContactFollowUpsPaused(
   userId: string,
@@ -139,6 +141,121 @@ export async function stopFollowUpsAfterReply(
   await pauseContactFollowUps(userId, contactId, "replied");
 
   return { contactId, cancelledCount };
+}
+
+export async function getFollowUpById(
+  userId: string,
+  followUpId: string
+): Promise<FollowUp | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("follow_ups")
+    .select("*")
+    .eq("id", followUpId)
+    .eq("user_id", userId)
+    .single();
+
+  if (error || !data) return null;
+
+  return toFollowUp(data);
+}
+
+export async function getScheduledFollowUpsWithContext(
+  userId: string,
+  limit = 20
+): Promise<ScheduledFollowUpWithContext[]> {
+  const followUps = await getScheduledFollowUps(userId, limit);
+  if (followUps.length === 0) return [];
+
+  const supabase = await createClient();
+  const contactIds = [...new Set(followUps.map((f) => f.contactId))];
+  const emailIds = [...new Set(followUps.map((f) => f.sourceEmailId))];
+
+  const [contactsResult, emailsResult] = await Promise.all([
+    supabase
+      .from("contacts")
+      .select("id, full_name, company_name")
+      .eq("user_id", userId)
+      .in("id", contactIds),
+    supabase
+      .from("outreach_emails")
+      .select("id, subject, sent_at, lead_company")
+      .eq("user_id", userId)
+      .in("id", emailIds),
+  ]);
+
+  const contactMap = new Map(
+    (contactsResult.data ?? []).map((c) => [c.id, c])
+  );
+  const emailMap = new Map((emailsResult.data ?? []).map((e) => [e.id, e]));
+
+  return followUps.map((followUp) => {
+    const contact = contactMap.get(followUp.contactId);
+    const email = emailMap.get(followUp.sourceEmailId);
+
+    return {
+      ...followUp,
+      leadName: contact?.full_name ?? "Unknown",
+      leadCompany:
+        contact?.company_name ?? email?.lead_company ?? "Unknown",
+      originalSubject: email?.subject ?? "(no subject)",
+      originalSentAt: email?.sent_at ?? null,
+    };
+  });
+}
+
+export async function saveFollowUpSuggestion(
+  userId: string,
+  followUpId: string,
+  suggestion: GeneratedFollowUpSuggestion
+): Promise<FollowUp | null> {
+  const supabase = await createClient();
+  const updatedAt = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from("follow_ups")
+    .update({
+      suggested_subject: suggestion.subject,
+      suggested_body: suggestion.body,
+      suggestion_provider: suggestion.provider,
+      suggestion_model: suggestion.model,
+      suggested_at: suggestion.generatedAt,
+      updated_at: updatedAt,
+    })
+    .eq("id", followUpId)
+    .eq("user_id", userId)
+    .eq("status", "scheduled")
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    console.error("Failed to save follow-up suggestion:", error?.message);
+    return null;
+  }
+
+  return toFollowUp(data);
+}
+
+export async function linkFollowUpDraftEmail(
+  userId: string,
+  followUpId: string,
+  draftEmailId: string
+): Promise<void> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("follow_ups")
+    .update({
+      draft_email_id: draftEmailId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", followUpId)
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("Failed to link follow-up draft:", error.message);
+  }
 }
 
 export async function getScheduledFollowUps(

@@ -272,6 +272,30 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## TRACK-003 — Generate Follow-up Suggestions
+
+| Criteria | Implementation |
+|----------|----------------|
+| AI suggestions | Mock or OpenAI (`EMAIL_GENERATION_PROVIDER`) |
+| Context | Original sent email + contact profile + sequence number |
+| Persistence | `suggested_*` columns on `follow_ups` |
+| Save as draft | Creates `outreach_emails` draft linked via `draft_email_id` |
+
+**API:**
+- `POST /api/follow-ups/generate` — `{ followUpId }`
+- `POST /api/follow-ups/save-draft` — `{ followUpId }`
+
+**UI:** Scheduled follow-ups list on **Emails** with **Generate suggestion** and **Save as draft**.
+
+**Migration:** `018_follow_up_suggestions.sql`
+
+### Testing TRACK-003
+
+1. Send outreach (mock) → follow-up appears in queue
+2. **Generate suggestion** on a scheduled follow-up
+3. **Save as draft** → new draft appears in email list
+4. Reply detection still cancels follow-ups and blocks paused contacts
+
 ## TRACK-002 — Stop Follow-ups After Reply
 
 | Criteria | Implementation |
