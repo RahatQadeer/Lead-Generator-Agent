@@ -272,6 +272,27 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## DASH-005 — Display Recent Activity Feed
+
+| Event | Source |
+|-------|--------|
+| Search created | `searches.created_at` |
+| Lead discovered / enriched / scored | `contacts` timestamps |
+| Email draft / sent / replied | `outreach_emails` |
+| Campaign finished | `outreach_campaigns` |
+| Follow-up scheduled / cancelled / suggested | `follow_ups` |
+
+**Module:** `src/lib/dashboard/activity-feed.ts` — `getRecentActivity()`
+
+**UI:** `RecentActivityFeed` in dashboard sidebar + **Analytics** aside
+
+### Testing DASH-005
+
+1. Create a search → appears in feed
+2. Discover and enrich leads → discovery/enrichment events show
+3. Generate and send emails → draft/sent events appear
+4. Check replies → reply events with relative timestamps
+
 ## DASH-004 — Display Conversion Metrics
 
 | Metric | Formula |

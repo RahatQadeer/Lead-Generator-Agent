@@ -109,3 +109,25 @@ export interface ConversionMetrics {
   funnel: ConversionFunnelStage[];
   rates: ConversionRateMetric[];
 }
+
+export type ActivityType =
+  | "search_created"
+  | "lead_discovered"
+  | "lead_enriched"
+  | "lead_scored"
+  | "email_generated"
+  | "email_sent"
+  | "email_replied"
+  | "campaign_completed"
+  | "follow_up_scheduled"
+  | "follow_up_cancelled"
+  | "follow_up_suggested";
+
+export interface ActivityItem {
+  id: string;
+  type: ActivityType;
+  title: string;
+  description: string;
+  timestamp: string;
+  href: string;
+}
