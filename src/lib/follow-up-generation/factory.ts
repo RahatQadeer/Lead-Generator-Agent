@@ -1,25 +1,23 @@
-import { EmailGenerationError } from "@/lib/email-generation/errors";
 import {
-  getConfiguredEmailProviderName,
-  getOpenAIModel,
+  createEmailGenerationProviderFromConfig,
+  type EmailGenerationProviderName,
 } from "@/lib/email-generation/factory";
 import { MockFollowUpGenerationProvider } from "@/lib/follow-up-generation/mock-provider";
 import { OpenAIFollowUpGenerationProvider } from "@/lib/follow-up-generation/openai-provider";
 import type { FollowUpGenerationProvider } from "@/lib/follow-up-generation/types";
 
-export function createFollowUpGenerationProvider(): FollowUpGenerationProvider {
-  const providerName = getConfiguredEmailProviderName();
+export function createFollowUpGenerationProviderFromConfig(input: {
+  provider: EmailGenerationProviderName;
+  apiKey: string | null;
+  model: string;
+}): FollowUpGenerationProvider {
+  const emailProvider = createEmailGenerationProviderFromConfig(input);
 
-  if (providerName === "openai") {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new EmailGenerationError(
-        "PROVIDER_NOT_CONFIGURED",
-        "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment.",
-        { statusCode: 500, retryable: false }
-      );
-    }
-    return new OpenAIFollowUpGenerationProvider(apiKey, getOpenAIModel());
+  if (emailProvider.name === "openai") {
+    return new OpenAIFollowUpGenerationProvider(
+      input.apiKey as string,
+      input.model
+    );
   }
 
   return new MockFollowUpGenerationProvider();

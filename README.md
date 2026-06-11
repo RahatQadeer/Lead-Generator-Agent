@@ -272,6 +272,34 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## SET-001 — Manage OpenAI Configuration
+
+| Criteria | Implementation |
+|----------|----------------|
+| Per-user settings | `openai_settings` table (provider, model, API key) |
+| Provider choice | Mock or OpenAI per user |
+| Key resolution | User key → env `OPENAI_API_KEY` → mock fallback |
+| Test connection | `POST /api/openai/test` validates API key |
+| Generation | Email + follow-up routes use user-resolved config |
+
+**API:**
+- `GET /api/openai/status` — masked key preview + effective provider
+- `PUT /api/openai/settings` — save provider, model, optional API key
+- `DELETE /api/openai/settings` — reset to environment defaults
+- `POST /api/openai/test` — verify connectivity
+
+**UI:** **Settings** → OpenAI generation card
+
+**Migration:** `019_openai_settings.sql`
+
+### Testing SET-001
+
+1. Run migration `019` in Supabase
+2. **Settings** → select OpenAI, enter API key, choose model → **Save**
+3. **Test connection** → success message
+4. Generate email on **Leads** — uses your configured provider/model
+5. **Reset to defaults** falls back to `.env.local` values
+
 ## DASH-005 — Display Recent Activity Feed
 
 | Event | Source |

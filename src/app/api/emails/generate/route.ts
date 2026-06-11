@@ -14,7 +14,7 @@ import { parseEmailTone } from "@/lib/email-generation/parse-tone";
 import { assertContactCanReceiveOutreach } from "@/lib/follow-ups/guards";
 import { isFollowUpBlockedError } from "@/lib/follow-ups/errors";
 import { EmailGenerationError } from "@/lib/email-generation/errors";
-import { getConfiguredEmailProviderName } from "@/lib/email-generation/factory";
+import { resolveEmailGenerationConfig } from "@/lib/openai/settings";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
@@ -98,14 +98,15 @@ export async function POST(request: Request) {
       painPoints,
       searchKeywords,
     });
-    const generated = await generateOutreachEmail(context);
+    const generated = await generateOutreachEmail(user.id, context);
+    const generationConfig = await resolveEmailGenerationConfig(user.id);
     const saved = await saveGeneratedEmail(user.id, contactId, generated);
 
     return NextResponse.json({
       success: true,
       email: saved ?? generated,
       meta: {
-        provider: getConfiguredEmailProviderName(),
+        provider: generationConfig.provider,
         model: generated.model,
         attempts: generated.attempts,
         contactId,
