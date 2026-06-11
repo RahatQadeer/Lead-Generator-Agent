@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getOutreachEmailById, markOutreachEmailSent } from "@/lib/emails/queries";
-import { getGmailConnection } from "@/lib/gmail/connection";
+import { assertSendingProviderReady } from "@/lib/email-sending/assert-provider-ready";
 import { EmailSendingError } from "@/lib/email-sending/errors";
 import {
   assertRecipientEmail,
@@ -78,18 +78,9 @@ export async function POST(request: Request) {
     }
 
     const recipientEmail = assertRecipientEmail(draft.recipientEmail);
-
     const provider = getConfiguredSendingProviderName();
-    if (provider === "gmail") {
-      const connection = await getGmailConnection(user.id);
-      if (!connection) {
-        throw new EmailSendingError(
-          "GMAIL_NOT_CONNECTED",
-          "Gmail is not connected. Sign in again with Google from Settings to grant send access.",
-          { statusCode: 400, retryable: false }
-        );
-      }
-    }
+
+    await assertSendingProviderReady(user.id, provider);
 
     const result = await sendOutreachEmail(user.id, {
       to: recipientEmail,

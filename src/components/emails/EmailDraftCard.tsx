@@ -1,12 +1,14 @@
 import { getToneLabel } from "@/lib/email-generation/tone-guidance";
 import { SendEmailButton } from "@/components/emails/SendEmailButton";
 import type { SavedEmail } from "@/types/email-generation";
+import type { EmailSendingProviderName } from "@/types/email-sending";
 
 interface EmailDraftCardProps {
   email: SavedEmail;
+  sendingProvider: EmailSendingProviderName;
 }
 
-export function EmailDraftCard({ email }: EmailDraftCardProps) {
+export function EmailDraftCard({ email, sendingProvider }: EmailDraftCardProps) {
   const { personalization } = email;
 
   return (
@@ -65,6 +67,7 @@ export function EmailDraftCard({ email }: EmailDraftCardProps) {
           <SendEmailButton
             emailId={email.id}
             recipientEmail={email.recipientEmail}
+            sendingProvider={sendingProvider}
           />
         </div>
       )}

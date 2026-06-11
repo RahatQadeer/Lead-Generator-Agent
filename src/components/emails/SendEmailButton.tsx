@@ -2,13 +2,25 @@
 
 import { useState } from "react";
 import { Loader2, Send } from "lucide-react";
+import { getSendingProviderLabel } from "@/lib/email-sending/factory";
+import type { EmailSendingProviderName } from "@/types/email-sending";
 
 interface SendEmailButtonProps {
   emailId: string;
   recipientEmail: string | null;
+  sendingProvider: EmailSendingProviderName;
 }
 
-export function SendEmailButton({ emailId, recipientEmail }: SendEmailButtonProps) {
+function getSendButtonLabel(provider: EmailSendingProviderName): string {
+  if (provider === "mock") return "Send email";
+  return `Send via ${getSendingProviderLabel(provider)}`;
+}
+
+export function SendEmailButton({
+  emailId,
+  recipientEmail,
+  sendingProvider,
+}: SendEmailButtonProps) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
@@ -66,7 +78,7 @@ export function SendEmailButton({ emailId, recipientEmail }: SendEmailButtonProp
         ) : (
           <>
             <Send className="h-3.5 w-3.5" />
-            Send via Gmail
+            {getSendButtonLabel(sendingProvider)}
           </>
         )}
       </button>

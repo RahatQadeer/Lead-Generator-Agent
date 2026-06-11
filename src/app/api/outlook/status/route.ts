@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getGmailConnection } from "@/lib/gmail/connection";
+import { getOutlookConnection } from "@/lib/outlook/connection";
 import { getConfiguredSendingProviderName } from "@/lib/email-sending/factory";
 import { createClient } from "@/lib/supabase/server";
 
@@ -19,15 +19,14 @@ export async function GET() {
     );
   }
 
-  const connection = await getGmailConnection(user.id);
+  const connection = await getOutlookConnection(user.id);
   const provider = getConfiguredSendingProviderName();
 
   return NextResponse.json({
     success: true,
     status: {
       connected: Boolean(connection?.refresh_token),
-      accountAddress: connection?.gmail_address ?? user.email ?? null,
-      gmailAddress: connection?.gmail_address ?? user.email ?? null,
+      accountAddress: connection?.outlook_address ?? null,
       provider,
     },
   });

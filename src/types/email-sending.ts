@@ -1,4 +1,4 @@
-export type EmailSendingProviderName = "mock" | "gmail";
+export type EmailSendingProviderName = "mock" | "gmail" | "outlook";
 
 export interface SendOutreachInput {
   to: string;
@@ -13,8 +13,11 @@ export interface SendOutreachResult {
   sentAt: string;
 }
 
-export interface GmailConnectionStatus {
+export interface EmailProviderConnectionStatus {
   connected: boolean;
-  gmailAddress: string | null;
+  accountAddress: string | null;
   provider: EmailSendingProviderName;
 }
+
+/** @deprecated Use EmailProviderConnectionStatus */
+export type GmailConnectionStatus = EmailProviderConnectionStatus;

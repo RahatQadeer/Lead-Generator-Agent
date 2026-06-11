@@ -360,6 +360,36 @@ export interface Database {
         };
         Relationships: [];
       };
+      outlook_connections: {
+        Row: {
+          user_id: string;
+          outlook_address: string;
+          refresh_token: string;
+          access_token: string | null;
+          token_expires_at: string | null;
+          connected_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          outlook_address: string;
+          refresh_token: string;
+          access_token?: string | null;
+          token_expires_at?: string | null;
+          connected_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          outlook_address?: string;
+          refresh_token?: string;
+          access_token?: string | null;
+          token_expires_at?: string | null;
+          connected_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

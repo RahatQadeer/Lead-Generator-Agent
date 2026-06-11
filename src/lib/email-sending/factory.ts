@@ -1,13 +1,28 @@
 import type { EmailSendingProviderName } from "@/types/email-sending";
 
 export function getConfiguredSendingProviderName(): EmailSendingProviderName {
-  const provider = process.env.GMAIL_SENDING_PROVIDER?.toLowerCase();
+  const provider =
+    process.env.EMAIL_SENDING_PROVIDER?.toLowerCase() ??
+    process.env.GMAIL_SENDING_PROVIDER?.toLowerCase();
 
-  if (provider === "gmail") {
-    return "gmail";
+  if (provider === "gmail" || provider === "outlook") {
+    return provider;
   }
 
   return "mock";
+}
+
+export function getSendingProviderLabel(
+  provider: EmailSendingProviderName
+): string {
+  switch (provider) {
+    case "gmail":
+      return "Gmail";
+    case "outlook":
+      return "Outlook";
+    default:
+      return "Mock";
+  }
 }
 
 export function getGoogleOAuthCredentials(): {

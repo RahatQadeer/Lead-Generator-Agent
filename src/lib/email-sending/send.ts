@@ -2,6 +2,7 @@ import { EmailSendingError, isEmailSendingError } from "@/lib/email-sending/erro
 import { getConfiguredSendingProviderName } from "@/lib/email-sending/factory";
 import { sendViaGmail } from "@/lib/email-sending/gmail-sender";
 import { sendViaMock } from "@/lib/email-sending/mock-sender";
+import { sendViaOutlook } from "@/lib/email-sending/outlook-sender";
 import type { SendOutreachInput, SendOutreachResult } from "@/types/email-sending";
 
 export async function sendOutreachEmail(
@@ -12,6 +13,10 @@ export async function sendOutreachEmail(
 
   if (provider === "gmail") {
     return sendViaGmail(userId, input);
+  }
+
+  if (provider === "outlook") {
+    return sendViaOutlook(userId, input);
   }
 
   return sendViaMock(input);

@@ -39,7 +39,11 @@ export default async function EmailsPage() {
       ) : (
         <div className="space-y-4">
           {emails.map((email) => (
-            <EmailDraftCard key={email.id} email={email} />
+            <EmailDraftCard
+              key={email.id}
+              email={email}
+              sendingProvider={sendingProvider}
+            />
           ))}
         </div>
       )}

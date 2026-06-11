@@ -272,11 +272,40 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## EMAIL-005 — Outlook Sending
+
+| Criteria | Implementation |
+|----------|----------------|
+| Provider | `outlook` via `EMAIL_SENDING_PROVIDER=outlook` |
+| Microsoft Graph | `POST /me/sendMail` with OAuth refresh token |
+| OAuth flow | `/auth/outlook` → Microsoft login → `/auth/outlook/callback` |
+| Token storage | `outlook_connections` table |
+
+**API:**
+- `POST /api/emails/send` (same route, provider selected by env)
+- `GET /api/outlook/status` — connection status
+
+**UI:** **Connect Outlook** on **Settings**, send button label updates to **Send via Outlook**.
+
+**Migration:** `014_outlook_connections.sql`
+
+### Outlook setup
+
+1. Register an app in [Azure Portal](https://portal.azure.com) → Microsoft Entra ID → App registrations
+2. Add redirect URI: `http://localhost:3000/auth/outlook/callback`
+3. Add API permissions: `Mail.Send`, `User.Read`, `offline_access`
+4. Create a client secret and set `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` in `.env.local`
+5. Run migration `014`
+6. Set `EMAIL_SENDING_PROVIDER=outlook`
+7. **Settings → Connect Outlook**, then send from **Emails**
+
+Use `EMAIL_SENDING_PROVIDER=mock` to mark sent without a real API call.
+
 ## EMAIL-004 — Gmail Sending
 
 | Criteria | Implementation |
 |----------|----------------|
-| Provider abstraction | `mock` (default) or `gmail` via `GMAIL_SENDING_PROVIDER` |
+| Provider abstraction | `mock` (default), `gmail`, or `outlook` via `EMAIL_SENDING_PROVIDER` |
 | Gmail API | `users.messages.send` with OAuth refresh token |
 | OAuth scopes | `gmail.send` added to Google login flow |
 | Token storage | `gmail_connections` table (refresh token from Supabase session) |
@@ -298,7 +327,7 @@ curl -X POST http://localhost:3000/api/leads/score \
 4. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` in `.env.local` (same OAuth client as Supabase)
 5. Run migrations `012` and `013`
 6. Sign in via **Settings → Connect Gmail** (re-consent grants send scope)
-7. For real sends: `GMAIL_SENDING_PROVIDER=gmail`; use `mock` to mark sent without API calls
+7. For real sends: `EMAIL_SENDING_PROVIDER=gmail`; use `mock` to mark sent without API calls
 
 ### Testing EMAIL-004
 
