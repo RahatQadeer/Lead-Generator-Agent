@@ -83,3 +83,29 @@ export interface EmailMetrics {
   recentCampaigns: RecentCampaignMetric[];
   recentReplies: RecentReplyMetric[];
 }
+
+export interface ConversionFunnelStage {
+  key: string;
+  label: string;
+  count: number;
+  rateFromPrevious: number | null;
+  rateFromStart: number | null;
+}
+
+export interface ConversionRateMetric {
+  key: string;
+  label: string;
+  value: number | null;
+  description: string;
+}
+
+export interface ConversionMetrics {
+  discoveredCount: number;
+  enrichedCount: number;
+  contactedCount: number;
+  repliedContactCount: number;
+  emailsSent: number;
+  emailsReplied: number;
+  funnel: ConversionFunnelStage[];
+  rates: ConversionRateMetric[];
+}

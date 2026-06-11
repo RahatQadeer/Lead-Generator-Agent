@@ -272,6 +272,29 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## DASH-004 — Display Conversion Metrics
+
+| Metric | Formula |
+|--------|---------|
+| Enrich rate | Enriched ÷ discovered |
+| Outreach rate | Contacted ÷ enriched |
+| Email reply rate | Replies ÷ emails sent |
+| Contact reply rate | Replied contacts ÷ contacted |
+| End-to-end | Replied contacts ÷ discovered |
+
+**Funnel:** Discovered → Enriched → Contacted → Replied
+
+**Module:** `src/lib/dashboard/conversion-metrics.ts` — `getConversionMetrics()`
+
+**UI:** `ConversionMetricsPanel` on **Dashboard** and **Analytics**
+
+### Testing DASH-004
+
+1. Discover contacts → funnel shows **Discovered**
+2. Enrich leads → **Enrich rate** updates
+3. Send emails → **Contacted** stage and **Outreach rate** populate
+4. Detect replies → **Replied** stage and reply rates update
+
 ## DASH-003 — Display Email Metrics
 
 | Metric | Source |
