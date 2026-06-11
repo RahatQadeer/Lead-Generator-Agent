@@ -121,6 +121,30 @@ export async function getOutreachEmailsByUserId(
   return (data as OutreachEmailWithContact[]).map(mapOutreachEmailRow);
 }
 
+export async function getDraftOutreachEmails(
+  userId: string,
+  emailIds?: string[]
+): Promise<SavedEmail[]> {
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("outreach_emails")
+    .select("*, contacts(full_name, title, email)")
+    .eq("user_id", userId)
+    .eq("status", "draft")
+    .order("created_at", { ascending: true });
+
+  if (emailIds && emailIds.length > 0) {
+    query = query.in("id", emailIds);
+  }
+
+  const { data, error } = await query;
+
+  if (error || !data) return [];
+
+  return (data as OutreachEmailWithContact[]).map(mapOutreachEmailRow);
+}
+
 export async function markOutreachEmailSent(
   userId: string,
   emailId: string,
@@ -128,6 +152,7 @@ export async function markOutreachEmailSent(
     recipientEmail: string;
     gmailMessageId: string;
     sentAt: string;
+    campaignId?: string;
   }
 ): Promise<SavedEmail | null> {
   const supabase = await createClient();
@@ -139,6 +164,7 @@ export async function markOutreachEmailSent(
       recipient_email: input.recipientEmail,
       gmail_message_id: input.gmailMessageId,
       sent_at: input.sentAt,
+      campaign_id: input.campaignId ?? null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", emailId)

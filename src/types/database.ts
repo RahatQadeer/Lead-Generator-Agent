@@ -287,6 +287,7 @@ export interface Database {
           sent_at: string | null;
           gmail_message_id: string | null;
           recipient_email: string | null;
+          campaign_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -306,6 +307,7 @@ export interface Database {
           sent_at?: string | null;
           gmail_message_id?: string | null;
           recipient_email?: string | null;
+          campaign_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -325,6 +327,52 @@ export interface Database {
           sent_at?: string | null;
           gmail_message_id?: string | null;
           recipient_email?: string | null;
+          campaign_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      outreach_campaigns: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          status: string;
+          provider: string;
+          total_count: number;
+          sent_count: number;
+          failed_count: number;
+          started_at: string;
+          completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name?: string;
+          status?: string;
+          provider: string;
+          total_count?: number;
+          sent_count?: number;
+          failed_count?: number;
+          started_at?: string;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          status?: string;
+          provider?: string;
+          total_count?: number;
+          sent_count?: number;
+          failed_count?: number;
+          started_at?: string;
+          completed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };

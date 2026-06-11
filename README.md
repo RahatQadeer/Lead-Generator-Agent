@@ -272,6 +272,28 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## EMAIL-006 — Send Outreach Campaigns
+
+| Criteria | Implementation |
+|----------|----------------|
+| Batch send | Send all draft emails in one campaign |
+| Campaign tracking | `outreach_campaigns` table with sent/failed counts |
+| Per-email link | `outreach_emails.campaign_id` ties drafts to a campaign |
+| Rate limiting | 400ms delay between sends in a campaign |
+
+**API:** `POST /api/emails/campaigns/send` with optional `{ emailIds?, name? }`
+
+**UI:** **Send all drafts** panel and **Recent campaigns** on **Emails** page.
+
+**Migration:** `015_outreach_campaigns.sql`
+
+### Testing EMAIL-006
+
+1. Generate multiple drafts on **Leads**
+2. Go to **Emails** → click **Send all drafts**
+3. Review campaign status (completed / partial / failed) and per-email results
+4. Use `EMAIL_SENDING_PROVIDER=mock` to test without Gmail or Outlook
+
 ## EMAIL-005 — Outlook Sending
 
 | Criteria | Implementation |

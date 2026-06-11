@@ -1,12 +1,9 @@
 import { NextResponse } from "next/server";
-import { getOutreachEmailById, markOutreachEmailSent } from "@/lib/emails/queries";
+import { getOutreachEmailById } from "@/lib/emails/queries";
 import { assertSendingProviderReady } from "@/lib/email-sending/assert-provider-ready";
 import { EmailSendingError } from "@/lib/email-sending/errors";
-import {
-  assertRecipientEmail,
-  sendOutreachEmail,
-  toEmailSendingErrorResponse,
-} from "@/lib/email-sending/send";
+import { sendOutreachDraft } from "@/lib/email-sending/send-draft";
+import { toEmailSendingErrorResponse } from "@/lib/email-sending/send";
 import { getConfiguredSendingProviderName } from "@/lib/email-sending/factory";
 import { createClient } from "@/lib/supabase/server";
 
@@ -63,45 +60,21 @@ export async function POST(request: Request) {
       );
     }
 
-    if (draft.status !== "draft") {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "ALREADY_SENT",
-            message: "This email has already been sent.",
-            retryable: false,
-          },
-        },
-        { status: 400 }
-      );
-    }
-
-    const recipientEmail = assertRecipientEmail(draft.recipientEmail);
     const provider = getConfiguredSendingProviderName();
-
     await assertSendingProviderReady(user.id, provider);
 
-    const result = await sendOutreachEmail(user.id, {
-      to: recipientEmail,
-      subject: draft.subject,
-      body: draft.body,
-      fromAddress: user.email ?? "me",
-    });
-
-    const saved = await markOutreachEmailSent(user.id, emailId, {
-      recipientEmail,
-      gmailMessageId: result.messageId,
-      sentAt: result.sentAt,
-    });
+    const saved = await sendOutreachDraft(
+      user.id,
+      draft,
+      user.email ?? "me"
+    );
 
     return NextResponse.json({
       success: true,
-      email: saved ?? draft,
+      email: saved,
       meta: {
-        provider: result.provider,
-        messageId: result.messageId,
-        recipientEmail,
+        provider,
+        recipientEmail: saved.recipientEmail,
       },
     });
   } catch (error) {
