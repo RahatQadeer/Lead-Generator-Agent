@@ -48,6 +48,19 @@ export async function saveOutlookConnection(
   }
 }
 
+export async function deleteOutlookConnection(userId: string): Promise<void> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("outlook_connections")
+    .delete()
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("Failed to delete Outlook connection:", error.message);
+  }
+}
+
 export async function updateOutlookAccessToken(
   userId: string,
   accessToken: string,

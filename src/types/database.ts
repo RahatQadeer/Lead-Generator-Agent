@@ -564,6 +564,24 @@ export interface Database {
         };
         Relationships: [];
       };
+      outlook_settings: {
+        Row: {
+          user_id: string;
+          sending_provider: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          sending_provider?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          sending_provider?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

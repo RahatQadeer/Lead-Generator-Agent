@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
+import { deleteOutlookConnection } from "@/lib/outlook/connection";
 import { getOutlookSettingsStatus } from "@/lib/outlook/settings";
 import { createClient } from "@/lib/supabase/server";
 
-export async function GET() {
+export async function DELETE() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -18,14 +19,8 @@ export async function GET() {
     );
   }
 
+  await deleteOutlookConnection(user.id);
   const status = await getOutlookSettingsStatus(user.id, user.email);
 
-  return NextResponse.json({
-    success: true,
-    status: {
-      ...status,
-      outlookAddress: status.accountAddress,
-      provider: status.effectiveProvider,
-    },
-  });
+  return NextResponse.json({ success: true, status });
 }

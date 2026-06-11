@@ -272,6 +272,35 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## SET-003 — Manage Outlook Configuration
+
+| Criteria | Implementation |
+|----------|----------------|
+| Per-user provider | `outlook_settings.sending_provider` (mock \| outlook) |
+| OAuth connection | Existing `outlook_connections` + connect/reconnect flow |
+| Provider resolution | User preference → Outlook connection → env → mock fallback |
+| Disconnect | `DELETE /api/outlook/connection` |
+| Test connection | `POST /api/outlook/test` — Microsoft Graph `/me` |
+
+**API:**
+- `GET /api/outlook/status` — connection + effective provider
+- `PUT /api/outlook/settings` — save sending provider preference
+- `DELETE /api/outlook/settings` — reset to environment defaults
+- `DELETE /api/outlook/connection` — remove OAuth tokens
+- `POST /api/outlook/test` — verify Microsoft Graph access
+
+**UI:** **Settings** → Outlook sending card
+
+**Migration:** `021_outlook_settings.sql`
+
+### Testing SET-003
+
+1. Run migration `021` in Supabase
+2. **Settings** → save **Mock** → send email uses mock provider
+3. **Connect Outlook** → OAuth flow → status shows connected account
+4. Save **Outlook** provider → **Test connection** → Graph profile success
+5. **Disconnect** removes tokens; effective provider falls back to mock
+
 ## SET-002 — Manage Gmail Configuration
 
 | Criteria | Implementation |

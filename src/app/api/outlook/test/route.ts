@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { getOutlookSettingsStatus } from "@/lib/outlook/settings";
+import { testOutlookConnection } from "@/lib/outlook/test-connection";
 import { createClient } from "@/lib/supabase/server";
 
-export async function GET() {
+export async function POST() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -18,14 +18,10 @@ export async function GET() {
     );
   }
 
-  const status = await getOutlookSettingsStatus(user.id, user.email);
+  const result = await testOutlookConnection(user.id);
 
   return NextResponse.json({
-    success: true,
-    status: {
-      ...status,
-      outlookAddress: status.accountAddress,
-      provider: status.effectiveProvider,
-    },
+    success: result.success,
+    result,
   });
 }

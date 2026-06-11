@@ -1,7 +1,7 @@
 import { Settings } from "lucide-react";
 import { GmailSettingsCard } from "@/components/settings/GmailSettingsCard";
 import { OpenAISettingsCard } from "@/components/settings/OpenAISettingsCard";
-import { OutlookConnectionCard } from "@/components/settings/OutlookConnectionCard";
+import { OutlookSettingsCard } from "@/components/settings/OutlookSettingsCard";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
 import { PageHeader } from "@/components/layout/PageHeader";
 
@@ -20,7 +20,7 @@ export default async function SettingsPage() {
       <div className="mb-6 grid gap-6 lg:grid-cols-2">
         <OpenAISettingsCard />
         <GmailSettingsCard />
-        <OutlookConnectionCard />
+        <OutlookSettingsCard />
       </div>
 
       <div className="max-w-xl rounded-2xl border border-white/5 bg-slate-900/50 p-6 sm:p-8">
