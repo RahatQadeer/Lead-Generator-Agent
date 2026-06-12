@@ -21,7 +21,8 @@ import {
 } from "@/lib/search/constants";
 import { toSearchCriteriaInput } from "@/lib/search/mapper";
 import { TagInput } from "@/components/search/TagInput";
-import { Field, inputClassName, selectClassName } from "@/components/ui/Field";
+import { Combobox } from "@/components/ui/Combobox";
+import { Field, inputClassName } from "@/components/ui/Field";
 import type { SearchCriteriaInput, SearchRecord } from "@/types/search";
 
 const EMPTY_FORM: SearchCriteriaInput = {
@@ -138,7 +139,7 @@ export function SearchBuilderForm({
             <p className="text-sm text-slate-400">
               {isEditing
                 ? `Updating "${editingSearch.name}"`
-                : "Build your ideal customer profile"}
+                : "Describe the companies and people you want to reach"}
             </p>
           </div>
         </div>
@@ -167,54 +168,64 @@ export function SearchBuilderForm({
       <BuilderSection
         step={1}
         icon={Building2}
-        title="Target company"
-        description="Who are you looking for?"
+        title="Company profile"
+        description="Define the type of company you want to find"
       >
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Search name" htmlFor="name" error={errors.name}>
+          <Field
+            label="Campaign name"
+            htmlFor="name"
+            error={errors.name}
+            required
+            hint="A short name so you can recognize this search later"
+          >
             <input
               id="name"
               type="text"
               value={form.name}
               onChange={(e) => updateField("name", e.target.value)}
-              placeholder="e.g. US Healthcare CTOs"
+              placeholder="e.g. US SaaS companies"
               disabled={isPending}
               className={inputClassName}
             />
           </Field>
 
-          <Field label="Industry" htmlFor="industry" error={errors.industry}>
-            <select
+          <Field
+            label="Industry"
+            htmlFor="industry"
+            error={errors.industry}
+            required
+            hint="Pick a suggestion or type your own, then press Enter"
+          >
+            <Combobox
               id="industry"
               value={form.industry}
-              onChange={(e) => updateField("industry", e.target.value)}
+              onChange={(v) => updateField("industry", v)}
+              options={INDUSTRIES}
+              placeholder="e.g. Healthcare, FinTech, SaaS"
               disabled={isPending}
-              className={selectClassName}
-            >
-              <option value="">Select industry</option>
-              {INDUSTRIES.map((industry) => (
-                <option key={industry} value={industry}>
-                  {industry}
-                </option>
-              ))}
-            </select>
+              allowCustom
+              emptyMessage="No matching industries — press Enter to use your text"
+            />
           </Field>
 
-          <Field label="Country" htmlFor="country" error={errors.country}>
-            <select
+          <Field
+            label="Country"
+            htmlFor="country"
+            error={errors.country}
+            required
+            hint="Search and pick a country"
+          >
+            <Combobox
               id="country"
               value={form.country}
-              onChange={(e) => updateField("country", e.target.value)}
+              onChange={(v) => updateField("country", v)}
+              options={COUNTRIES}
+              placeholder="Search countries…"
               disabled={isPending}
-              className={selectClassName}
-            >
-              <option value="">Select country</option>
-              {COUNTRIES.map((country) => (
-                <option key={country} value={country}>
-                  {country}
-                </option>
-              ))}
-            </select>
+              emptyMessage="No matching country — check spelling"
+              maxOptions={80}
+            />
           </Field>
 
           <div className="sm:col-span-2">
@@ -222,7 +233,8 @@ export function SearchBuilderForm({
               label="Company size"
               htmlFor="companySizeMin"
               error={errors.companySize}
-              hint="Select a preset or enter a custom employee range"
+              required
+              hint="How many employees the company should have"
             >
               <div className="mb-3 flex flex-wrap gap-2">
                 {COMPANY_SIZE_PRESETS.map((preset) => {
@@ -282,21 +294,22 @@ export function SearchBuilderForm({
       <BuilderSection
         step={2}
         icon={Filter}
-        title="Filters"
-        description="Narrow down by keywords and tech stack"
+        title="Refine your search"
+        description="Optional filters to find better matches"
       >
         <div className="space-y-5">
           <Field
             label="Keywords"
             htmlFor="keywords"
             error={errors.keywords}
-            hint="Company descriptors — e.g. digital health, SaaS, B2B"
+            optional
+            hint="What kind of business they are — e.g. SaaS, B2B, startup"
           >
             <TagInput
               id="keywords"
               value={form.keywords}
               onChange={(v) => updateField("keywords", v)}
-              placeholder="Add keyword and press Enter"
+              placeholder="Type a keyword and press Enter"
               disabled={isPending}
             />
           </Field>
@@ -305,13 +318,14 @@ export function SearchBuilderForm({
             label="Technologies"
             htmlFor="technologies"
             error={errors.technologies}
-            hint="Tech stack or tools the company uses"
+            optional
+            hint="Software or tools they use — e.g. React, AWS, Salesforce"
           >
             <TagInput
               id="technologies"
               value={form.technologies}
               onChange={(v) => updateField("technologies", v)}
-              placeholder="Add technology and press Enter"
+              placeholder="Type a technology and press Enter"
               suggestions={TECHNOLOGY_SUGGESTIONS}
               disabled={isPending}
             />
@@ -322,20 +336,21 @@ export function SearchBuilderForm({
       <BuilderSection
         step={3}
         icon={Briefcase}
-        title="Decision-makers"
-        description="Who should we reach out to?"
+        title="People to contact"
+        description="Who should receive your outreach?"
       >
         <Field
           label="Job titles"
           htmlFor="jobTitles"
           error={errors.jobTitles}
-          hint="At least one job title is required"
+          required
+          hint="Add at least one role — e.g. CEO, CTO, Marketing Director"
         >
           <TagInput
             id="jobTitles"
             value={form.jobTitles}
             onChange={(v) => updateField("jobTitles", v)}
-            placeholder="Add job title and press Enter"
+            placeholder="Type a job title and press Enter"
             suggestions={JOB_TITLE_SUGGESTIONS}
             disabled={isPending}
           />
@@ -345,16 +360,17 @@ export function SearchBuilderForm({
       <BuilderSection
         step={4}
         icon={Ban}
-        title="Exclusion rules"
-        description="Companies matching these will be skipped"
+        title="Companies to skip"
+        description="Optional — block companies you do not want to contact"
         variant="exclude"
       >
         <div className="space-y-5">
           <Field
-            label="Exclude domains"
+            label="Blocked websites"
             htmlFor="excludeDomains"
             error={errors.excludeDomains}
-            hint="e.g. competitor.com, bigcorp.io — no http:// needed"
+            optional
+            hint="Skip companies on these domains — e.g. competitor.com"
           >
             <TagInput
               id="excludeDomains"
@@ -367,10 +383,11 @@ export function SearchBuilderForm({
           </Field>
 
           <Field
-            label="Exclude industries"
+            label="Blocked industries"
             htmlFor="excludeIndustries"
             error={errors.excludeIndustries}
-            hint="Industries to avoid even if they match other criteria"
+            optional
+            hint="Skip companies in these industries"
           >
             <TagInput
               id="excludeIndustries"
@@ -384,10 +401,11 @@ export function SearchBuilderForm({
           </Field>
 
           <Field
-            label="Exclude keywords"
+            label="Blocked keywords"
             htmlFor="excludeKeywords"
             error={errors.excludeKeywords}
-            hint="Companies containing these terms will be filtered out"
+            optional
+            hint="Skip companies that mention these words"
           >
             <TagInput
               id="excludeKeywords"
@@ -400,10 +418,11 @@ export function SearchBuilderForm({
           </Field>
 
           <Field
-            label="Exclude countries"
+            label="Blocked countries"
             htmlFor="excludeCountries"
             error={errors.excludeCountries}
-            hint="Countries to skip from results"
+            optional
+            hint="Skip companies based in these countries"
           >
             <TagInput
               id="excludeCountries"

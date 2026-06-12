@@ -76,13 +76,15 @@ export function ContactsPreview({
     <div className="mt-4 rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-blue-300">Decision-makers</p>
+          <p className="text-sm font-medium text-blue-300">
+            Step 2 · Find people
+          </p>
           <p className="text-xs text-slate-500">
-            Find contacts at companies from &quot;{searchName}&quot;
+            Find the right people at companies from &quot;{searchName}&quot;
           </p>
           {jobTitles.length > 0 && (
             <p className="mt-1 text-xs text-slate-400">
-              Targeting: {jobTitles.join(", ")}
+              Looking for: {jobTitles.join(", ")}
             </p>
           )}
         </div>
@@ -100,7 +102,7 @@ export function ContactsPreview({
           ) : (
             <>
               <Users className="h-4 w-4" />
-              Discover decision-makers
+              Find people
             </>
           )}
         </button>
@@ -116,7 +118,7 @@ export function ContactsPreview({
             <p>{result.error.message}</p>
             {result.error.code === "NO_COMPANIES" && (
               <p className="mt-1 text-xs text-red-300/90">
-                Run company discovery on this search first, then try again.
+                Find companies first (Step 1), then try again.
               </p>
             )}
             {result.error.code === "PLAN_RESTRICTED" && (
@@ -162,7 +164,7 @@ export function ContactsPreview({
               <span className="text-violet-300">
                 {result.meta?.duplicateCount} duplicates skipped
                 {(result.meta?.knownDuplicateCount ?? 0) > 0 &&
-                  ` (${result.meta?.knownDuplicateCount} already in pipeline)`}
+                  ` (${result.meta?.knownDuplicateCount} already saved)`}
               </span>
             )}
           </div>

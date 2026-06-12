@@ -16,19 +16,7 @@ export const INDUSTRIES = [
   "Other",
 ] as const;
 
-export const COUNTRIES = [
-  "United States",
-  "United Kingdom",
-  "Canada",
-  "Australia",
-  "Germany",
-  "France",
-  "Netherlands",
-  "India",
-  "Singapore",
-  "United Arab Emirates",
-  "Other",
-] as const;
+export { COUNTRIES } from "@/lib/search/countries";
 
 export const COMPANY_SIZE_PRESETS = [
   { label: "1 – 10", min: 1, max: 10 },

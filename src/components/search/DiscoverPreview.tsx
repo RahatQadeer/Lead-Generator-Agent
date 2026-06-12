@@ -70,9 +70,11 @@ export function DiscoverPreview({ searchId, searchName }: DiscoverPreviewProps) 
     <div className="mt-4 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-cyan-300">Company discovery</p>
+          <p className="text-sm font-medium text-cyan-300">
+            Step 1 · Find companies
+          </p>
           <p className="text-xs text-slate-500">
-            Preview companies matching &quot;{searchName}&quot;
+            Search for companies that match &quot;{searchName}&quot;
           </p>
         </div>
         <button
@@ -89,7 +91,7 @@ export function DiscoverPreview({ searchId, searchName }: DiscoverPreviewProps) 
           ) : (
             <>
               <Building2 className="h-4 w-4" />
-              Discover companies
+              Find companies
             </>
           )}
         </button>
@@ -144,7 +146,7 @@ export function DiscoverPreview({ searchId, searchName }: DiscoverPreviewProps) 
               <span className="text-violet-300">
                 {result.meta?.duplicateCount} duplicates skipped
                 {(result.meta?.knownDuplicateCount ?? 0) > 0 &&
-                  ` (${result.meta?.knownDuplicateCount} already in pipeline)`}
+                  ` (${result.meta?.knownDuplicateCount} already saved)`}
               </span>
             )}
             {(result.meta?.excludedCount ?? 0) > 0 && (
