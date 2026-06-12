@@ -30,6 +30,12 @@ import { ScoreLeadsPreview } from "@/components/search/ScoreLeadsPreview";
 import { VerifyEmailsPreview } from "@/components/search/VerifyEmailsPreview";
 import { SearchStatusBadge } from "@/components/search/SearchStatusBadge";
 import { selectClassName } from "@/components/ui/Field";
+import {
+  btnIconClassName,
+  cardClassName,
+  tagDefaultClassName,
+  tagExcludeClassName,
+} from "@/lib/ui/styles";
 import type { SearchRecord, SearchStatus } from "@/types/search";
 
 interface SearchCardProps {
@@ -71,33 +77,31 @@ export function SearchCard({
 
   return (
     <article
-      className={`rounded-2xl border bg-slate-900/50 transition-colors ${
-        isEditing
-          ? "border-cyan-500/30 ring-1 ring-cyan-500/20"
-          : "border-white/5 hover:border-white/10"
+      className={`${cardClassName} transition-shadow hover:shadow-md ${
+        isEditing ? "border-blue-300 ring-2 ring-blue-100" : ""
       }`}
     >
-      <div className="p-5">
+      <div className="p-5 sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="truncate text-base font-semibold text-white">
+              <h3 className="break-words text-base font-semibold text-gray-900">
                 {search.name}
               </h3>
               <SearchStatusBadge status={search.status} />
               {hasExclusions(search) && (
-                <span className="inline-flex items-center gap-1 rounded-full border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-xs text-red-300">
+                <span className="inline-flex items-center gap-1 rounded-full border border-red-100 bg-red-50 px-2 py-0.5 text-xs text-red-700">
                   <Ban className="h-3 w-3" />
                   {countExclusions(search.exclusions)} excluded
                 </span>
               )}
               {isEditing && (
-                <span className="rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-xs text-cyan-300">
+                <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
                   Editing
                 </span>
               )}
             </div>
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1.5 text-xs text-gray-500">
               Saved{" "}
               {new Date(search.createdAt).toLocaleDateString("en-US", {
                 month: "short",
@@ -113,11 +117,11 @@ export function SearchCard({
             </p>
           </div>
 
-          <div className="flex shrink-0 gap-1">
+          <div className="flex shrink-0 gap-0.5">
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-white/5 hover:text-white"
+              className={btnIconClassName}
               aria-label={expanded ? "Collapse details" : "Expand details"}
             >
               {expanded ? (
@@ -130,7 +134,7 @@ export function SearchCard({
               type="button"
               onClick={handleDuplicate}
               disabled={isPending}
-              className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-50"
+              className={btnIconClassName}
               aria-label={`Duplicate ${search.name}`}
             >
               <Copy className="h-4 w-4" />
@@ -139,7 +143,7 @@ export function SearchCard({
               type="button"
               onClick={onEdit}
               disabled={isPending || isEditing}
-              className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-cyan-500/10 hover:text-cyan-400 disabled:opacity-50"
+              className={`${btnIconClassName} hover:bg-blue-50 hover:text-blue-600`}
               aria-label={`Edit ${search.name}`}
             >
               <Pencil className="h-4 w-4" />
@@ -148,7 +152,7 @@ export function SearchCard({
               type="button"
               onClick={handleDelete}
               disabled={isPending}
-              className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
+              className={`${btnIconClassName} hover:bg-red-50 hover:text-red-600`}
               aria-label={`Delete ${search.name}`}
             >
               {isPending ? (
@@ -160,7 +164,7 @@ export function SearchCard({
           </div>
         </div>
 
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <CriteriaRow icon={Building2} label="Industry" value={search.industry} />
           <CriteriaRow icon={Globe} label="Country" value={search.country} />
           <CriteriaRow
@@ -180,7 +184,7 @@ export function SearchCard({
         </div>
 
         {expanded && (
-          <div className="mt-4 space-y-3 border-t border-white/5 pt-4">
+          <div className="mt-5 space-y-4 border-t border-gray-100 pt-5">
             {search.keywords.length > 0 && (
               <TagGroup icon={Tag} label="Keywords" tags={search.keywords} />
             )}
@@ -192,8 +196,8 @@ export function SearchCard({
             )}
 
             {hasExclusions(search) && (
-              <div className="space-y-2 rounded-xl border border-red-500/10 bg-red-500/5 p-3">
-                <div className="flex items-center gap-1.5 text-xs font-medium text-red-300">
+              <div className="space-y-2 rounded-xl border border-red-100 bg-red-50/50 p-4">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-red-700">
                   <Ban className="h-3 w-3" />
                   Companies to skip
                 </div>
@@ -212,11 +216,11 @@ export function SearchCard({
               </div>
             )}
 
-            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
-              <h4 className="text-sm font-semibold text-white">
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <h4 className="text-sm font-semibold text-gray-900">
                 Outreach steps
               </h4>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-gray-500">
                 Run these steps in order to find companies, contacts, and
                 prepare your campaign.
               </p>
@@ -246,7 +250,7 @@ export function SearchCard({
             </div>
 
             <div className="flex items-center gap-3 pt-2">
-              <label htmlFor={`status-${search.id}`} className="text-xs text-slate-500">
+              <label htmlFor={`status-${search.id}`} className="text-xs font-medium text-gray-500">
                 Status
               </label>
               <select
@@ -256,7 +260,7 @@ export function SearchCard({
                   handleStatusChange(e.target.value as SearchStatus)
                 }
                 disabled={isPending}
-                className={`${selectClassName} max-w-[160px] py-2 text-xs`}
+                className={`${selectClassName} max-w-[180px] !min-h-0 py-2 text-xs`}
               >
                 <option value="draft">Draft</option>
                 <option value="active">Active</option>
@@ -280,11 +284,11 @@ function CriteriaRow({
   value: string;
 }) {
   return (
-    <div className="flex items-start gap-2 text-sm">
-      <Icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-500" />
-      <div className="min-w-0">
-        <span className="text-xs text-slate-500">{label}</span>
-        <p className="truncate text-slate-300">{value}</p>
+    <div className="flex items-start gap-2.5 text-sm">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+      <div className="min-w-0 flex-1">
+        <span className="text-xs font-medium text-gray-500">{label}</span>
+        <p className="mt-0.5 break-words text-gray-900">{value}</p>
       </div>
     </div>
   );
@@ -301,17 +305,14 @@ function TagGroup({
 }) {
   return (
     <div>
-      <div className="mb-1.5 flex items-center gap-1.5 text-xs text-slate-500">
-        <Icon className="h-3 w-3" />
+      <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-gray-500">
+        <Icon className="h-3.5 w-3.5" />
         {label}
       </div>
       <div className="flex flex-wrap gap-1.5">
         {tags.map((tag) => (
-          <span
-            key={tag}
-            className="rounded-md border border-white/5 bg-white/5 px-2 py-0.5 text-xs text-slate-400"
-          >
-            {tag}
+          <span key={tag} className={`${tagDefaultClassName} !font-normal`}>
+            <span className="break-all">{tag}</span>
           </span>
         ))}
       </div>
@@ -322,14 +323,11 @@ function TagGroup({
 function ExcludeTagGroup({ label, tags }: { label: string; tags: string[] }) {
   return (
     <div>
-      <span className="text-xs text-red-400/80">{label}</span>
-      <div className="mt-1 flex flex-wrap gap-1.5">
+      <span className="text-xs font-medium text-red-600">{label}</span>
+      <div className="mt-1.5 flex flex-wrap gap-1.5">
         {tags.map((tag) => (
-          <span
-            key={tag}
-            className="rounded-md border border-red-500/20 bg-red-500/10 px-2 py-0.5 text-xs text-red-300"
-          >
-            {tag}
+          <span key={tag} className={`${tagExcludeClassName} !font-normal`}>
+            <span className="break-all">{tag}</span>
           </span>
         ))}
       </div>

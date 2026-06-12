@@ -3,6 +3,12 @@
 import { useState, type KeyboardEvent } from "react";
 import { X, Plus } from "lucide-react";
 import { inputClassName } from "@/components/ui/Field";
+import {
+  btnSecondaryClassName,
+  pillInactiveClassName,
+  tagDefaultClassName,
+  tagExcludeClassName,
+} from "@/lib/ui/styles";
 
 interface TagInputProps {
   id: string;
@@ -52,34 +58,30 @@ export function TagInput({
   }
 
   const availableSuggestions = suggestions.filter((s) => !tags.includes(s));
+  const tagClass = isExclude ? tagExcludeClassName : tagDefaultClassName;
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
-        {tags.map((tag) => (
-          <span
-            key={tag}
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium ${
-              isExclude
-                ? "border-red-500/20 bg-red-500/10 text-red-200"
-                : "border-cyan-500/20 bg-cyan-500/10 text-cyan-200"
-            }`}
-          >
-            {tag}
-            <button
-              type="button"
-              onClick={() => removeTag(tag)}
-              disabled={disabled}
-              className={`rounded hover:text-white disabled:opacity-50 ${
-                isExclude ? "text-red-400" : "text-cyan-400"
-              }`}
-              aria-label={`Remove ${tag}`}
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </span>
-        ))}
-      </div>
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {tags.map((tag) => (
+            <span key={tag} className={tagClass}>
+              <span className="break-all">{tag}</span>
+              <button
+                type="button"
+                onClick={() => removeTag(tag)}
+                disabled={disabled}
+                className={`shrink-0 rounded hover:opacity-70 disabled:opacity-50 ${
+                  isExclude ? "text-red-500" : "text-blue-600"
+                }`}
+                aria-label={`Remove ${tag}`}
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
 
       <div className="flex gap-2">
         <input
@@ -97,7 +99,7 @@ export function TagInput({
           type="button"
           onClick={() => addTag(draft)}
           disabled={disabled || !draft.trim()}
-          className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-3 text-slate-300 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+          className={`${btnSecondaryClassName} !min-h-[44px] !px-3`}
           aria-label="Add tag"
         >
           <Plus className="h-4 w-4" />
@@ -112,11 +114,7 @@ export function TagInput({
               type="button"
               onClick={() => addTag(suggestion)}
               disabled={disabled}
-              className={`rounded-full border border-white/5 bg-white/5 px-2.5 py-1 text-xs text-slate-400 transition-colors disabled:opacity-50 ${
-                isExclude
-                  ? "hover:border-red-500/20 hover:bg-red-500/10 hover:text-red-300"
-                  : "hover:border-cyan-500/20 hover:bg-cyan-500/10 hover:text-cyan-300"
-              }`}
+              className={`${pillInactiveClassName} !rounded-full hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700`}
             >
               + {suggestion}
             </button>

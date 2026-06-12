@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { SearchBuilderForm } from "@/components/search/SearchBuilderForm";
 import { SavedSearchesPanel } from "@/components/search/SavedSearchesPanel";
+import { alertSuccessClassName } from "@/lib/ui/styles";
 import type { SearchRecord } from "@/types/search";
 
 interface SearchBuilderProps {
@@ -44,9 +45,9 @@ export function SearchBuilder({ initialSearches }: SearchBuilderProps) {
       {successMessage && (
         <div
           role="status"
-          className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200"
+          className={`flex items-center gap-3 ${alertSuccessClassName}`}
         >
-          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-400" />
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
           {successMessage}
         </div>
       )}

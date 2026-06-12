@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle } from "lucide-react";
+import { alertErrorClassName, alertWarningClassName } from "@/lib/ui/styles";
 
 const ERROR_MESSAGES: Record<string, string> = {
   login_required: "Please sign in to access this page.",
@@ -32,15 +33,13 @@ export function AuthErrorBanner({ errorCode }: AuthErrorBannerProps) {
   return (
     <div
       role="alert"
-      className={`mb-6 flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${
-        isInfo
-          ? "border-amber-500/20 bg-amber-500/10 text-amber-100"
-          : "border-red-500/20 bg-red-500/10 text-red-200"
+      className={`mb-6 flex items-start gap-3 ${
+        isInfo ? alertWarningClassName : alertErrorClassName
       }`}
     >
       <AlertCircle
         className={`mt-0.5 h-4 w-4 shrink-0 ${
-          isInfo ? "text-amber-400" : "text-red-400"
+          isInfo ? "text-amber-600" : "text-red-600"
         }`}
       />
       <p>{message}</p>
