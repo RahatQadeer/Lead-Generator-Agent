@@ -1,3 +1,8 @@
+import {
+  headingPageClassName,
+  iconTileSmClassName,
+  textSecondaryClassName,
+} from "@/lib/ui/styles";
 import type { LucideIcon } from "lucide-react";
 
 interface PageHeaderProps {
@@ -5,6 +10,7 @@ interface PageHeaderProps {
   label: string;
   title: string;
   description?: string;
+  action?: React.ReactNode;
 }
 
 export function PageHeader({
@@ -12,19 +18,25 @@ export function PageHeader({
   label,
   title,
   description,
+  action,
 }: PageHeaderProps) {
   return (
-    <div className="mb-8">
-      <div className="flex items-center gap-2 text-cyan-400">
-        <Icon className="h-5 w-5" />
-        <span className="text-sm font-medium">{label}</span>
+    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <div className={iconTileSmClassName}>
+            <Icon className="h-4 w-4" />
+          </div>
+          <span className="text-sm font-medium text-blue-600">{label}</span>
+        </div>
+        <h1 className={`mt-3 ${headingPageClassName}`}>{title}</h1>
+        {description && (
+          <p className={`mt-2 max-w-2xl ${textSecondaryClassName}`}>
+            {description}
+          </p>
+        )}
       </div>
-      <h1 className="mt-2 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-        {title}
-      </h1>
-      {description && (
-        <p className="mt-2 max-w-2xl text-slate-400">{description}</p>
-      )}
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }

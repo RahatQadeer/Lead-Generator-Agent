@@ -23,6 +23,18 @@ import { toSearchCriteriaInput } from "@/lib/search/mapper";
 import { TagInput } from "@/components/search/TagInput";
 import { Combobox } from "@/components/ui/Combobox";
 import { Field, inputClassName } from "@/components/ui/Field";
+import {
+  alertErrorClassName,
+  btnIconClassName,
+  btnPrimaryClassName,
+  btnSecondaryClassName,
+  cardClassName,
+  cardPaddingClassName,
+  headingSectionClassName,
+  iconTileClassName,
+  pillActiveClassName,
+  pillInactiveClassName,
+} from "@/lib/ui/styles";
 import type { SearchCriteriaInput, SearchRecord } from "@/types/search";
 
 const EMPTY_FORM: SearchCriteriaInput = {
@@ -113,30 +125,24 @@ export function SearchBuilderForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className={`rounded-2xl border bg-slate-900/50 p-6 sm:p-8 ${
-        isEditing
-          ? "border-cyan-500/30 ring-1 ring-cyan-500/20"
-          : "border-white/5"
+      className={`${cardClassName} ${cardPaddingClassName} ${
+        isEditing ? "border-blue-300 ring-2 ring-blue-100" : ""
       }`}
     >
-      <div className="mb-6 flex items-start justify-between gap-4">
+      <div className="mb-8 flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div
-            className={`flex h-10 w-10 items-center justify-center rounded-xl ${
-              isEditing ? "bg-cyan-500/20" : "bg-cyan-500/10"
-            }`}
-          >
+          <div className={iconTileClassName}>
             {isEditing ? (
-              <Pencil className="h-5 w-5 text-cyan-400" />
+              <Pencil className="h-5 w-5" />
             ) : (
-              <Search className="h-5 w-5 text-cyan-400" />
+              <Search className="h-5 w-5" />
             )}
           </div>
-          <div>
-            <h2 className="text-lg font-semibold text-white">
+          <div className="min-w-0">
+            <h2 className={headingSectionClassName}>
               {isEditing ? "Edit search" : "New search"}
             </h2>
-            <p className="text-sm text-slate-400">
+            <p className="mt-1 text-sm text-gray-500">
               {isEditing
                 ? `Updating "${editingSearch.name}"`
                 : "Describe the companies and people you want to reach"}
@@ -148,7 +154,7 @@ export function SearchBuilderForm({
             type="button"
             onClick={handleCancel}
             disabled={isPending}
-            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-50"
+            className={btnIconClassName}
             aria-label="Cancel edit"
           >
             <X className="h-5 w-5" />
@@ -157,10 +163,7 @@ export function SearchBuilderForm({
       </div>
 
       {errors.form && (
-        <div
-          className="mb-6 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200"
-          role="alert"
-        >
+        <div className={`mb-6 ${alertErrorClassName}`} role="alert">
           {errors.form}
         </div>
       )}
@@ -249,11 +252,9 @@ export function SearchBuilderForm({
                       type="button"
                       onClick={() => applySizePreset(preset.min, preset.max)}
                       disabled={isPending}
-                      className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
-                        isActive
-                          ? "border-cyan-500/40 bg-cyan-500/15 text-cyan-300"
-                          : "border-white/5 bg-white/5 text-slate-400 hover:border-cyan-500/30 hover:bg-cyan-500/10 hover:text-cyan-300"
-                      }`}
+                      className={
+                        isActive ? pillActiveClassName : pillInactiveClassName
+                      }
                     >
                       {preset.label}
                     </button>
@@ -437,13 +438,13 @@ export function SearchBuilderForm({
         </div>
       </BuilderSection>
 
-      <div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+      <div className="mt-8 flex flex-col-reverse gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:justify-end">
         {isEditing && (
           <button
             type="button"
             onClick={handleCancel}
             disabled={isPending}
-            className="rounded-xl border border-white/10 px-6 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-50"
+            className={btnSecondaryClassName}
           >
             Cancel
           </button>
@@ -451,7 +452,7 @@ export function SearchBuilderForm({
         <button
           type="submit"
           disabled={isPending}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-cyan-500/20 transition-all hover:shadow-cyan-500/30 disabled:opacity-60"
+          className={btnPrimaryClassName}
         >
           {isPending ? (
             <>
@@ -494,25 +495,25 @@ function BuilderSection({
 
   return (
     <section
-      className={`mb-6 border-b pb-6 last:mb-0 last:border-0 last:pb-0 ${
-        isExclude ? "border-red-500/10" : "border-white/5"
+      className={`mb-8 border-b pb-8 last:mb-0 last:border-0 last:pb-0 ${
+        isExclude ? "border-red-100" : "border-gray-100"
       }`}
     >
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-5 flex items-center gap-3">
         <span
-          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
             isExclude
-              ? "bg-red-500/10 text-red-400"
-              : "bg-cyan-500/10 text-cyan-400"
+              ? "bg-red-50 text-red-600"
+              : "bg-blue-50 text-blue-600"
           }`}
         >
           {step}
         </span>
-        <div className="flex items-center gap-2">
-          <Icon className="h-4 w-4 text-slate-500" />
-          <div>
-            <h3 className="text-sm font-semibold text-white">{title}</h3>
-            <p className="text-xs text-slate-500">{description}</p>
+        <div className="flex min-w-0 items-center gap-2">
+          <Icon className="h-4 w-4 shrink-0 text-gray-400" />
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+            <p className="text-xs leading-relaxed text-gray-500">{description}</p>
           </div>
         </div>
       </div>

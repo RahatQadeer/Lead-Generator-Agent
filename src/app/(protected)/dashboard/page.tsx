@@ -7,6 +7,14 @@ import {
 } from "lucide-react";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
 import { PageHeader } from "@/components/layout/PageHeader";
+import {
+  cardClassName,
+  cardPaddingClassName,
+  headingSectionClassName,
+  iconTileSmClassName,
+  pillActiveClassName,
+  pillInactiveClassName,
+} from "@/lib/ui/styles";
 
 export default async function DashboardPage() {
   const { profile } = await getAuthContext();
@@ -21,36 +29,41 @@ export default async function DashboardPage() {
         description="Your AI-powered sales assistant is ready. Start discovering leads and automating outreach from here."
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           icon={Users}
           label="Leads found"
           value="—"
           hint="Run your first search"
+          trend="+0%"
+          trendUp
         />
         <StatCard
           icon={Send}
           label="Emails sent"
           value="—"
           hint="No campaigns yet"
+          trend="—"
         />
         <StatCard
           icon={MessageSquare}
           label="Replies"
           value="—"
           hint="Awaiting outreach"
+          trend="—"
         />
         <StatCard
           icon={TrendingUp}
           label="Conversion rate"
           value="—"
           hint="Track performance here"
+          trend="—"
         />
       </div>
 
-      <div className="mt-8 rounded-2xl border border-white/5 bg-slate-900/50 p-6 sm:p-8">
-        <h2 className="text-lg font-semibold text-white">Getting started</h2>
-        <p className="mt-2 text-sm text-slate-400">
+      <div className={`${cardClassName} ${cardPaddingClassName} mt-8`}>
+        <h2 className={headingSectionClassName}>Getting started</h2>
+        <p className="mt-2 text-sm leading-relaxed text-gray-500">
           Define target companies, discover decision-makers, and launch
           AI-personalized outreach — all from this platform.
         </p>
@@ -70,22 +83,41 @@ function StatCard({
   label,
   value,
   hint,
+  trend,
+  trendUp,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string;
   hint: string;
+  trend: string;
+  trendUp?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-white/5 bg-slate-900/50 p-5 transition-colors hover:border-white/10">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-slate-400">{label}</span>
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-500/10">
-          <Icon className="h-4 w-4 text-cyan-400" />
+    <div
+      className={`${cardClassName} p-5 transition-shadow hover:shadow-md`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className={iconTileSmClassName}>
+          <Icon className="h-4 w-4" />
         </div>
+        {trend !== "—" && (
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+              trendUp
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-gray-100 text-gray-600"
+            }`}
+          >
+            {trend}
+          </span>
+        )}
       </div>
-      <p className="mt-3 text-2xl font-bold text-white">{value}</p>
-      <p className="mt-1 text-xs text-slate-500">{hint}</p>
+      <p className="mt-4 text-xs font-medium uppercase tracking-wide text-gray-500">
+        {label}
+      </p>
+      <p className="mt-1 text-2xl font-bold text-gray-900">{value}</p>
+      <p className="mt-1 text-xs text-gray-400">{hint}</p>
     </div>
   );
 }
@@ -100,16 +132,10 @@ function StepBadge({
   done?: boolean;
 }) {
   return (
-    <div
-      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm ${
-        done
-          ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-300"
-          : "border-white/5 bg-white/5 text-slate-400"
-      }`}
-    >
+    <div className={done ? pillActiveClassName : pillInactiveClassName}>
       <span
         className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${
-          done ? "bg-cyan-500 text-white" : "bg-white/10 text-slate-500"
+          done ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-500"
         }`}
       >
         {step}
