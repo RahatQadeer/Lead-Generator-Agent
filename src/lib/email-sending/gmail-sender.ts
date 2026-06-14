@@ -5,6 +5,7 @@ import type { SendOutreachInput, SendOutreachResult } from "@/types/email-sendin
 
 interface GmailSendResponse {
   id?: string;
+  threadId?: string;
   error?: {
     message?: string;
     code?: number;
@@ -52,6 +53,7 @@ export async function sendViaGmail(
   return {
     provider: "gmail",
     messageId: body.id,
+    threadId: body.threadId,
     sentAt: new Date().toISOString(),
   };
 }

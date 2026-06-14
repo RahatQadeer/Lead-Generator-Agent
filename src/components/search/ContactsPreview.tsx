@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import { Users, Loader2, AlertCircle, ChevronRight } from "lucide-react";
+import {
+  OutreachStepPanel,
+  alertErrorClassName,
+  btnSmPrimaryClassName,
+} from "@/components/ui/OutreachStepPanel";
+import { linkClassName, previewResultItemClassName } from "@/lib/ui/styles";
 import type { DiscoveredContact } from "@/types/contact";
 
 interface ContactsPreviewProps {
@@ -73,26 +79,16 @@ export function ContactsPreview({
   }
 
   return (
-    <div className="mt-4 rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-blue-300">
-            Step 2 · Find people
-          </p>
-          <p className="text-xs text-slate-500">
-            Find the right people at companies from &quot;{searchName}&quot;
-          </p>
-          {jobTitles.length > 0 && (
-            <p className="mt-1 text-xs text-slate-400">
-              Looking for: {jobTitles.join(", ")}
-            </p>
-          )}
-        </div>
+    <OutreachStepPanel
+      step={2}
+      title="Find people"
+      description={`Find the right people at companies from "${searchName}"`}
+      action={
         <button
           type="button"
           onClick={() => runDiscovery()}
           disabled={loading}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-500/20 px-4 py-2 text-sm font-medium text-blue-300 transition-colors hover:bg-blue-500/30 disabled:opacity-50"
+          className={btnSmPrimaryClassName}
         >
           {loading ? (
             <>
@@ -106,23 +102,29 @@ export function ContactsPreview({
             </>
           )}
         </button>
-      </div>
+      }
+    >
+      {jobTitles.length > 0 && (
+        <p className="mt-2 text-xs text-gray-500">
+          Looking for: {jobTitles.join(", ")}
+        </p>
+      )}
 
       {result && !result.success && result.error && (
         <div
           role="alert"
-          className="mt-4 flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-200"
+          className={`mt-4 flex items-start gap-2 ${alertErrorClassName}`}
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
             <p>{result.error.message}</p>
             {result.error.code === "NO_COMPANIES" && (
-              <p className="mt-1 text-xs text-red-300/90">
+              <p className="mt-1 text-xs text-red-600/90">
                 Find companies first (Step 1), then try again.
               </p>
             )}
             {result.error.code === "PLAN_RESTRICTED" && (
-              <p className="mt-1 text-xs text-red-300/90">
+              <p className="mt-1 text-xs text-red-600/90">
                 Apollo people search requires a paid plan. Use the mock provider
                 for local development.
               </p>
@@ -131,7 +133,7 @@ export function ContactsPreview({
               <button
                 type="button"
                 onClick={() => runDiscovery()}
-                className="mt-1 text-xs text-red-300 underline hover:text-white"
+                className={`mt-1 ${linkClassName}`}
               >
                 Retry
               </button>
@@ -142,26 +144,23 @@ export function ContactsPreview({
 
       {result?.success && result.contacts && (
         <div className="mt-4 space-y-3">
-          <div className="flex flex-wrap gap-3 text-xs text-slate-400">
+          <div className="flex flex-wrap gap-3 text-xs text-gray-500">
             <span>
-              Provider: <strong className="text-slate-300">{result.provider}</strong>
+              Provider:{" "}
+              <strong className="text-gray-700">{result.provider}</strong>
             </span>
-            <span>
-              {result.meta?.companyCount ?? 0} companies searched
-            </span>
+            <span>{result.meta?.companyCount ?? 0} companies searched</span>
             <span>
               Page {result.pagination?.page} of {result.pagination?.totalPages}
             </span>
-            <span>
-              {result.pagination?.totalEntries} contacts found
-            </span>
+            <span>{result.pagination?.totalEntries} contacts found</span>
             {(result.meta?.filteredCount ?? 0) > 0 && (
-              <span className="text-amber-300">
+              <span className="text-amber-700">
                 {result.meta?.filteredCount} filtered by title
               </span>
             )}
             {(result.meta?.duplicateCount ?? 0) > 0 && (
-              <span className="text-violet-300">
+              <span className="text-violet-700">
                 {result.meta?.duplicateCount} duplicates skipped
                 {(result.meta?.knownDuplicateCount ?? 0) > 0 &&
                   ` (${result.meta?.knownDuplicateCount} already saved)`}
@@ -170,7 +169,7 @@ export function ContactsPreview({
           </div>
 
           {result.contacts.length === 0 ? (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-gray-500">
               No decision-makers matched your job title filters.
             </p>
           ) : (
@@ -178,21 +177,21 @@ export function ContactsPreview({
               {result.contacts.map((contact) => (
                 <li
                   key={`${contact.companyId}-${contact.id}`}
-                  className="flex items-center justify-between rounded-lg border border-white/5 bg-slate-900/50 px-3 py-2"
+                  className={previewResultItemClassName}
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-white">
+                    <p className="break-words text-sm font-medium text-gray-900">
                       {contact.fullName}
                     </p>
-                    <p className="truncate text-xs text-slate-500">
+                    <p className="break-words text-xs text-gray-500">
                       {contact.title} · {contact.companyName}
                     </p>
-                    <p className="truncate text-xs text-slate-600">
+                    <p className="break-all text-xs text-gray-500">
                       {contact.email ?? "No email"}
                       {contact.companyDomain ? ` · ${contact.companyDomain}` : ""}
                     </p>
                   </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-slate-600" />
+                  <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" />
                 </li>
               ))}
             </ul>
@@ -203,13 +202,13 @@ export function ContactsPreview({
               type="button"
               onClick={() => runDiscovery((result.pagination?.page ?? 1) + 1)}
               disabled={loading}
-              className="text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50"
+              className={`${linkClassName} text-xs disabled:opacity-50`}
             >
               Load next page →
             </button>
           )}
         </div>
       )}
-    </div>
+    </OutreachStepPanel>
   );
 }

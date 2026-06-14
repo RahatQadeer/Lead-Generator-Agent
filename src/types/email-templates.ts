@@ -32,5 +32,8 @@ export const EMAIL_TEMPLATE_PLACEHOLDERS: EmailTemplatePlaceholder[] = [
   { key: "{{industry}}", description: "Company industry" },
   { key: "{{location}}", description: "Lead or company location" },
   { key: "{{painPoint}}", description: "Primary pain point" },
-  { key: "{{sender}}", description: "Your company name" },
+  {
+    key: "{{sender}}",
+    description: "Your company name (e.g. Right Tail Corp)",
+  },
 ];

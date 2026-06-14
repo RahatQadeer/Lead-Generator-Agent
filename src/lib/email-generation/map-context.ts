@@ -1,10 +1,9 @@
+import { DEFAULT_SENDER_COMPANY_NAME } from "@/lib/brand";
 import { formatLocation } from "@/lib/lead-enrichment/format-location";
 import { inferPainPoints } from "@/lib/email-generation/infer-pain-points";
 import { parseEmailTone } from "@/lib/email-generation/parse-tone";
 import type { ContactWithCompany } from "@/lib/contacts/mapper";
 import type { EmailGenerationContext, EmailTone } from "@/types/email-generation";
-
-const DEFAULT_SENDER = "RightTail Software";
 const DEFAULT_TONE: EmailTone = "professional";
 
 interface MapContextOptions {
@@ -44,7 +43,8 @@ export function mapContactToEmailContext(
       contact.state ?? company?.state ?? null,
       contact.country ?? company?.country ?? null
     ),
-    senderCompanyName: options.senderCompanyName ?? DEFAULT_SENDER,
+    senderCompanyName:
+      options.senderCompanyName ?? DEFAULT_SENDER_COMPANY_NAME,
   };
 }
 

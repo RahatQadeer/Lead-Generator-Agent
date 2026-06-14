@@ -3,7 +3,6 @@ export const PROTECTED_ROUTES = [
   "/searches",
   "/leads",
   "/emails",
-  "/analytics",
   "/settings",
 ] as const;
 

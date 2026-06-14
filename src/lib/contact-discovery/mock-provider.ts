@@ -140,6 +140,15 @@ const MOCK_CONTACTS_BY_DOMAIN: Record<string, MockContactSeed[]> = {
       linkedinUrl: null,
     },
   ],
+  "butterbee.co": [
+    {
+      firstName: "Laiba",
+      lastName: "Kafayat",
+      title: "CEO",
+      email: "layibakafayat@gmail.com",
+      linkedinUrl: null,
+    },
+  ],
 };
 
 function buildMockContacts(params: ContactDiscoveryParams): DiscoveredContact[] {

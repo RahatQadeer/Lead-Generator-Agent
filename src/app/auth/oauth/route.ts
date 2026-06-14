@@ -1,10 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/route-handler";
 
+const GMAIL_SCOPES =
+  "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/userinfo.email";
+
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const redirectTo = searchParams.get("redirect") ?? "/dashboard";
   const safeRedirect = redirectTo.startsWith("/") ? redirectTo : "/dashboard";
+  const connectGmail = searchParams.get("connect") === "gmail";
 
   // Placeholder response — URL replaced after OAuth URL is generated
   const response = NextResponse.redirect(`${origin}/login`);
@@ -14,12 +18,15 @@ export async function GET(request: NextRequest) {
     provider: "google",
     options: {
       redirectTo: `${origin}/auth/callback?redirect=${encodeURIComponent(safeRedirect)}`,
-      scopes:
-        "https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/userinfo.email",
-      queryParams: {
-        access_type: "offline",
-        prompt: "consent",
-      },
+      ...(connectGmail
+        ? {
+            scopes: GMAIL_SCOPES,
+            queryParams: {
+              access_type: "offline",
+              prompt: "consent",
+            },
+          }
+        : {}),
     },
   });
 

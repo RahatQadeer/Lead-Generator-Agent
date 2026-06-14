@@ -17,9 +17,8 @@ export default async function LeadsPage() {
     <>
       <PageHeader
         icon={Users}
-        label="Leads"
         title="Lead pipeline"
-        description="Review enriched lead profiles with name, role, company, LinkedIn, and location."
+        description="Search, filter, and manage enriched contacts — generate outreach and track lead scores."
       />
       {leads.length === 0 ? (
         <EmptyState

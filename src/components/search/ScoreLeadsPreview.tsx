@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import { Target, Loader2, AlertCircle } from "lucide-react";
+import {
+  OutreachStepPanel,
+  alertErrorClassName,
+  btnSmPrimaryClassName,
+} from "@/components/ui/OutreachStepPanel";
+import { nestedCardClassName, tagDefaultClassName } from "@/lib/ui/styles";
 import { LeadScoreBadge } from "@/components/leads/LeadScoreBadge";
 import type { LeadScoreFactors } from "@/types/lead-scoring";
 
@@ -80,24 +86,16 @@ export function ScoreLeadsPreview({
   }
 
   return (
-    <div className="mt-4 rounded-xl border border-orange-500/20 bg-orange-500/5 p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-orange-300">
-            Step 5 · Rank your leads
-          </p>
-          <p className="text-xs text-slate-500">
-            See which contacts are the best fit for &quot;{searchName}&quot;
-          </p>
-          <p className="mt-1 text-xs text-slate-400">
-            Ranks contacts from 1–10 based on how well they match your search
-          </p>
-        </div>
+    <OutreachStepPanel
+      step={5}
+      title="Rank your leads"
+      description={`See which contacts are the best fit for "${searchName}"`}
+      action={
         <button
           type="button"
           onClick={runScoring}
           disabled={loading}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-orange-500/20 px-4 py-2 text-sm font-medium text-orange-300 transition-colors hover:bg-orange-500/30 disabled:opacity-50"
+          className={btnSmPrimaryClassName}
         >
           {loading ? (
             <>
@@ -111,18 +109,22 @@ export function ScoreLeadsPreview({
             </>
           )}
         </button>
-      </div>
+      }
+    >
+      <p className="mt-0.5 text-xs text-gray-500">
+        Ranks contacts from 1–10 based on how well they match your search
+      </p>
 
       {result && !result.success && result.error && (
         <div
           role="alert"
-          className="mt-4 flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-200"
+          className={`mt-4 flex items-start gap-2 ${alertErrorClassName}`}
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
             <p>{result.error.message}</p>
             {result.error.code === "NO_CONTACTS" && (
-              <p className="mt-1 text-xs text-red-300/90">
+              <p className="mt-1 text-xs text-red-600/90">
                 Discover decision-makers on this search first.
               </p>
             )}
@@ -132,11 +134,9 @@ export function ScoreLeadsPreview({
 
       {result?.success && result.results && (
         <div className="mt-4 space-y-3">
-          <div className="flex flex-wrap gap-3 text-xs text-slate-400">
-            <span>
-              {result.meta?.scoredCount ?? 0} leads scored
-            </span>
-            <span className="text-orange-300">
+          <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+            <span>{result.meta?.scoredCount ?? 0} leads scored</span>
+            <span className="text-orange-700">
               Avg score: {result.meta?.averageScore ?? 0}/10
             </span>
           </div>
@@ -145,24 +145,23 @@ export function ScoreLeadsPreview({
             {result.results.map((item) => (
               <li
                 key={item.contactId}
-                className="rounded-lg border border-white/5 bg-slate-900/50 px-3 py-3"
+                className={`${nestedCardClassName} px-3 py-3`}
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-white">
+                    <p className="break-words text-sm font-medium text-gray-900">
                       {item.name}
                     </p>
-                    <p className="truncate text-xs text-slate-500">{item.role}</p>
+                    <p className="break-words text-xs text-gray-500">
+                      {item.role}
+                    </p>
                   </div>
                   <LeadScoreBadge score={item.score} />
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {(Object.keys(FACTOR_LABELS) as Array<keyof LeadScoreFactors>).map(
                     (key) => (
-                      <span
-                        key={key}
-                        className="rounded-md bg-slate-800/80 px-2 py-0.5 text-xs text-slate-400"
-                      >
+                      <span key={key} className={tagDefaultClassName}>
                         {FACTOR_LABELS[key]}: {formatFactor(item.factors[key])}
                       </span>
                     )
@@ -173,6 +172,6 @@ export function ScoreLeadsPreview({
           </ul>
         </div>
       )}
-    </div>
+    </OutreachStepPanel>
   );
 }

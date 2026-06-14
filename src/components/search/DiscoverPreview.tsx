@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import { Building2, Loader2, AlertCircle, ChevronRight } from "lucide-react";
+import {
+  OutreachStepPanel,
+  alertErrorClassName,
+  btnSmPrimaryClassName,
+} from "@/components/ui/OutreachStepPanel";
+import { linkClassName, previewResultItemClassName } from "@/lib/ui/styles";
 import type { DiscoveredCompany } from "@/types/company";
 
 interface DiscoverPreviewProps {
@@ -67,21 +73,16 @@ export function DiscoverPreview({ searchId, searchName }: DiscoverPreviewProps) 
   }
 
   return (
-    <div className="mt-4 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-cyan-300">
-            Step 1 · Find companies
-          </p>
-          <p className="text-xs text-slate-500">
-            Search for companies that match &quot;{searchName}&quot;
-          </p>
-        </div>
+    <OutreachStepPanel
+      step={1}
+      title="Find companies"
+      description={`Search for companies that match "${searchName}"`}
+      action={
         <button
           type="button"
           onClick={() => runDiscovery()}
           disabled={loading}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-cyan-500/20 px-4 py-2 text-sm font-medium text-cyan-300 transition-colors hover:bg-cyan-500/30 disabled:opacity-50"
+          className={btnSmPrimaryClassName}
         >
           {loading ? (
             <>
@@ -95,18 +96,18 @@ export function DiscoverPreview({ searchId, searchName }: DiscoverPreviewProps) 
             </>
           )}
         </button>
-      </div>
-
+      }
+    >
       {result && !result.success && result.error && (
         <div
           role="alert"
-          className="mt-4 flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-200"
+          className={`mt-4 flex items-start gap-2 ${alertErrorClassName}`}
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
             <p>{result.error.message}</p>
             {result.error.code === "PLAN_RESTRICTED" && (
-              <p className="mt-1 text-xs text-red-300/90">
+              <p className="mt-1 text-xs text-red-600/90">
                 Apollo&apos;s organization search API requires a paid plan (free
                 trials do not include it). Use the mock provider to continue
                 building locally.
@@ -116,7 +117,7 @@ export function DiscoverPreview({ searchId, searchName }: DiscoverPreviewProps) 
               <button
                 type="button"
                 onClick={() => runDiscovery()}
-                className="mt-1 text-xs text-red-300 underline hover:text-white"
+                className={`mt-1 ${linkClassName}`}
               >
                 Retry
               </button>
@@ -127,30 +128,29 @@ export function DiscoverPreview({ searchId, searchName }: DiscoverPreviewProps) 
 
       {result?.success && result.companies && (
         <div className="mt-4 space-y-3">
-          <div className="flex flex-wrap gap-3 text-xs text-slate-400">
+          <div className="flex flex-wrap gap-3 text-xs text-gray-500">
             <span>
-              Provider: <strong className="text-slate-300">{result.provider}</strong>
+              Provider:{" "}
+              <strong className="text-gray-700">{result.provider}</strong>
             </span>
             <span>
               Page {result.pagination?.page} of {result.pagination?.totalPages}
             </span>
-            <span>
-              {result.pagination?.totalEntries} total matches
-            </span>
+            <span>{result.pagination?.totalEntries} total matches</span>
             {(result.meta?.filteredCount ?? 0) > 0 && (
-              <span className="text-amber-300">
+              <span className="text-amber-700">
                 {result.meta?.filteredCount} filtered by criteria
               </span>
             )}
             {(result.meta?.duplicateCount ?? 0) > 0 && (
-              <span className="text-violet-300">
+              <span className="text-violet-700">
                 {result.meta?.duplicateCount} duplicates skipped
                 {(result.meta?.knownDuplicateCount ?? 0) > 0 &&
                   ` (${result.meta?.knownDuplicateCount} already saved)`}
               </span>
             )}
             {(result.meta?.excludedCount ?? 0) > 0 && (
-              <span className="text-red-300">
+              <span className="text-red-700">
                 {result.meta?.excludedCount} excluded by rules
               </span>
             )}
@@ -158,15 +158,12 @@ export function DiscoverPreview({ searchId, searchName }: DiscoverPreviewProps) 
 
           <ul className="space-y-2">
             {result.companies.map((company) => (
-              <li
-                key={company.id}
-                className="flex items-center justify-between rounded-lg border border-white/5 bg-slate-900/50 px-3 py-2"
-              >
+              <li key={company.id} className={previewResultItemClassName}>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-white">
+                  <p className="break-words text-sm font-medium text-gray-900">
                     {company.name}
                   </p>
-                  <p className="truncate text-xs text-slate-500">
+                  <p className="break-words text-xs text-gray-500">
                     {company.domain ?? "—"}
                     {company.employeeCount
                       ? ` · ${company.employeeCount} employees`
@@ -174,7 +171,7 @@ export function DiscoverPreview({ searchId, searchName }: DiscoverPreviewProps) 
                     {company.country ? ` · ${company.country}` : ""}
                   </p>
                 </div>
-                <ChevronRight className="h-4 w-4 shrink-0 text-slate-600" />
+                <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" />
               </li>
             ))}
           </ul>
@@ -184,13 +181,13 @@ export function DiscoverPreview({ searchId, searchName }: DiscoverPreviewProps) 
               type="button"
               onClick={() => runDiscovery((result.pagination?.page ?? 1) + 1)}
               disabled={loading}
-              className="text-xs text-cyan-400 hover:text-cyan-300 disabled:opacity-50"
+              className={`${linkClassName} text-xs disabled:opacity-50`}
             >
               Load next page →
             </button>
           )}
         </div>
       )}
-    </div>
+    </OutreachStepPanel>
   );
 }

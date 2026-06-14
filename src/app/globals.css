@@ -3,15 +3,29 @@
 @theme {
   --font-sans: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
 
-  --color-brand-50: #eff6ff;
-  --color-brand-100: #dbeafe;
-  --color-brand-500: #3b82f6;
-  --color-brand-600: #2563eb;
-  --color-brand-700: #1d4ed8;
+  /* Ink & surfaces — soft light enterprise */
+  --color-ink: #0a0a0b;
+  --color-ink-secondary: #3f3f46;
+  --color-ink-muted: #71717a;
 
   --color-surface: #ffffff;
-  --color-surface-muted: #f9fafb;
-  --color-border: #e5e7eb;
+  --color-surface-muted: #f4f4f5;
+  --color-surface-subtle: #fafafa;
+  --color-border: #e4e4e7;
+  --color-border-subtle: #f4f4f5;
+
+  /* Accent — soft violet/lavender (active nav, highlights) */
+  --color-accent-50: #f5f3ff;
+  --color-accent-100: #ede9fe;
+  --color-accent-200: #ddd6fe;
+  --color-accent-600: #7c3aed;
+  --color-accent-700: #6d28d9;
+
+  /* Pastel status tags */
+  --color-tag-lavender: #ede9fe;
+  --color-tag-mint: #d1fae5;
+  --color-tag-peach: #ffedd5;
+  --color-tag-sky: #e0f2fe;
 }
 
 * {
@@ -21,12 +35,26 @@
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {
   min-height: 100vh;
   background-color: var(--color-surface-muted);
-  color: #111827;
+  color: var(--color-ink);
+  font-feature-settings: "kern" 1, "liga" 1;
+}
+
+/* Typography rhythm */
+h1,
+h2,
+h3,
+h4 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
 }
 
 /* Ensure form controls never clip typed content */
@@ -41,4 +69,53 @@ select,
 textarea {
   overflow-x: auto;
   text-overflow: clip;
+}
+
+@keyframes popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-popover-in {
+  animation: popover-in 0.18s ease-out forwards;
+}
+
+/* Recent activity feed — slim light grey scrollbar */
+.activity-feed-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #d4d4d8 transparent;
+  scrollbar-gutter: stable;
+}
+
+.activity-feed-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.activity-feed-scroll::-webkit-scrollbar-track {
+  margin: 8px 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    #f4f4f5 12%,
+    #f4f4f5 88%,
+    transparent 100%
+  );
+  border-radius: 9999px;
+}
+
+.activity-feed-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #e4e4e7 0%, #d4d4d8 50%, #a1a1aa 100%);
+  border-radius: 9999px;
+  border: 1.5px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.activity-feed-scroll::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #d4d4d8 0%, #a1a1aa 100%);
 }

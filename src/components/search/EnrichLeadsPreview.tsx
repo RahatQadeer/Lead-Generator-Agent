@@ -9,6 +9,12 @@ import {
   Link2,
   Building2,
 } from "lucide-react";
+import {
+  OutreachStepPanel,
+  alertErrorClassName,
+  btnSmPrimaryClassName,
+} from "@/components/ui/OutreachStepPanel";
+import { linkClassName, nestedCardClassName } from "@/lib/ui/styles";
 import type { EnrichedLead } from "@/types/lead";
 
 interface EnrichLeadsPreviewProps {
@@ -66,24 +72,16 @@ export function EnrichLeadsPreview({
   }
 
   return (
-    <div className="mt-4 rounded-xl border border-violet-500/20 bg-violet-500/5 p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-violet-300">
-            Step 3 · Add contact details
-          </p>
-          <p className="text-xs text-slate-500">
-            Fill in missing profile info for contacts from &quot;{searchName}&quot;
-          </p>
-          <p className="mt-1 text-xs text-slate-400">
-            Adds LinkedIn, location, and other profile details
-          </p>
-        </div>
+    <OutreachStepPanel
+      step={3}
+      title="Add contact details"
+      description={`Fill in missing profile info for contacts from "${searchName}"`}
+      action={
         <button
           type="button"
           onClick={runEnrichment}
           disabled={loading}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-violet-500/20 px-4 py-2 text-sm font-medium text-violet-300 transition-colors hover:bg-violet-500/30 disabled:opacity-50"
+          className={btnSmPrimaryClassName}
         >
           {loading ? (
             <>
@@ -97,18 +95,22 @@ export function EnrichLeadsPreview({
             </>
           )}
         </button>
-      </div>
+      }
+    >
+      <p className="mt-0.5 text-xs text-gray-500">
+        Adds LinkedIn, location, and other profile details
+      </p>
 
       {result && !result.success && result.error && (
         <div
           role="alert"
-          className="mt-4 flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-200"
+          className={`mt-4 flex items-start gap-2 ${alertErrorClassName}`}
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
             <p>{result.error.message}</p>
             {result.error.code === "NO_CONTACTS" && (
-              <p className="mt-1 text-xs text-red-300/90">
+              <p className="mt-1 text-xs text-red-600/90">
                 Discover decision-makers on this search first, then enrich.
               </p>
             )}
@@ -116,7 +118,7 @@ export function EnrichLeadsPreview({
               <button
                 type="button"
                 onClick={runEnrichment}
-                className="mt-1 text-xs text-red-300 underline hover:text-white"
+                className={`mt-1 ${linkClassName}`}
               >
                 Retry
               </button>
@@ -127,34 +129,37 @@ export function EnrichLeadsPreview({
 
       {result?.success && result.leads && (
         <div className="mt-4 space-y-3">
-          <div className="flex flex-wrap gap-3 text-xs text-slate-400">
+          <div className="flex flex-wrap gap-3 text-xs text-gray-500">
             <span>
-              Provider: <strong className="text-slate-300">{result.provider}</strong>
+              Provider:{" "}
+              <strong className="text-gray-700">{result.provider}</strong>
             </span>
-            <span>
-              {result.meta?.enrichedCount ?? 0} profiles enriched
-            </span>
+            <span>{result.meta?.enrichedCount ?? 0} profiles enriched</span>
           </div>
 
           {result.leads.length === 0 ? (
-            <p className="text-sm text-slate-500">No leads were enriched.</p>
+            <p className="text-sm text-gray-500">No leads were enriched.</p>
           ) : (
             <ul className="space-y-2">
               {result.leads.map((lead) => (
                 <li
                   key={lead.id}
-                  className="rounded-lg border border-white/5 bg-slate-900/50 px-3 py-3"
+                  className={`${nestedCardClassName} px-3 py-3`}
                 >
-                  <p className="text-sm font-medium text-white">{lead.name}</p>
-                  <p className="mt-0.5 text-xs text-violet-300">{lead.role}</p>
-                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
-                    <span className="inline-flex items-center gap-1">
-                      <Building2 className="h-3 w-3" />
+                  <p className="break-words text-sm font-medium text-gray-900">
+                    {lead.name}
+                  </p>
+                  <p className="mt-0.5 break-words text-xs text-violet-700">
+                    {lead.role}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                    <span className="inline-flex items-center gap-1 break-words">
+                      <Building2 className="h-3 w-3 shrink-0" />
                       {lead.company}
                     </span>
                     {lead.location && (
-                      <span className="inline-flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />
+                      <span className="inline-flex items-center gap-1 break-words">
+                        <MapPin className="h-3 w-3 shrink-0" />
                         {lead.location}
                       </span>
                     )}
@@ -163,7 +168,7 @@ export function EnrichLeadsPreview({
                         href={lead.linkedin}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-blue-400 hover:text-blue-300"
+                        className={`${linkClassName} text-xs`}
                       >
                         <Link2 className="h-3 w-3" />
                         LinkedIn
@@ -176,6 +181,6 @@ export function EnrichLeadsPreview({
           )}
         </div>
       )}
-    </div>
+    </OutreachStepPanel>
   );
 }

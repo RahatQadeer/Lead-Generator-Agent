@@ -99,6 +99,18 @@ const MOCK_COMPANIES: Omit<DiscoveredCompany, "id">[] = [
     websiteUrl: "https://techflow.io",
     technologies: ["React", "Kubernetes", "PostgreSQL"],
   },
+  {
+    name: "ButterBee",
+    domain: "butterbee.co",
+    industry: "Technology",
+    employeeCount: 10,
+    country: "Pakistan",
+    city: "Islamabad",
+    state: null,
+    linkedinUrl: null,
+    websiteUrl: "https://butterbee.co",
+    technologies: ["Next.js", "Node.js"],
+  },
 ];
 
 export class MockCompanyDiscoveryProvider implements CompanyDiscoveryProvider {

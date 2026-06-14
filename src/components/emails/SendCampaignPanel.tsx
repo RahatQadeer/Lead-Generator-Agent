@@ -4,6 +4,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Loader2, Send } from "lucide-react";
 import { getSendingProviderLabel } from "@/lib/email-sending/factory";
+import {
+  alertErrorClassName,
+  alertSuccessClassName,
+  btnSmPrimaryClassName,
+  textSecondaryClassName,
+} from "@/lib/ui/styles";
 import type { CampaignSummary } from "@/types/email-campaign";
 import type { EmailSendingProviderName } from "@/types/email-sending";
 
@@ -56,13 +62,14 @@ export function SendCampaignPanel({
 
   if (summary.draftCount === 0) {
     return (
-      <div className="mb-6 rounded-xl border border-white/10 bg-slate-900/50 p-4">
-        <p className="text-sm text-slate-400">
-          No draft emails ready. Generate outreach from the Leads page, then send
-          a campaign from here.
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-gray-900">Send campaign</p>
+        <p className={`mt-1.5 ${textSecondaryClassName}`}>
+          No drafts ready. Generate outreach from the Leads page, then launch a
+          batch send here.
         </p>
         {summary.sentCount > 0 && (
-          <p className="mt-2 text-xs text-slate-500">
+          <p className={`mt-2 text-xs text-gray-500`}>
             {summary.sentCount} email{summary.sentCount === 1 ? "" : "s"} already
             sent across {summary.campaignCount} campaign
             {summary.campaignCount === 1 ? "" : "s"}.
@@ -73,11 +80,11 @@ export function SendCampaignPanel({
   }
 
   return (
-    <div className="mb-6 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-white">Ready to launch</p>
-          <p className="mt-1 text-xs text-slate-400">
+    <div className="min-w-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-gray-900">Send campaign</p>
+          <p className={`mt-1.5 ${textSecondaryClassName}`}>
             {summary.draftCount} draft{summary.draftCount === 1 ? "" : "s"} queued
             {" · "}
             via {getSendingProviderLabel(sendingProvider)}
@@ -87,7 +94,7 @@ export function SendCampaignPanel({
           type="button"
           onClick={handleSendCampaign}
           disabled={loading}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500/20 px-4 py-2 text-sm font-medium text-emerald-200 transition-colors hover:bg-emerald-500/30 disabled:opacity-50"
+          className={`${btnSmPrimaryClassName} !min-h-[32px] shrink-0 px-3 py-1.5 text-xs`}
         >
           {loading ? (
             <>
@@ -102,8 +109,16 @@ export function SendCampaignPanel({
           )}
         </button>
       </div>
-      {message && <p className="mt-3 text-xs text-emerald-300">{message}</p>}
-      {error && <p className="mt-3 text-xs text-rose-300">{error}</p>}
+      {message && (
+        <div className={`mt-3 ${alertSuccessClassName}`} role="status">
+          {message}
+        </div>
+      )}
+      {error && (
+        <div className={`mt-3 ${alertErrorClassName}`} role="alert">
+          {error}
+        </div>
+      )}
     </div>
   );
 }

@@ -2,6 +2,12 @@
 
 import { useState } from "react";
 import { MailCheck, Loader2, AlertCircle } from "lucide-react";
+import {
+  OutreachStepPanel,
+  alertErrorClassName,
+  btnSmPrimaryClassName,
+} from "@/components/ui/OutreachStepPanel";
+import { previewResultItemClassName } from "@/lib/ui/styles";
 import { EmailVerificationBadge } from "@/components/leads/EmailVerificationBadge";
 import type { VerifiedEmail } from "@/types/email-verification";
 
@@ -29,7 +35,6 @@ interface VerifyEmailsResponse {
 
 export function VerifyEmailsPreview({
   searchId,
-  searchName,
 }: VerifyEmailsPreviewProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<VerifyEmailsResponse | null>(null);
@@ -62,24 +67,16 @@ export function VerifyEmailsPreview({
   }
 
   return (
-    <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-emerald-300">
-            Step 4 · Check emails
-          </p>
-          <p className="text-xs text-slate-500">
-            Make sure contact emails are valid before you reach out
-          </p>
-          <p className="mt-1 text-xs text-slate-400">
-            Flags invalid or risky email addresses
-          </p>
-        </div>
+    <OutreachStepPanel
+      step={4}
+      title="Check emails"
+      description="Make sure contact emails are valid before you reach out"
+      action={
         <button
           type="button"
           onClick={runVerification}
           disabled={loading}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-500/20 px-4 py-2 text-sm font-medium text-emerald-300 transition-colors hover:bg-emerald-500/30 disabled:opacity-50"
+          className={btnSmPrimaryClassName}
         >
           {loading ? (
             <>
@@ -93,18 +90,22 @@ export function VerifyEmailsPreview({
             </>
           )}
         </button>
-      </div>
+      }
+    >
+      <p className="mt-0.5 text-xs text-gray-500">
+        Flags invalid or risky email addresses
+      </p>
 
       {result && !result.success && result.error && (
         <div
           role="alert"
-          className="mt-4 flex items-start gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-200"
+          className={`mt-4 flex items-start gap-2 ${alertErrorClassName}`}
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
           <div>
             <p>{result.error.message}</p>
             {result.error.code === "NO_CONTACTS" && (
-              <p className="mt-1 text-xs text-red-300/90">
+              <p className="mt-1 text-xs text-red-600/90">
                 Discover decision-makers on this search first.
               </p>
             )}
@@ -112,7 +113,7 @@ export function VerifyEmailsPreview({
               <button
                 type="button"
                 onClick={runVerification}
-                className="mt-1 text-xs text-red-300 underline hover:text-white"
+                className="mt-1 text-xs font-medium text-red-700 underline hover:text-red-800"
               >
                 Retry
               </button>
@@ -123,18 +124,19 @@ export function VerifyEmailsPreview({
 
       {result?.success && result.results && (
         <div className="mt-4 space-y-3">
-          <div className="flex flex-wrap gap-3 text-xs text-slate-400">
+          <div className="flex flex-wrap gap-3 text-xs text-gray-500">
             <span>
-              Provider: <strong className="text-slate-300">{result.provider}</strong>
+              Provider:{" "}
+              <strong className="text-gray-700">{result.provider}</strong>
             </span>
-            <span className="text-emerald-300">
+            <span className="text-emerald-700">
               {result.meta?.validCount ?? 0} valid
             </span>
-            <span className="text-red-300">
+            <span className="text-red-700">
               {result.meta?.invalidCount ?? 0} invalid
             </span>
             {(result.meta?.riskyCount ?? 0) > 0 && (
-              <span className="text-amber-300">
+              <span className="text-amber-700">
                 {result.meta?.riskyCount} risky
               </span>
             )}
@@ -145,16 +147,15 @@ export function VerifyEmailsPreview({
 
           <ul className="space-y-2">
             {result.results.map((item) => (
-              <li
-                key={item.contactId}
-                className="flex items-center justify-between gap-3 rounded-lg border border-white/5 bg-slate-900/50 px-3 py-2"
-              >
+              <li key={item.contactId} className={previewResultItemClassName}>
                 <div className="min-w-0">
-                  <p className="truncate text-sm text-white">
+                  <p className="break-all text-sm text-gray-900">
                     {item.email ?? "No email"}
                   </p>
                   {item.message && (
-                    <p className="truncate text-xs text-slate-500">{item.message}</p>
+                    <p className="break-words text-xs text-gray-500">
+                      {item.message}
+                    </p>
                   )}
                 </div>
                 <EmailVerificationBadge status={item.status} />
@@ -163,6 +164,6 @@ export function VerifyEmailsPreview({
           </ul>
         </div>
       )}
-    </div>
+    </OutreachStepPanel>
   );
 }

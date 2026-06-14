@@ -30,6 +30,7 @@ import {
   btnSecondaryClassName,
   cardClassName,
   cardPaddingClassName,
+  dashboardCardClassName,
   headingSectionClassName,
   iconTileClassName,
   pillActiveClassName,
@@ -56,12 +57,15 @@ interface SearchBuilderFormProps {
   editingSearch: SearchRecord | null;
   onCancelEdit: () => void;
   onSaved: (wasEditing: boolean) => void;
+  /** Side panel layout with scrollable body */
+  panel?: boolean;
 }
 
 export function SearchBuilderForm({
   editingSearch,
   onCancelEdit,
   onSaved,
+  panel = false,
 }: SearchBuilderFormProps) {
   const isEditing = editingSearch !== null;
   const [form, setForm] = useState<SearchCriteriaInput>(EMPTY_FORM);
@@ -122,55 +126,64 @@ export function SearchBuilderForm({
     });
   }
 
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className={`${cardClassName} ${cardPaddingClassName} ${
-        isEditing ? "border-blue-300 ring-2 ring-blue-100" : ""
-      }`}
-    >
-      <div className="mb-8 flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className={iconTileClassName}>
-            {isEditing ? (
-              <Pencil className="h-5 w-5" />
-            ) : (
-              <Search className="h-5 w-5" />
-            )}
-          </div>
-          <div className="min-w-0">
-            <h2 className={headingSectionClassName}>
-              {isEditing ? "Edit search" : "New search"}
-            </h2>
-            <p className="mt-1 text-sm text-gray-500">
-              {isEditing
-                ? `Updating "${editingSearch.name}"`
-                : "Describe the companies and people you want to reach"}
-            </p>
-          </div>
+  const formHeader = (
+    <div className="flex items-start justify-between gap-4">
+      <div className="flex items-center gap-3">
+        <div className={iconTileClassName}>
+          {isEditing ? (
+            <Pencil className="h-5 w-5" />
+          ) : (
+            <Search className="h-5 w-5" />
+          )}
         </div>
-        {isEditing && (
-          <button
-            type="button"
-            onClick={handleCancel}
-            disabled={isPending}
-            className={btnIconClassName}
-            aria-label="Cancel edit"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        )}
+        <div className="min-w-0">
+          <h2 className={headingSectionClassName}>
+            {isEditing ? "Edit search" : "New search"}
+          </h2>
+          <p className="mt-1 text-sm text-gray-500">
+            {isEditing
+              ? `Updating "${editingSearch.name}"`
+              : "Describe the companies and people you want to reach"}
+          </p>
+        </div>
       </div>
-
-      {errors.form && (
-        <div className={`mb-6 ${alertErrorClassName}`} role="alert">
-          {errors.form}
-        </div>
+      {panel && (
+        <button
+          type="button"
+          onClick={handleCancel}
+          disabled={isPending}
+          className={btnIconClassName}
+          aria-label="Close form"
+        >
+          <X className="h-5 w-5" />
+        </button>
       )}
+      {!panel && isEditing && (
+        <button
+          type="button"
+          onClick={handleCancel}
+          disabled={isPending}
+          className={btnIconClassName}
+          aria-label="Cancel edit"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      )}
+    </div>
+  );
+
+  const formError = errors.form ? (
+    <div className={`${panel ? "mb-4" : "mb-6"} ${alertErrorClassName}`} role="alert">
+      {errors.form}
+    </div>
+  ) : null;
+
+  const formBody = (
+    <>
 
       <BuilderSection
-        step={1}
         icon={Building2}
+        accent="violet"
         title="Company profile"
         description="Define the type of company you want to find"
       >
@@ -293,8 +306,8 @@ export function SearchBuilderForm({
       </BuilderSection>
 
       <BuilderSection
-        step={2}
         icon={Filter}
+        accent="sky"
         title="Refine your search"
         description="Optional filters to find better matches"
       >
@@ -335,8 +348,8 @@ export function SearchBuilderForm({
       </BuilderSection>
 
       <BuilderSection
-        step={3}
         icon={Briefcase}
+        accent="emerald"
         title="People to contact"
         description="Who should receive your outreach?"
       >
@@ -359,11 +372,10 @@ export function SearchBuilderForm({
       </BuilderSection>
 
       <BuilderSection
-        step={4}
         icon={Ban}
+        accent="amber"
         title="Companies to skip"
         description="Optional — block companies you do not want to contact"
-        variant="exclude"
       >
         <div className="space-y-5">
           <Field
@@ -437,84 +449,110 @@ export function SearchBuilderForm({
           </Field>
         </div>
       </BuilderSection>
+    </>
+  );
 
-      <div className="mt-8 flex flex-col-reverse gap-3 border-t border-gray-100 pt-6 sm:flex-row sm:justify-end">
-        {isEditing && (
-          <button
-            type="button"
-            onClick={handleCancel}
-            disabled={isPending}
-            className={btnSecondaryClassName}
-          >
-            Cancel
-          </button>
-        )}
+  const formFooter = (
+    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+      {(panel || isEditing) && (
         <button
-          type="submit"
+          type="button"
+          onClick={handleCancel}
           disabled={isPending}
-          className={btnPrimaryClassName}
+          className={btnSecondaryClassName}
         >
-          {isPending ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Saving…
-            </>
-          ) : isEditing ? (
-            <>
-              <Pencil className="h-4 w-4" />
-              Save changes
-            </>
-          ) : (
-            <>
-              <Search className="h-4 w-4" />
-              Create search
-            </>
-          )}
+          Cancel
         </button>
-      </div>
+      )}
+      <button
+        type="submit"
+        disabled={isPending}
+        className={btnPrimaryClassName}
+      >
+        {isPending ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Saving…
+          </>
+        ) : isEditing ? (
+          <>
+            <Pencil className="h-4 w-4" />
+            Save changes
+          </>
+        ) : (
+          <>
+            <Search className="h-4 w-4" />
+            Create search
+          </>
+        )}
+      </button>
+    </div>
+  );
+
+  if (panel) {
+    return (
+      <form
+        onSubmit={handleSubmit}
+        className={`${dashboardCardClassName} max-h-[calc(100vh-5rem)] overflow-y-auto border-violet-100/90 shadow-[0_8px_32px_rgba(124,58,237,0.08)]`}
+      >
+        <div className="border-b border-gray-100 bg-gradient-to-b from-violet-50/40 to-white px-5 py-5 sm:px-6">
+          {formHeader}
+        </div>
+        <div className="px-5 py-5 sm:px-6 sm:py-6">
+          {formError}
+          {formBody}
+          <div className="mt-8 border-t border-gray-100 pt-6">{formFooter}</div>
+        </div>
+      </form>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className={`${cardClassName} ${cardPaddingClassName} ${
+        isEditing ? "border-violet-200 ring-2 ring-violet-100/80" : ""
+      }`}
+    >
+      <div className="mb-8">{formHeader}</div>
+      {formError}
+      {formBody}
+      <div className="mt-8 border-t border-gray-100 pt-6">{formFooter}</div>
     </form>
   );
 }
 
+const sectionAccentStyles = {
+  violet: "bg-violet-50 text-violet-600 ring-violet-100",
+  sky: "bg-sky-50 text-sky-600 ring-sky-100",
+  emerald: "bg-emerald-50 text-emerald-600 ring-emerald-100",
+  amber: "bg-amber-50 text-amber-600 ring-amber-100",
+} as const;
+
 function BuilderSection({
-  step,
   icon: Icon,
   title,
   description,
-  variant = "default",
+  accent = "violet",
   children,
 }: {
-  step: number;
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   description: string;
-  variant?: "default" | "exclude";
+  accent?: keyof typeof sectionAccentStyles;
   children: React.ReactNode;
 }) {
-  const isExclude = variant === "exclude";
-
   return (
-    <section
-      className={`mb-8 border-b pb-8 last:mb-0 last:border-0 last:pb-0 ${
-        isExclude ? "border-red-100" : "border-gray-100"
-      }`}
-    >
+    <section className="mb-8 last:mb-0">
       <div className="mb-5 flex items-center gap-3">
-        <span
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold ${
-            isExclude
-              ? "bg-red-50 text-red-600"
-              : "bg-blue-50 text-blue-600"
-          }`}
+        <div
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ${sectionAccentStyles[accent]}`}
         >
-          {step}
-        </span>
-        <div className="flex min-w-0 items-center gap-2">
-          <Icon className="h-4 w-4 shrink-0 text-gray-400" />
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-            <p className="text-xs leading-relaxed text-gray-500">{description}</p>
-          </div>
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+          <p className="text-xs leading-relaxed text-gray-500">{description}</p>
         </div>
       </div>
       {children}

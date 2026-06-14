@@ -13,10 +13,10 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     const loginUrl = new URL("/login", origin);
-    loginUrl.searchParams.set(
-      "error",
-      errorDescription ?? error ?? "auth_failed"
-    );
+    loginUrl.searchParams.set("error", error);
+    if (errorDescription) {
+      loginUrl.searchParams.set("error_description", errorDescription);
+    }
     loginUrl.searchParams.set("redirect", safeRedirect);
     return NextResponse.redirect(loginUrl);
   }

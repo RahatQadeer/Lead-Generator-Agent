@@ -51,7 +51,7 @@ function buildMockEmail(context: EmailGenerationContext): {
         "",
         `Open to a quick call next week to see if we could help?`,
       ],
-      closing: "Cheers,",
+      closing: "Best regards,",
     },
     formal: {
       subject: `Inquiry regarding software partnership — ${company}`,

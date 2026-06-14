@@ -10,6 +10,7 @@ export interface SendOutreachInput {
 export interface SendOutreachResult {
   provider: EmailSendingProviderName;
   messageId: string;
+  threadId?: string;
   sentAt: string;
 }
 

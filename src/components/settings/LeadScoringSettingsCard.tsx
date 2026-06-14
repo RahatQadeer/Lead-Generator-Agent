@@ -2,7 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { BarChart3, Loader2 } from "lucide-react";
-import { inputClassName } from "@/components/ui/Field";
+import { SettingsCard } from "@/components/ui/SettingsCard";
+import {
+  alertErrorClassName,
+  alertSuccessClassName,
+  btnGhostClassName,
+  btnPrimaryClassName,
+  hintClassName,
+  textSecondaryClassName,
+} from "@/lib/ui/styles";
 import type {
   LeadScoringSettingsStatus,
   LeadScoringWeights,
@@ -11,36 +19,114 @@ import type {
 const WEIGHT_FIELDS: Array<{
   key: keyof LeadScoringWeights;
   label: string;
+  shortLabel: string;
   description: string;
+  gradientClassName: string;
+  accentClassName: string;
 }> = [
   {
     key: "industryMatch",
     label: "Industry match",
+    shortLabel: "Industry",
     description: "Company industry vs search industry",
+    gradientClassName: "from-violet-400 to-violet-600",
+    accentClassName: "accent-violet-600",
   },
   {
     key: "companySize",
     label: "Company size",
+    shortLabel: "Size",
     description: "Employee count within search size range",
+    gradientClassName: "from-sky-400 to-sky-600",
+    accentClassName: "accent-sky-600",
   },
   {
     key: "locationMatch",
     label: "Location match",
+    shortLabel: "Location",
     description: "Company country vs search country",
+    gradientClassName: "from-emerald-400 to-emerald-600",
+    accentClassName: "accent-emerald-600",
   },
   {
     key: "jobRoleMatch",
     label: "Job role match",
+    shortLabel: "Role",
     description: "Contact title vs search job titles",
+    gradientClassName: "from-amber-400 to-amber-600",
+    accentClassName: "accent-amber-600",
   },
   {
     key: "technologyMatch",
     label: "Technology match",
+    shortLabel: "Tech",
     description: "Company technologies vs search technologies",
+    gradientClassName: "from-rose-400 to-rose-600",
+    accentClassName: "accent-rose-600",
   },
 ];
 
-export function LeadScoringSettingsCard() {
+interface LeadScoringSettingsCardProps {
+  embedded?: boolean;
+}
+
+function WeightDistributionHeader({
+  total,
+  weights,
+}: {
+  total: number;
+  weights: LeadScoringWeights;
+}) {
+  const isValid = total === 100;
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+      <div className="flex h-2 w-full overflow-hidden bg-gray-100">
+        {WEIGHT_FIELDS.map((field) => {
+          const value = weights[field.key];
+          if (value <= 0) return null;
+
+          return (
+            <div
+              key={field.key}
+              className={`h-full bg-gradient-to-r ${field.gradientClassName}`}
+              style={{ width: `${value}%` }}
+              title={`${field.label}: ${value}%`}
+            />
+          );
+        })}
+      </div>
+
+      <div className="flex flex-row items-center justify-between gap-3 px-3 py-2.5">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-gray-900">
+            Distribution preview
+          </p>
+          <p
+            className={`text-[10px] ${
+              isValid ? "text-gray-500" : "font-medium text-amber-700"
+            }`}
+          >
+            {isValid
+              ? "Balanced — use the controls below to change"
+              : "Total must equal 100%"}
+          </p>
+        </div>
+        <span
+          className={`shrink-0 text-sm font-bold tabular-nums ${
+            isValid ? "text-violet-700" : "text-amber-700"
+          }`}
+        >
+          {total}%
+        </span>
+      </div>
+    </div>
+  );
+}
+
+export function LeadScoringSettingsCard({
+  embedded = false,
+}: LeadScoringSettingsCardProps) {
   const [status, setStatus] = useState<LeadScoringSettingsStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -83,12 +169,16 @@ export function LeadScoringSettingsCard() {
     loadStatus();
   }, []);
 
-  function updateWeight(key: keyof LeadScoringWeights, value: string) {
-    const parsed = Number.parseInt(value, 10);
+  function updateWeight(key: keyof LeadScoringWeights, value: number) {
     setWeights((current) => ({
       ...current,
-      [key]: Number.isNaN(parsed) ? 0 : parsed,
+      [key]: Math.min(100, Math.max(0, value)),
     }));
+  }
+
+  function updateWeightFromInput(key: keyof LeadScoringWeights, raw: string) {
+    const parsed = Number.parseInt(raw, 10);
+    updateWeight(key, Number.isNaN(parsed) ? 0 : parsed);
   }
 
   async function handleSave() {
@@ -143,114 +233,142 @@ export function LeadScoringSettingsCard() {
     }
   }
 
-  return (
-    <div className="rounded-2xl border border-white/5 bg-slate-900/50 p-6 sm:p-8 lg:col-span-2">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10">
-          <BarChart3 className="h-5 w-5 text-violet-400" />
-        </div>
-        <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
-            Lead scoring rules
-          </h2>
-          <p className="mt-0.5 text-xs text-slate-500">
-            Factor weights for the 1–10 lead score
-          </p>
-        </div>
+  const content = loading ? (
+    <div className={`flex items-center gap-2 ${textSecondaryClassName}`}>
+      <Loader2 className="h-4 w-4 animate-spin" />
+      Loading configuration…
+    </div>
+  ) : (
+    <>
+      <WeightDistributionHeader total={weightTotal} weights={weights} />
+
+      <div className="mt-4">
+        <p className="text-xs font-semibold text-gray-900">Set your weights</p>
+        <p className={`mt-1 ${hintClassName}`}>
+          Type a percentage or drag the slider on each factor. Set to 0% to
+          exclude.
+        </p>
       </div>
 
-      {loading ? (
-        <div className="mt-6 flex items-center gap-2 text-sm text-slate-400">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading configuration…
-        </div>
-      ) : (
-        <>
-          <p className="mt-6 text-xs text-slate-500">
-            Adjust how much each factor contributes to the final score. Weights
-            must total 100%. Set a factor to 0% to exclude it.
-          </p>
+      <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+        {WEIGHT_FIELDS.map((field) => {
+          const value = weights[field.key];
 
-          <div className="mt-6 space-y-4">
-            {WEIGHT_FIELDS.map((field) => (
-              <div
-                key={field.key}
-                className="grid gap-3 rounded-xl border border-white/5 bg-slate-950/40 p-4 sm:grid-cols-[1fr_6rem]"
-              >
-                <div>
-                  <label
-                    htmlFor={`weight-${field.key}`}
-                    className="text-sm font-medium text-slate-200"
-                  >
-                    {field.label}
-                  </label>
-                  <p className="mt-0.5 text-xs text-slate-600">
-                    {field.description}
-                  </p>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      id={`weight-${field.key}`}
-                      type="number"
-                      min={0}
-                      max={100}
-                      step={1}
-                      value={weights[field.key]}
-                      onChange={(e) => updateWeight(field.key, e.target.value)}
-                      className={inputClassName}
-                    />
-                    <span className="text-sm text-slate-500">%</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <p
-            className={`mt-4 text-xs ${
-              weightTotal === 100 ? "text-slate-500" : "text-amber-300"
-            }`}
-          >
-            Total: {weightTotal}% {weightTotal !== 100 && "(must equal 100%)"}
-          </p>
-
-          <div className="mt-6 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving || weightTotal !== 100}
-              className="inline-flex items-center gap-2 rounded-lg border border-violet-500/30 bg-violet-500/10 px-4 py-2 text-sm font-medium text-violet-200 transition-colors hover:bg-violet-500/20 disabled:opacity-50"
+          return (
+            <div
+              key={field.key}
+              title={field.description}
+              className="min-w-[5.5rem] flex-1 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.03)]"
             >
-              {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Saving…
-                </>
-              ) : (
-                "Save rules"
-              )}
-            </button>
-            {status?.hasUserSettings && (
-              <button
-                type="button"
-                onClick={handleReset}
-                disabled={saving}
-                className="text-sm text-slate-500 transition-colors hover:text-slate-300 disabled:opacity-50"
-              >
-                Reset to defaults
-              </button>
-            )}
-          </div>
+              <div className="h-1.5 bg-gray-100">
+                <div
+                  className={`h-full bg-gradient-to-r transition-[width] duration-200 ${field.gradientClassName}`}
+                  style={{ width: `${value}%` }}
+                />
+              </div>
 
-          {message && <p className="mt-3 text-xs text-emerald-300">{message}</p>}
-          {error && <p className="mt-3 text-xs text-rose-300">{error}</p>}
+              <div className="px-2 py-2.5">
+                <label
+                  htmlFor={`weight-input-${field.key}`}
+                  className="block truncate text-[10px] font-semibold uppercase tracking-wide text-gray-500"
+                >
+                  {field.shortLabel}
+                </label>
 
-          <p className="mt-3 text-xs text-slate-600">
-            Re-score leads on a search after changing rules to apply new weights.
-          </p>
-        </>
+                <div className="mt-1.5 flex items-center gap-0.5">
+                  <input
+                    id={`weight-input-${field.key}`}
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={value}
+                    onChange={(e) =>
+                      updateWeightFromInput(field.key, e.target.value)
+                    }
+                    className="w-full min-w-0 rounded-md border border-gray-200 bg-gray-50 px-1.5 py-1 text-center text-sm font-bold tabular-nums text-gray-900 focus:border-violet-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-violet-100"
+                    aria-label={`${field.label} weight`}
+                  />
+                  <span className="shrink-0 text-xs text-gray-400">%</span>
+                </div>
+
+                <input
+                  id={`weight-${field.key}`}
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={value}
+                  onChange={(e) =>
+                    updateWeight(
+                      field.key,
+                      Number.parseInt(e.target.value, 10)
+                    )
+                  }
+                  aria-label={`${field.label} slider`}
+                  className={`mt-2.5 h-1.5 w-full cursor-pointer appearance-none rounded-full bg-gray-200 ${field.accentClassName}`}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-6 flex flex-wrap gap-3">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving || weightTotal !== 100}
+          className={btnPrimaryClassName}
+        >
+          {saving ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Saving…
+            </>
+          ) : (
+            "Save rules"
+          )}
+        </button>
+        {status?.hasUserSettings && (
+          <button
+            type="button"
+            onClick={handleReset}
+            disabled={saving}
+            className={btnGhostClassName}
+          >
+            Reset to defaults
+          </button>
+        )}
+      </div>
+
+      {message && (
+        <div className={`mt-3 ${alertSuccessClassName}`} role="status">
+          {message}
+        </div>
       )}
-    </div>
+      {error && (
+        <div className={`mt-3 ${alertErrorClassName}`} role="alert">
+          {error}
+        </div>
+      )}
+
+      <p className={`mt-3 ${hintClassName}`}>
+        Re-score leads on a search after changing rules to apply new weights.
+      </p>
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <SettingsCard
+      icon={BarChart3}
+      iconClassName="bg-violet-50 text-violet-600"
+      title="Lead scoring rules"
+      description="Factor weights for the 1–10 lead score"
+    >
+      {content}
+    </SettingsCard>
   );
 }

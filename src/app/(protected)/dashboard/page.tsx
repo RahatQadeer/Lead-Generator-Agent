@@ -1,13 +1,4 @@
-import { LayoutDashboard } from "lucide-react";
-import { DashboardGettingStarted } from "@/components/dashboard/DashboardGettingStarted";
-import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
-import { DashboardQuickLinks } from "@/components/dashboard/DashboardQuickLinks";
-import { RecentActivityFeed } from "@/components/dashboard/RecentActivityFeed";
-import { DashboardStatsPanel } from "@/components/dashboard/DashboardStatsPanel";
-import { ConversionMetricsPanel } from "@/components/dashboard/ConversionMetricsPanel";
-import { EmailMetricsPanel } from "@/components/dashboard/EmailMetricsPanel";
-import { LeadMetricsPanel } from "@/components/dashboard/LeadMetricsPanel";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { DashboardUnified } from "@/components/dashboard/DashboardUnified";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
 import { getRecentActivity } from "@/lib/dashboard/activity-feed";
 import { getConversionMetrics } from "@/lib/dashboard/conversion-metrics";
@@ -32,28 +23,14 @@ export default async function DashboardPage() {
   const firstName = profile.full_name?.split(" ")[0] ?? "there";
 
   return (
-    <>
-      <PageHeader
-        icon={LayoutDashboard}
-        label="Dashboard"
-        title={`Welcome back, ${firstName}`}
-        description="Your AI-powered sales assistant is ready. Start discovering leads and automating outreach from here."
-      />
-
-      <DashboardLayout
-        stats={<DashboardStatsPanel stats={stats} />}
-        aside={
-          <>
-            <RecentActivityFeed activities={activities} />
-            <DashboardQuickLinks />
-          </>
-        }
-      >
-        <LeadMetricsPanel metrics={leadMetrics} />
-        <EmailMetricsPanel metrics={emailMetrics} />
-        <ConversionMetricsPanel metrics={conversionMetrics} />
-        <DashboardGettingStarted steps={steps} />
-      </DashboardLayout>
-    </>
+    <DashboardUnified
+      firstName={firstName}
+      stats={stats}
+      leadMetrics={leadMetrics}
+      emailMetrics={emailMetrics}
+      conversionMetrics={conversionMetrics}
+      activities={activities}
+      steps={steps}
+    />
   );
 }

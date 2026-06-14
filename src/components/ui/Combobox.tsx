@@ -245,8 +245,8 @@ export function Combobox({
               onClick={() => commitValue(trimmedQuery)}
               className={`cursor-pointer border-b border-gray-100 px-4 py-2.5 text-sm transition-colors ${
                 highlightIndex === 0
-                  ? "bg-blue-50 text-blue-700"
-                  : "text-blue-600 hover:bg-gray-50"
+                  ? "bg-violet-50 text-violet-900"
+                  : "text-violet-700 hover:bg-gray-50"
               }`}
             >
               <span className="inline-flex items-center gap-2 font-medium">
@@ -274,9 +274,9 @@ export function Combobox({
                   onClick={() => commitValue(option)}
                   className={`cursor-pointer px-4 py-2.5 text-sm transition-colors ${
                     isHighlighted
-                      ? "bg-blue-50 text-blue-700"
+                      ? "bg-violet-50 text-violet-900"
                       : "text-gray-700 hover:bg-gray-50"
-                  } ${isSelected ? "font-medium" : ""}`}
+                  } ${isSelected ? "font-semibold" : ""}`}
                 >
                   {option}
                 </li>

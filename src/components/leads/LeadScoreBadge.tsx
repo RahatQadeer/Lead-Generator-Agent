@@ -3,10 +3,10 @@ interface LeadScoreBadgeProps {
 }
 
 function scoreColor(score: number): string {
-  if (score >= 8) return "border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
-  if (score >= 6) return "border-cyan-500/30 bg-cyan-500/10 text-cyan-300";
-  if (score >= 4) return "border-amber-500/30 bg-amber-500/10 text-amber-300";
-  return "border-red-500/30 bg-red-500/10 text-red-300";
+  if (score >= 8) return "border-emerald-200 bg-emerald-50 text-emerald-700";
+  if (score >= 6) return "border-violet-200 bg-violet-50 text-violet-800";
+  if (score >= 4) return "border-amber-200 bg-amber-50 text-amber-700";
+  return "border-red-200 bg-red-50 text-red-700";
 }
 
 export function LeadScoreBadge({ score }: LeadScoreBadgeProps) {

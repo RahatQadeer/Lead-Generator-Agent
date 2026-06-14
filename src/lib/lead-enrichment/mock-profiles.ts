@@ -102,4 +102,10 @@ export const MOCK_PERSON_PROFILES: Record<string, MockPersonProfile> = {
     country: "Canada",
     linkedinUrl: "https://linkedin.com/in/jordan-lee",
   },
+  "layibakafayat@gmail.com": {
+    city: "Islamabad",
+    state: null,
+    country: "Pakistan",
+    linkedinUrl: "https://www.linkedin.com/in/laiba-kafayat-7ab5a8251/",
+  },
 };

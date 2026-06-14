@@ -78,7 +78,7 @@ export function SearchCard({
   return (
     <article
       className={`${cardClassName} transition-shadow hover:shadow-md ${
-        isEditing ? "border-blue-300 ring-2 ring-blue-100" : ""
+        isEditing ? "border-violet-200 ring-2 ring-violet-100/80" : ""
       }`}
     >
       <div className="p-5 sm:p-6">
@@ -96,7 +96,7 @@ export function SearchCard({
                 </span>
               )}
               {isEditing && (
-                <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                <span className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-800">
                   Editing
                 </span>
               )}
@@ -143,7 +143,7 @@ export function SearchCard({
               type="button"
               onClick={onEdit}
               disabled={isPending || isEditing}
-              className={`${btnIconClassName} hover:bg-blue-50 hover:text-blue-600`}
+              className={`${btnIconClassName} hover:bg-violet-50 hover:text-violet-700`}
               aria-label={`Edit ${search.name}`}
             >
               <Pencil className="h-4 w-4" />

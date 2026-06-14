@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Plus } from "lucide-react";
 import { SearchBuilderForm } from "@/components/search/SearchBuilderForm";
 import { SavedSearchesPanel } from "@/components/search/SavedSearchesPanel";
-import { alertSuccessClassName } from "@/lib/ui/styles";
+import { SectionCard } from "@/components/ui/SectionCard";
+import { alertSuccessClassName, btnSmPrimaryClassName } from "@/lib/ui/styles";
 import type { SearchRecord } from "@/types/search";
 
 interface SearchBuilderProps {
@@ -15,29 +16,39 @@ interface SearchBuilderProps {
 export function SearchBuilder({ initialSearches }: SearchBuilderProps) {
   const router = useRouter();
   const [editingSearch, setEditingSearch] = useState<SearchRecord | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const showForm = formOpen || editingSearch !== null;
 
   function handleRefresh() {
     router.refresh();
   }
 
+  function handleCreate() {
+    setEditingSearch(null);
+    setFormOpen(true);
+    setSuccessMessage(null);
+  }
+
   function handleEdit(search: SearchRecord) {
     setEditingSearch(search);
+    setFormOpen(true);
     setSuccessMessage(null);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function handleDismissForm() {
+    setEditingSearch(null);
+    setFormOpen(false);
   }
 
   function handleSaved(wasEditing: boolean) {
-    setEditingSearch(null);
+    handleDismissForm();
     setSuccessMessage(
       wasEditing ? "Search updated successfully." : "Search saved successfully."
     );
     router.refresh();
     setTimeout(() => setSuccessMessage(null), 4000);
-  }
-
-  function handleCancelEdit() {
-    setEditingSearch(null);
   }
 
   return (
@@ -52,23 +63,48 @@ export function SearchBuilder({ initialSearches }: SearchBuilderProps) {
         </div>
       )}
 
-      <div className="grid gap-8 xl:grid-cols-5">
-        <div className="xl:col-span-2">
-          <SearchBuilderForm
-            editingSearch={editingSearch}
-            onCancelEdit={handleCancelEdit}
-            onSaved={handleSaved}
-          />
-        </div>
+      <div
+        className={`grid items-start gap-6 ${
+          showForm ? "lg:grid-cols-[1fr_min(100%,420px)] xl:grid-cols-[1fr_420px]" : ""
+        }`}
+      >
+        <SectionCard
+          title="Saved searches"
+          padContent={false}
+          className="overflow-hidden"
+          action={
+            !showForm ? (
+              <button
+                type="button"
+                onClick={handleCreate}
+                className={btnSmPrimaryClassName}
+              >
+                <Plus className="h-4 w-4" strokeWidth={2} />
+                Create search
+              </button>
+            ) : undefined
+          }
+        >
+          <div className="border-t border-gray-100 p-6 sm:p-8">
+            <SavedSearchesPanel
+              searches={initialSearches}
+              editingId={editingSearch?.id ?? null}
+              onEdit={handleEdit}
+              onRefresh={handleRefresh}
+            />
+          </div>
+        </SectionCard>
 
-        <div className="xl:col-span-3">
-          <SavedSearchesPanel
-            searches={initialSearches}
-            editingId={editingSearch?.id ?? null}
-            onEdit={handleEdit}
-            onRefresh={handleRefresh}
-          />
-        </div>
+        {showForm && (
+          <aside className="lg:sticky lg:top-6" aria-label="Create or edit search">
+            <SearchBuilderForm
+              panel
+              editingSearch={editingSearch}
+              onCancelEdit={handleDismissForm}
+              onSaved={handleSaved}
+            />
+          </aside>
+        )}
       </div>
     </div>
   );

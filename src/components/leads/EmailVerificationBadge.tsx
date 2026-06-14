@@ -6,31 +6,31 @@ const STATUS_STYLES: Record<
 > = {
   valid: {
     label: "Verified",
-    className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
   },
   invalid: {
     label: "Invalid",
-    className: "border-red-500/30 bg-red-500/10 text-red-300",
+    className: "border-red-200 bg-red-50 text-red-700",
   },
   invalid_syntax: {
     label: "Bad syntax",
-    className: "border-red-500/30 bg-red-500/10 text-red-300",
+    className: "border-red-200 bg-red-50 text-red-700",
   },
   invalid_domain: {
     label: "Bad domain",
-    className: "border-orange-500/30 bg-orange-500/10 text-orange-300",
+    className: "border-orange-200 bg-orange-50 text-orange-700",
   },
   risky: {
     label: "Risky",
-    className: "border-amber-500/30 bg-amber-500/10 text-amber-300",
+    className: "border-amber-200 bg-amber-50 text-amber-700",
   },
   unknown: {
     label: "Unknown",
-    className: "border-slate-500/30 bg-slate-500/10 text-slate-300",
+    className: "border-gray-200 bg-gray-50 text-gray-600",
   },
   no_email: {
     label: "No email",
-    className: "border-slate-500/30 bg-slate-500/10 text-slate-400",
+    className: "border-gray-200 bg-gray-50 text-gray-500",
   },
 };
 
@@ -45,7 +45,7 @@ export function EmailVerificationBadge({ status }: EmailVerificationBadgeProps) 
 
   return (
     <span
-      className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${style.className}`}
+      className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium ${style.className}`}
     >
       {style.label}
     </span>

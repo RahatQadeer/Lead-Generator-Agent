@@ -72,7 +72,7 @@ export function TagInput({
                 onClick={() => removeTag(tag)}
                 disabled={disabled}
                 className={`shrink-0 rounded hover:opacity-70 disabled:opacity-50 ${
-                  isExclude ? "text-red-500" : "text-blue-600"
+                  isExclude ? "text-red-500" : "text-violet-600"
                 }`}
                 aria-label={`Remove ${tag}`}
               >
@@ -114,7 +114,7 @@ export function TagInput({
               type="button"
               onClick={() => addTag(suggestion)}
               disabled={disabled}
-              className={`${pillInactiveClassName} !rounded-full hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700`}
+              className={`${pillInactiveClassName} !rounded-full hover:border-violet-200 hover:bg-violet-50 hover:text-violet-800`}
             >
               + {suggestion}
             </button>
