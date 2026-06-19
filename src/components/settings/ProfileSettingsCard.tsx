@@ -15,6 +15,7 @@ import {
 } from "@/lib/ui/styles";
 import { getProfileDisplayName } from "@/lib/profile/initials";
 import type { Profile } from "@/types/database";
+import { getApiErrorMessage } from "@/lib/ui/user-messages";
 
 interface ProfileSettingsCardProps {
   profile: Profile;
@@ -51,7 +52,7 @@ export function ProfileSettingsCard({ profile: initialProfile }: ProfileSettings
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to update profile.");
+        setError(getApiErrorMessage(data.error, "Failed to update profile."));
         return;
       }
 
@@ -81,7 +82,7 @@ export function ProfileSettingsCard({ profile: initialProfile }: ProfileSettings
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to upload photo.");
+        setError(getApiErrorMessage(data.error, "Failed to upload photo."));
         return;
       }
 
@@ -105,7 +106,7 @@ export function ProfileSettingsCard({ profile: initialProfile }: ProfileSettings
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to remove photo.");
+        setError(getApiErrorMessage(data.error, "Failed to remove photo."));
         return;
       }
 

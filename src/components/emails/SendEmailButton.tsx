@@ -9,6 +9,7 @@ import {
   hintClassName,
 } from "@/lib/ui/styles";
 import type { EmailSendingProviderName } from "@/types/email-sending";
+import { getApiErrorMessage } from "@/lib/ui/user-messages";
 
 interface SendEmailButtonProps {
   emailId: string;
@@ -44,7 +45,7 @@ export function SendEmailButton({
       const data = await res.json();
 
       if (!data.success) {
-        setMessage(data.error?.message ?? "Failed to send email.");
+        setMessage(getApiErrorMessage(data.error, "Failed to send email."));
         return;
       }
 

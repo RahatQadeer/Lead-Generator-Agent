@@ -10,6 +10,7 @@ import {
 } from "@/lib/ui/styles";
 import type { ReplyTrackingProviderName } from "@/lib/reply-tracking/factory";
 import type { ReplySummary } from "@/types/reply-tracking";
+import { getApiErrorMessage } from "@/lib/ui/user-messages";
 
 interface CheckRepliesPanelProps {
   summary: ReplySummary;
@@ -38,7 +39,7 @@ export function CheckRepliesPanel({
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to check for replies.");
+        setError(getApiErrorMessage(data.error, "Failed to check for replies."));
         return;
       }
 

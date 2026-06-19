@@ -20,7 +20,12 @@ export function getConfiguredReplyTrackingProvider(): ReplyTrackingProviderName 
 
 export function createReplyDetector(): ReplyDetector {
   const provider = getConfiguredReplyTrackingProvider();
+  return createReplyDetectorForProvider(provider);
+}
 
+export function createReplyDetectorForProvider(
+  provider: ReplyTrackingProviderName
+): ReplyDetector {
   if (provider === "gmail") {
     return new GmailReplyDetector();
   }

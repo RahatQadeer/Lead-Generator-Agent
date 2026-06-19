@@ -10,7 +10,7 @@ import {
 } from "react";
 import { ChevronDown, Plus, Search } from "lucide-react";
 import { inputClassName } from "@/components/ui/Field";
-import { dropdownPanelClassName } from "@/lib/ui/styles";
+import { dropdownPanelClassName, pillInactiveClassName } from "@/lib/ui/styles";
 
 interface ComboboxProps {
   id: string;
@@ -24,12 +24,32 @@ interface ComboboxProps {
   emptyMessage?: string;
   /** Max options shown in the dropdown at once. */
   maxOptions?: number;
+  /** Match options by alias terms while typing (e.g. fintech → Financial Services). */
+  searchAliases?: Record<string, readonly string[]>;
+  /** Show quick-pick chips for every option below the input. */
+  showSuggestionPills?: boolean;
 }
 
 function findExactMatch(options: readonly string[], query: string): string | null {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return null;
   return options.find((option) => option.toLowerCase() === normalized) ?? null;
+}
+
+function optionMatchesQuery(
+  option: string,
+  normalizedQuery: string,
+  searchAliases?: Record<string, readonly string[]>
+): boolean {
+  const lower = option.toLowerCase();
+  if (lower.includes(normalizedQuery)) return true;
+
+  const aliases = searchAliases?.[option] ?? [];
+  return aliases.some(
+    (alias) =>
+      alias.toLowerCase().includes(normalizedQuery) ||
+      normalizedQuery.includes(alias.toLowerCase())
+  );
 }
 
 export function Combobox({
@@ -42,6 +62,8 @@ export function Combobox({
   allowCustom = false,
   emptyMessage = "No matches found",
   maxOptions = 50,
+  searchAliases,
+  showSuggestionPills = false,
 }: ComboboxProps) {
   const listboxId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -65,7 +87,7 @@ export function Combobox({
     const normalized = trimmedQuery.toLowerCase();
     if (!normalized) return options.slice(0, maxOptions);
     return options
-      .filter((option) => option.toLowerCase().includes(normalized))
+      .filter((option) => optionMatchesQuery(option, normalized, searchAliases))
       .slice(0, maxOptions);
   })();
 
@@ -174,6 +196,7 @@ export function Combobox({
   const showDropdown = open && !disabled;
 
   return (
+    <div className="space-y-3">
     <div ref={containerRef} className="relative">
       <div className="relative">
         <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -290,6 +313,25 @@ export function Combobox({
           )}
         </ul>
       )}
+    </div>
+
+    {showSuggestionPills && options.length > 0 && (
+      <div className="flex flex-wrap gap-2">
+        {options.map((option) => (
+          <button
+            key={option}
+            type="button"
+            onClick={() => commitValue(option)}
+            disabled={disabled}
+            className={`${pillInactiveClassName} !rounded-full hover:border-violet-200 hover:bg-violet-50 hover:text-violet-800 ${
+              value === option ? "!border-violet-300 !bg-violet-50 !text-violet-900" : ""
+            }`}
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+    )}
     </div>
   );
 }

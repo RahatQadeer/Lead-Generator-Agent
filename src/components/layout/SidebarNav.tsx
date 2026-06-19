@@ -46,7 +46,7 @@ export function SidebarNav({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            className="rounded-xl p-1.5 text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-ink)]"
             aria-label="Close menu"
           >
             <X className="h-5 w-5" />
@@ -69,7 +69,7 @@ export function SidebarNav({
           >
             <Icon
               className={`h-[1.125rem] w-[1.125rem] shrink-0 ${
-                isActive ? "text-violet-700" : "text-gray-400"
+                isActive ? "text-[var(--color-accent-600)]" : "text-[var(--color-ink-muted)]"
               }`}
             />
             {label}

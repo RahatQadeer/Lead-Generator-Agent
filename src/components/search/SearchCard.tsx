@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect, useCallback } from "react";
 import {
   Building2,
   Globe,
@@ -37,6 +37,11 @@ import {
   tagExcludeClassName,
 } from "@/lib/ui/styles";
 import type { SearchRecord, SearchStatus } from "@/types/search";
+import type {
+  SearchPipelineProgress,
+  SearchPipelineStepStates,
+} from "@/types/search-pipeline";
+import { EMPTY_PIPELINE_PROGRESS } from "@/lib/search/pipeline-steps";
 
 interface SearchCardProps {
   search: SearchRecord;
@@ -53,6 +58,37 @@ export function SearchCard({
 }: SearchCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [pipelineProgress, setPipelineProgress] =
+    useState<SearchPipelineProgress>(EMPTY_PIPELINE_PROGRESS);
+  const [pipelineSteps, setPipelineSteps] = useState<SearchPipelineStepStates | null>(
+    null
+  );
+  const [pipelineLoading, setPipelineLoading] = useState(false);
+
+  const refreshPipelineProgress = useCallback(async () => {
+    setPipelineLoading(true);
+    try {
+      const res = await fetch(`/api/searches/${search.id}/pipeline-progress`);
+      const data = (await res.json()) as {
+        success: boolean;
+        progress?: SearchPipelineProgress;
+        steps?: SearchPipelineStepStates;
+      };
+      if (data.success && data.progress && data.steps) {
+        setPipelineProgress(data.progress);
+        setPipelineSteps(data.steps);
+      }
+    } catch {
+      // Keep previous progress on transient errors.
+    } finally {
+      setPipelineLoading(false);
+    }
+  }, [search.id]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    void refreshPipelineProgress();
+  }, [expanded, refreshPipelineProgress]);
 
   function runAction(action: () => Promise<unknown>) {
     startTransition(async () => {
@@ -216,37 +252,67 @@ export function SearchCard({
               </div>
             )}
 
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
-              <h4 className="text-sm font-semibold text-gray-900">
+            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-subtle)] p-4">
+              <h4 className="text-sm font-semibold text-[var(--color-ink)]">
                 Outreach steps
               </h4>
-              <p className="mt-1 text-xs text-gray-500">
-                Run these steps in order to find companies, contacts, and
-                prepare your campaign.
+              <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
+                Run in order: companies → people → contact details (emails
+                auto-checked) → verify emails → rank leads with intent signals.
               </p>
+              {search.status === "draft" && (
+                <p className="mt-2 rounded-lg border border-amber-200/80 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  This search is a draft — people and contact details won&apos;t appear on
+                  the Leads page until you set status to Active.
+                </p>
+              )}
 
-              <DiscoverPreview searchId={search.id} searchName={search.name} />
+              <DiscoverPreview
+                searchId={search.id}
+                searchName={search.name}
+                stepControl={pipelineSteps?.step1}
+                onStepComplete={refreshPipelineProgress}
+              />
 
               <ContactsPreview
                 searchId={search.id}
                 searchName={search.name}
                 jobTitles={search.jobTitles}
+                stepControl={pipelineSteps?.step2}
+                onStepComplete={refreshPipelineProgress}
               />
 
               <EnrichLeadsPreview
                 searchId={search.id}
                 searchName={search.name}
+                stepControl={pipelineSteps?.step3}
+                onStepComplete={refreshPipelineProgress}
               />
 
               <VerifyEmailsPreview
                 searchId={search.id}
                 searchName={search.name}
+                stepControl={pipelineSteps?.step4}
+                onStepComplete={refreshPipelineProgress}
               />
 
               <ScoreLeadsPreview
                 searchId={search.id}
                 searchName={search.name}
+                stepControl={pipelineSteps?.step5}
+                onStepComplete={refreshPipelineProgress}
               />
+
+              {pipelineLoading && (
+                <p className="text-xs text-gray-400">Checking saved pipeline progress…</p>
+              )}
+              {!pipelineLoading && pipelineProgress.companyCount > 0 && (
+                <p className="text-xs text-gray-500">
+                  Saved: {pipelineProgress.companyCount} companies ·{" "}
+                  {pipelineProgress.contactCount} people · {pipelineProgress.enrichedCount}{" "}
+                  enriched
+                </p>
+              )}
             </div>
 
             <div className="flex items-center gap-3 pt-2">

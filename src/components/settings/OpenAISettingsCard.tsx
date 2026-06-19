@@ -15,6 +15,7 @@ import {
   textSecondaryClassName,
 } from "@/lib/ui/styles";
 import type { OpenAISettingsStatus } from "@/types/openai-settings";
+import { getApiErrorMessage } from "@/lib/ui/user-messages";
 
 const MODEL_OPTIONS = [
   "gpt-4o-mini",
@@ -50,7 +51,7 @@ export function OpenAISettingsCard({ embedded = false }: OpenAISettingsCardProps
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to load OpenAI settings.");
+        setError(getApiErrorMessage(data.error, "Failed to load OpenAI settings."));
         return;
       }
 
@@ -84,7 +85,7 @@ export function OpenAISettingsCard({ embedded = false }: OpenAISettingsCardProps
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to save settings.");
+        setError(getApiErrorMessage(data.error, "Failed to save settings."));
         return;
       }
 
@@ -115,7 +116,9 @@ export function OpenAISettingsCard({ embedded = false }: OpenAISettingsCardProps
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? data.result?.message ?? "Test failed.");
+        setError(
+          getApiErrorMessage(data.error, data.result?.message ?? "Test failed.")
+        );
         return;
       }
 
@@ -137,7 +140,7 @@ export function OpenAISettingsCard({ embedded = false }: OpenAISettingsCardProps
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to reset settings.");
+        setError(getApiErrorMessage(data.error, "Failed to reset settings."));
         return;
       }
 

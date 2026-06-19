@@ -19,6 +19,7 @@ import {
 } from "@/lib/ui/styles";
 import type { EmailGenerationPreview, EmailTone } from "@/types/email-generation";
 import { EMAIL_TONES } from "@/types/email-generation";
+import { getApiErrorMessage } from "@/lib/ui/user-messages";
 
 interface GenerateEmailButtonProps {
   contactId: string;
@@ -77,7 +78,7 @@ export function GenerateEmailButton({
       const data = await res.json();
 
       if (!data.success) {
-        setToastMessage(data.error?.message ?? "Failed to load lead context.");
+        setToastMessage(getApiErrorMessage(data.error, "Failed to load lead context."));
         return;
       }
 
@@ -119,7 +120,7 @@ export function GenerateEmailButton({
       const data = await res.json();
 
       if (!data.success) {
-        setFormError(data.error?.message ?? "Failed to generate email.");
+        setFormError(getApiErrorMessage(data.error, "Failed to generate email."));
         return;
       }
 

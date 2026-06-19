@@ -22,6 +22,7 @@ import type {
   EmailTemplate,
   EmailTemplatePlaceholder,
 } from "@/types/email-templates";
+import { getApiErrorMessage } from "@/lib/ui/user-messages";
 
 interface TemplateFormState {
   name: string;
@@ -93,7 +94,7 @@ export function EmailTemplatesSettingsCard({
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to load email templates.");
+        setError(getApiErrorMessage(data.error, "Failed to load email templates."));
         return;
       }
 
@@ -153,7 +154,7 @@ export function EmailTemplatesSettingsCard({
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to save template.");
+        setError(getApiErrorMessage(data.error, "Failed to save template."));
         return;
       }
 
@@ -179,7 +180,7 @@ export function EmailTemplatesSettingsCard({
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to delete template.");
+        setError(getApiErrorMessage(data.error, "Failed to delete template."));
         return;
       }
 

@@ -14,19 +14,30 @@ export function getCompanyDedupKey(company: DiscoveredCompany): string | null {
   return `name:${name}|country:${country}`;
 }
 
+export interface ApplyCompanyDedupOptions {
+  /**
+   * Re-include known DB duplicates that appear in the current discovery batch
+   * so they can be linked to this search. Never pulls companies from DB alone.
+   */
+  relinkKnown?: boolean;
+}
+
 export function applyDedup(
   companies: DiscoveredCompany[],
-  knownKeys: ReadonlySet<string> = new Set()
+  knownKeys: ReadonlySet<string> = new Set(),
+  options: ApplyCompanyDedupOptions = {}
 ): {
   companies: DiscoveredCompany[];
   duplicateCount: number;
   batchDuplicateCount: number;
   knownDuplicateCount: number;
 } {
+  const relinkKnown = options.relinkKnown !== false;
   const seenInBatch = new Set<string>();
   const unique: DiscoveredCompany[] = [];
   let batchDuplicateCount = 0;
   let knownDuplicateCount = 0;
+  let droppedDuplicateCount = 0;
 
   for (const company of companies) {
     const key = getCompanyDedupKey(company);
@@ -38,11 +49,18 @@ export function applyDedup(
 
     if (seenInBatch.has(key)) {
       batchDuplicateCount += 1;
+      droppedDuplicateCount += 1;
       continue;
     }
 
     if (knownKeys.has(key)) {
       knownDuplicateCount += 1;
+      if (relinkKnown) {
+        seenInBatch.add(key);
+        unique.push(company);
+      } else {
+        droppedDuplicateCount += 1;
+      }
       continue;
     }
 
@@ -52,7 +70,7 @@ export function applyDedup(
 
   return {
     companies: unique,
-    duplicateCount: batchDuplicateCount + knownDuplicateCount,
+    duplicateCount: droppedDuplicateCount,
     batchDuplicateCount,
     knownDuplicateCount,
   };

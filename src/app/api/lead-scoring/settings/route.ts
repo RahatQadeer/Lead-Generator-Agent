@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 function parseWeights(body: Record<string, unknown>): LeadScoringWeightsInput | null {
   const fields = [
     "industryMatch",
+    "companyTypeVerified",
     "companySize",
     "locationMatch",
     "jobRoleMatch",

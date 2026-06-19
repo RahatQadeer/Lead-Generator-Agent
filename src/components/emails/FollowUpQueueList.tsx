@@ -15,6 +15,7 @@ import {
   textSecondaryClassName,
 } from "@/lib/ui/styles";
 import type { ScheduledFollowUpWithContext } from "@/types/follow-up";
+import { getApiErrorMessage } from "@/lib/ui/user-messages";
 
 interface FollowUpQueueListProps {
   followUps: ScheduledFollowUpWithContext[];
@@ -52,7 +53,7 @@ export function FollowUpQueueList({ followUps }: FollowUpQueueListProps) {
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to generate suggestion.");
+        setError(getApiErrorMessage(data.error, "Failed to generate suggestion."));
         return;
       }
 
@@ -84,7 +85,7 @@ export function FollowUpQueueList({ followUps }: FollowUpQueueListProps) {
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to save draft.");
+        setError(getApiErrorMessage(data.error, "Failed to save draft."));
         return;
       }
 

@@ -2,7 +2,7 @@ import { applyCriteria } from "@/lib/company-discovery/apply-criteria";
 import type { CompanyDiscoveryProvider, ProviderSearchResult } from "@/lib/company-discovery/types";
 import type { CompanyDiscoveryParams, DiscoveredCompany } from "@/types/company";
 
-const MOCK_COMPANIES: Omit<DiscoveredCompany, "id">[] = [
+const MOCK_COMPANIES_BASE: Omit<DiscoveredCompany, "id" | "description" | "confidenceScore">[] = [
   {
     name: "ABC Health",
     domain: "abchealth.com",
@@ -112,6 +112,14 @@ const MOCK_COMPANIES: Omit<DiscoveredCompany, "id">[] = [
     technologies: ["Next.js", "Node.js"],
   },
 ];
+
+const MOCK_COMPANIES: Omit<DiscoveredCompany, "id">[] = MOCK_COMPANIES_BASE.map(
+  (company) => ({
+    ...company,
+    description: `${company.name} is a ${company.industry?.toLowerCase() ?? "technology"} company.`,
+    confidenceScore: 88,
+  })
+);
 
 export class MockCompanyDiscoveryProvider implements CompanyDiscoveryProvider {
   readonly name = "mock";

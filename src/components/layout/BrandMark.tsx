@@ -18,8 +18,8 @@ export function BrandMark({
   const logoSize = size === "sm" ? 32 : 36;
   const nameClass =
     size === "sm"
-      ? "text-sm font-bold tracking-[-0.02em] text-gray-950"
-      : "text-[0.9375rem] font-bold tracking-[-0.02em] text-gray-950";
+      ? "text-sm font-bold tracking-[-0.02em] text-[var(--color-ink)]"
+      : "text-[0.9375rem] font-bold tracking-[-0.02em] text-[var(--color-ink)]";
 
   const content = (
     <>

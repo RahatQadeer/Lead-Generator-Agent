@@ -1,13 +1,15 @@
 export const DEFAULT_LEAD_SCORING_WEIGHTS: LeadScoringWeights = {
-  industryMatch: 20,
-  companySize: 20,
-  locationMatch: 20,
-  jobRoleMatch: 20,
-  technologyMatch: 20,
+  industryMatch: 18,
+  companyTypeVerified: 18,
+  companySize: 16,
+  locationMatch: 16,
+  jobRoleMatch: 16,
+  technologyMatch: 16,
 };
 
 export interface LeadScoringWeights {
   industryMatch: number;
+  companyTypeVerified: number;
   companySize: number;
   locationMatch: number;
   jobRoleMatch: number;
@@ -27,6 +29,7 @@ export interface LeadScoringSettingsStatus {
 
 export interface LeadScoringWeightsInput {
   industryMatch: number;
+  companyTypeVerified: number;
   companySize: number;
   locationMatch: number;
   jobRoleMatch: number;

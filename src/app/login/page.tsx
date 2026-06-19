@@ -56,11 +56,11 @@ function LoginContent({
                     className="h-14 w-14 shrink-0 rounded-xl object-contain"
                     priority
                   />
-                  <h1 className="text-xl font-bold tracking-[-0.02em] text-white sm:text-2xl">
+                  <h1 className="text-xl font-bold tracking-[-0.02em] !text-white sm:text-2xl">
                     RightTail
                   </h1>
                 </div>
-                <h2 className="mt-2 text-xl font-semibold tracking-[-0.01em] text-gray-300 sm:text-2xl">
+                <h2 className="mt-2 text-xl font-semibold tracking-[-0.01em] !text-white sm:text-2xl">
                   Lead Generation Agent
                 </h2>
               </div>

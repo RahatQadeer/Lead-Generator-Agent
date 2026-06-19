@@ -21,10 +21,28 @@ export async function discoverCompanies(
     { maxAttempts: 3, baseDelayMs: 600, maxDelayMs: 5000 }
   );
 
-  const { companies: criteriaMatched, filteredCount } = applyCriteria(
-    result.companies,
-    params
-  );
+  const seedCount = result.stats?.seedCount;
+  const enrichedCount = result.stats?.enrichedCount;
+  const providerFilteredCount = result.stats?.filteredCount ?? 0;
+  const providerRelaxedMatch = result.stats?.relaxedMatch ?? false;
+
+  // Scraping/mock providers filter during search; use their counts for diagnostics.
+  const providerPreFilters = provider.name === "scraping" || provider.name === "mock";
+  const criteriaResult = providerPreFilters
+    ? {
+        companies: result.companies,
+        filteredCount: providerFilteredCount,
+        relaxedMatch: providerRelaxedMatch,
+        rejected: result.rejected ?? [],
+      }
+    : applyCriteria(result.companies, params);
+
+  const {
+    companies: criteriaMatched,
+    filteredCount,
+    relaxedMatch,
+    rejected,
+  } = criteriaResult;
 
   const { companies: exclusionMatched, excludedCount } = applyExclusions(
     criteriaMatched,
@@ -47,6 +65,10 @@ export async function discoverCompanies(
     duplicateCount,
     batchDuplicateCount,
     knownDuplicateCount,
+    seedCount,
+    enrichedCount,
+    relaxedMatch,
+    rejected,
     attempts,
   };
 }
@@ -67,7 +89,7 @@ export function toDiscoveryErrorResponse(error: unknown) {
     success: false as const,
     error: {
       code: "PROVIDER_ERROR" as const,
-      message: "An unexpected error occurred during company discovery.",
+      message: "Something went wrong while looking for companies. Please try again.",
       retryable: false,
     },
   };

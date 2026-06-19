@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, Plus } from "lucide-react";
 import { SearchBuilderForm } from "@/components/search/SearchBuilderForm";
 import { SavedSearchesPanel } from "@/components/search/SavedSearchesPanel";
+import { Modal } from "@/components/ui/Modal";
 import { SectionCard } from "@/components/ui/SectionCard";
 import { alertSuccessClassName, btnSmPrimaryClassName } from "@/lib/ui/styles";
 import type { SearchRecord } from "@/types/search";
@@ -16,39 +17,37 @@ interface SearchBuilderProps {
 export function SearchBuilder({ initialSearches }: SearchBuilderProps) {
   const router = useRouter();
   const [editingSearch, setEditingSearch] = useState<SearchRecord | null>(null);
-  const [formOpen, setFormOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const showForm = formOpen || editingSearch !== null;
+  const isEditing = editingSearch !== null;
 
   function handleRefresh() {
     router.refresh();
   }
 
-  function handleCreate() {
+  function openCreate() {
     setEditingSearch(null);
-    setFormOpen(true);
+    setDialogOpen(true);
     setSuccessMessage(null);
   }
 
-  function handleEdit(search: SearchRecord) {
+  function openEdit(search: SearchRecord) {
     setEditingSearch(search);
-    setFormOpen(true);
+    setDialogOpen(true);
     setSuccessMessage(null);
   }
 
-  function handleDismissForm() {
+  function closeDialog() {
+    setDialogOpen(false);
     setEditingSearch(null);
-    setFormOpen(false);
   }
 
   function handleSaved(wasEditing: boolean) {
-    handleDismissForm();
-    setSuccessMessage(
-      wasEditing ? "Search updated successfully." : "Search saved successfully."
-    );
+    closeDialog();
+    setSuccessMessage(wasEditing ? "Search updated." : "Search created.");
     router.refresh();
-    setTimeout(() => setSuccessMessage(null), 4000);
+    setTimeout(() => setSuccessMessage(null), 3000);
   }
 
   return (
@@ -63,49 +62,45 @@ export function SearchBuilder({ initialSearches }: SearchBuilderProps) {
         </div>
       )}
 
-      <div
-        className={`grid items-start gap-6 ${
-          showForm ? "lg:grid-cols-[1fr_min(100%,420px)] xl:grid-cols-[1fr_420px]" : ""
-        }`}
+      <SectionCard
+        title="Saved searches"
+        padContent={false}
+        className="overflow-hidden"
+        action={
+          <button
+            type="button"
+            onClick={openCreate}
+            className={btnSmPrimaryClassName}
+          >
+            <Plus className="h-4 w-4" strokeWidth={2} />
+            Create search
+          </button>
+        }
       >
-        <SectionCard
-          title="Saved searches"
-          padContent={false}
-          className="overflow-hidden"
-          action={
-            !showForm ? (
-              <button
-                type="button"
-                onClick={handleCreate}
-                className={btnSmPrimaryClassName}
-              >
-                <Plus className="h-4 w-4" strokeWidth={2} />
-                Create search
-              </button>
-            ) : undefined
-          }
-        >
-          <div className="border-t border-gray-100 p-6 sm:p-8">
-            <SavedSearchesPanel
-              searches={initialSearches}
-              editingId={editingSearch?.id ?? null}
-              onEdit={handleEdit}
-              onRefresh={handleRefresh}
-            />
-          </div>
-        </SectionCard>
+        <div className="border-t border-gray-100 p-6 sm:p-8">
+          <SavedSearchesPanel
+            searches={initialSearches}
+            editingId={editingSearch?.id ?? null}
+            onEdit={openEdit}
+            onRefresh={handleRefresh}
+          />
+        </div>
+      </SectionCard>
 
-        {showForm && (
-          <aside className="lg:sticky lg:top-6" aria-label="Create or edit search">
-            <SearchBuilderForm
-              panel
-              editingSearch={editingSearch}
-              onCancelEdit={handleDismissForm}
-              onSaved={handleSaved}
-            />
-          </aside>
-        )}
-      </div>
+      <Modal
+        open={dialogOpen}
+        onClose={closeDialog}
+        title={isEditing ? "Edit search" : "New search"}
+        subtitle={isEditing ? editingSearch.name : undefined}
+        size="xl"
+      >
+        <SearchBuilderForm
+          variant="dialog"
+          editingSearch={editingSearch}
+          onCancelEdit={closeDialog}
+          onSaved={handleSaved}
+        />
+      </Modal>
     </div>
   );
 }

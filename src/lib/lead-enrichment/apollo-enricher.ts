@@ -131,6 +131,17 @@ export class ApolloLeadEnrichmentProvider implements LeadEnrichmentProvider {
         country,
         location: formatLocation(city, state, country),
         email: person?.email ?? input.email,
+        emailIsGuessed: false,
+        emailSource: person?.email ? "found" : null,
+        linkedInSource: person?.linkedin_url ? "public_profile" : null,
+        contactDetailType: person?.email
+          ? "public_email"
+          : person?.linkedin_url
+            ? "linkedin_only"
+            : null,
+        contactPageUrl: null,
+        outreachChannel: null,
+        confidenceScore: 70,
         emailSyntaxValid: null,
         emailDomainValid: null,
         emailVerificationStatus: null,
@@ -138,6 +149,8 @@ export class ApolloLeadEnrichmentProvider implements LeadEnrichmentProvider {
         leadScore: null,
         leadScoreFactors: null,
         leadScoredAt: null,
+        intentScore: null,
+        intentSignals: null,
         companyId: input.companyId,
         searchId: null,
         enrichedAt,

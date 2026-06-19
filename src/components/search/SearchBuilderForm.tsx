@@ -14,9 +14,11 @@ import {
 import { createSearch, updateSearch } from "@/lib/search/actions";
 import {
   INDUSTRIES,
+  INDUSTRY_SEARCH_ALIASES,
   COUNTRIES,
   COMPANY_SIZE_PRESETS,
   JOB_TITLE_SUGGESTIONS,
+  KEYWORD_SUGGESTIONS,
   TECHNOLOGY_SUGGESTIONS,
 } from "@/lib/search/constants";
 import { toSearchCriteriaInput } from "@/lib/search/mapper";
@@ -59,6 +61,8 @@ interface SearchBuilderFormProps {
   onSaved: (wasEditing: boolean) => void;
   /** Side panel layout with scrollable body */
   panel?: boolean;
+  /** Inside modal dialog — compact, no duplicate header */
+  variant?: "default" | "dialog";
 }
 
 export function SearchBuilderForm({
@@ -66,8 +70,10 @@ export function SearchBuilderForm({
   onCancelEdit,
   onSaved,
   panel = false,
+  variant = "default",
 }: SearchBuilderFormProps) {
   const isEditing = editingSearch !== null;
+  const isDialog = variant === "dialog";
   const [form, setForm] = useState<SearchCriteriaInput>(EMPTY_FORM);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isPending, startTransition] = useTransition();
@@ -126,7 +132,7 @@ export function SearchBuilderForm({
     });
   }
 
-  const formHeader = (
+  const formHeader = !isDialog ? (
     <div className="flex items-start justify-between gap-4">
       <div className="flex items-center gap-3">
         <div className={iconTileClassName}>
@@ -140,11 +146,6 @@ export function SearchBuilderForm({
           <h2 className={headingSectionClassName}>
             {isEditing ? "Edit search" : "New search"}
           </h2>
-          <p className="mt-1 text-sm text-gray-500">
-            {isEditing
-              ? `Updating "${editingSearch.name}"`
-              : "Describe the companies and people you want to reach"}
-          </p>
         </div>
       </div>
       {panel && (
@@ -170,7 +171,7 @@ export function SearchBuilderForm({
         </button>
       )}
     </div>
-  );
+  ) : null;
 
   const formError = errors.form ? (
     <div className={`${panel ? "mb-4" : "mb-6"} ${alertErrorClassName}`} role="alert">
@@ -181,19 +182,13 @@ export function SearchBuilderForm({
   const formBody = (
     <>
 
-      <BuilderSection
-        icon={Building2}
-        accent="violet"
-        title="Company profile"
-        description="Define the type of company you want to find"
-      >
+      <BuilderSection icon={Building2} accent="violet" title="Company profile">
         <div className="grid gap-5 sm:grid-cols-2">
           <Field
-            label="Campaign name"
+            label="Name"
             htmlFor="name"
             error={errors.name}
             required
-            hint="A short name so you can recognize this search later"
           >
             <input
               id="name"
@@ -211,17 +206,18 @@ export function SearchBuilderForm({
             htmlFor="industry"
             error={errors.industry}
             required
-            hint="Pick a suggestion or type your own, then press Enter"
           >
             <Combobox
               id="industry"
               value={form.industry}
               onChange={(v) => updateField("industry", v)}
               options={INDUSTRIES}
-              placeholder="e.g. Healthcare, FinTech, SaaS"
+              searchAliases={INDUSTRY_SEARCH_ALIASES}
+              placeholder="Search industries…"
               disabled={isPending}
               allowCustom
-              emptyMessage="No matching industries — press Enter to use your text"
+              maxOptions={INDUSTRIES.length}
+              emptyMessage="No matching industry — press Enter to use your text"
             />
           </Field>
 
@@ -230,7 +226,6 @@ export function SearchBuilderForm({
             htmlFor="country"
             error={errors.country}
             required
-            hint="Search and pick a country"
           >
             <Combobox
               id="country"
@@ -239,7 +234,8 @@ export function SearchBuilderForm({
               options={COUNTRIES}
               placeholder="Search countries…"
               disabled={isPending}
-              emptyMessage="No matching country — check spelling"
+              allowCustom
+              emptyMessage="No match — press Enter to use your country name"
               maxOptions={80}
             />
           </Field>
@@ -250,7 +246,6 @@ export function SearchBuilderForm({
               htmlFor="companySizeMin"
               error={errors.companySize}
               required
-              hint="How many employees the company should have"
             >
               <div className="mb-3 flex flex-wrap gap-2">
                 {COMPANY_SIZE_PRESETS.map((preset) => {
@@ -305,25 +300,22 @@ export function SearchBuilderForm({
         </div>
       </BuilderSection>
 
-      <BuilderSection
-        icon={Filter}
-        accent="sky"
-        title="Refine your search"
-        description="Optional filters to find better matches"
-      >
+      <BuilderSection icon={Filter} accent="sky" title="Filters" optional>
         <div className="space-y-5">
           <Field
             label="Keywords"
             htmlFor="keywords"
             error={errors.keywords}
             optional
-            hint="What kind of business they are — e.g. SaaS, B2B, startup"
           >
             <TagInput
               id="keywords"
               value={form.keywords}
               onChange={(v) => updateField("keywords", v)}
-              placeholder="Type a keyword and press Enter"
+              placeholder="Search keywords…"
+              suggestions={KEYWORD_SUGGESTIONS}
+              autosuggest
+              showAllSuggestions
               disabled={isPending}
             />
           </Field>
@@ -333,7 +325,6 @@ export function SearchBuilderForm({
             htmlFor="technologies"
             error={errors.technologies}
             optional
-            hint="Software or tools they use — e.g. React, AWS, Salesforce"
           >
             <TagInput
               id="technologies"
@@ -347,43 +338,34 @@ export function SearchBuilderForm({
         </div>
       </BuilderSection>
 
-      <BuilderSection
-        icon={Briefcase}
-        accent="emerald"
-        title="People to contact"
-        description="Who should receive your outreach?"
-      >
+      <BuilderSection icon={Briefcase} accent="emerald" title="Job titles">
         <Field
           label="Job titles"
           htmlFor="jobTitles"
           error={errors.jobTitles}
           required
-          hint="Add at least one role — e.g. CEO, CTO, Marketing Director"
         >
           <TagInput
             id="jobTitles"
             value={form.jobTitles}
             onChange={(v) => updateField("jobTitles", v)}
-            placeholder="Type a job title and press Enter"
+            placeholder="Search job titles…"
             suggestions={JOB_TITLE_SUGGESTIONS}
+            autosuggest
+            showAllSuggestions
+            maxSuggestionPills={12}
             disabled={isPending}
           />
         </Field>
       </BuilderSection>
 
-      <BuilderSection
-        icon={Ban}
-        accent="amber"
-        title="Companies to skip"
-        description="Optional — block companies you do not want to contact"
-      >
+      <BuilderSection icon={Ban} accent="amber" title="Exclusions" optional>
         <div className="space-y-5">
           <Field
-            label="Blocked websites"
+            label="Blocked domains"
             htmlFor="excludeDomains"
             error={errors.excludeDomains}
             optional
-            hint="Skip companies on these domains — e.g. competitor.com"
           >
             <TagInput
               id="excludeDomains"
@@ -400,7 +382,6 @@ export function SearchBuilderForm({
             htmlFor="excludeIndustries"
             error={errors.excludeIndustries}
             optional
-            hint="Skip companies in these industries"
           >
             <TagInput
               id="excludeIndustries"
@@ -418,7 +399,6 @@ export function SearchBuilderForm({
             htmlFor="excludeKeywords"
             error={errors.excludeKeywords}
             optional
-            hint="Skip companies that mention these words"
           >
             <TagInput
               id="excludeKeywords"
@@ -435,7 +415,6 @@ export function SearchBuilderForm({
             htmlFor="excludeCountries"
             error={errors.excludeCountries}
             optional
-            hint="Skip companies based in these countries"
           >
             <TagInput
               id="excludeCountries"
@@ -454,16 +433,14 @@ export function SearchBuilderForm({
 
   const formFooter = (
     <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-      {(panel || isEditing) && (
-        <button
-          type="button"
-          onClick={handleCancel}
-          disabled={isPending}
-          className={btnSecondaryClassName}
-        >
-          Cancel
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={handleCancel}
+        disabled={isPending}
+        className={btnSecondaryClassName}
+      >
+        Cancel
+      </button>
       <button
         type="submit"
         disabled={isPending}
@@ -488,6 +465,16 @@ export function SearchBuilderForm({
       </button>
     </div>
   );
+
+  if (isDialog) {
+    return (
+      <form onSubmit={handleSubmit} className="px-5 py-5 sm:px-6 sm:py-6">
+        {formError}
+        {formBody}
+        <div className="mt-6 border-t border-gray-100 pt-5">{formFooter}</div>
+      </form>
+    );
+  }
 
   if (panel) {
     return (
@@ -532,28 +519,30 @@ const sectionAccentStyles = {
 function BuilderSection({
   icon: Icon,
   title,
-  description,
   accent = "violet",
+  optional = false,
   children,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
-  description: string;
   accent?: keyof typeof sectionAccentStyles;
+  optional?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <section className="mb-8 last:mb-0">
-      <div className="mb-5 flex items-center gap-3">
+    <section className="mb-6 last:mb-0">
+      <div className="mb-4 flex items-center gap-2.5">
         <div
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ${sectionAccentStyles[accent]}`}
+          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 ${sectionAccentStyles[accent]}`}
         >
-          <Icon className="h-4 w-4" />
+          <Icon className="h-3.5 w-3.5" />
         </div>
-        <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-          <p className="text-xs leading-relaxed text-gray-500">{description}</p>
-        </div>
+        <h3 className="text-sm font-semibold text-gray-900">
+          {title}
+          {optional && (
+            <span className="ml-1.5 text-xs font-normal text-gray-400">(optional)</span>
+          )}
+        </h3>
       </div>
       {children}
     </section>

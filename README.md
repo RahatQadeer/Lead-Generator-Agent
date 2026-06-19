@@ -42,6 +42,22 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) — you'll be redirected to login.
 
+## Free scraping pipeline (default stack)
+
+When `COMPANY_DATA_PROVIDER=scraping` (or `apify`), discovery follows this order:
+
+| Step | What happens |
+|------|----------------|
+| **1 · Find companies** | Parallel seeds: SearXNG web search (Brave/DDG engines), business directories (Hotfrog, Manta, Brownbook, Cylex, Clutch, GoodFirms…), public databases (Crunchbase, Wellfound), Google Places / Overpass / OpenCorporates / Wikidata → domain dedup → scrape each site (Cheerio → Playwright → Apify) → industry/keyword filter → save |
+| **2 · Find people** | Scrape `/team`, `/about`, `/leadership` paths → title filter (CEO/CTO/Director…) → Wikidata + LinkedIn search fallback → save contacts |
+| **3 · Add contact details** | Website email/LinkedIn scrape → optional pattern guess (`EMAIL_PATTERN_GUESS_ENABLED`) → save enriched leads |
+| **4 · Verify emails** | Syntax + DNS MX + SMTP checks |
+| **5 · Rank leads** | Industry, country, size, role, contact quality, intent signals |
+
+**Required for directories + LinkedIn search:** `SEARXNG_URL` (e.g. `docker compose up -d searxng`).
+
+**Optional:** `APIFY_API_TOKEN` (Maps + website crawler), `EMAIL_PATTERN_GUESS_ENABLED=true` (john@ / john.smith@ fallback), `PUBLIC_DATABASE_ENABLED=true` (Crunchbase + Wellfound).
+
 ## AUTH-001 — Google OAuth
 
 | Criteria | Implementation |
@@ -506,8 +522,8 @@ curl -X POST http://localhost:3000/api/leads/score \
 | Criteria | Implementation |
 |----------|----------------|
 | Layout shell | `DashboardLayout` — stats row + main/aside grid |
-| Stat cards | `DashboardStatCard` + `DashboardStatsGrid` |
-| Sections | `DashboardSection` for titled panels |
+| Stat cards | `DashboardKpiStrip` + `DashboardOverview` |
+| Sections | `DashboardPanelShell` for titled panels |
 | Stats query | `getDashboardStats()` — searches, leads, sent, replies, conversion |
 | Onboarding | `DashboardGettingStarted` — progress-linked steps |
 | Quick links | Sidebar panel to Searches, Leads, Emails, Analytics |

@@ -128,7 +128,7 @@ export function toCampaignErrorResponse(error: unknown) {
     success: false as const,
     error: {
       code: "SEND_FAILED" as const,
-      message: "An unexpected error occurred while sending the campaign.",
+      message: "Something went wrong while sending the campaign. Please try again.",
       retryable: false,
     },
   };

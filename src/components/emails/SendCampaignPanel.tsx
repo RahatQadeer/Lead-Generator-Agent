@@ -12,6 +12,7 @@ import {
 } from "@/lib/ui/styles";
 import type { CampaignSummary } from "@/types/email-campaign";
 import type { EmailSendingProviderName } from "@/types/email-sending";
+import { getApiErrorMessage } from "@/lib/ui/user-messages";
 
 interface SendCampaignPanelProps {
   summary: CampaignSummary;
@@ -42,7 +43,7 @@ export function SendCampaignPanel({
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to send campaign.");
+        setError(getApiErrorMessage(data.error, "Failed to send campaign."));
         return;
       }
 

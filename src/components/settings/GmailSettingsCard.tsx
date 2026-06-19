@@ -15,6 +15,7 @@ import {
   textSecondaryClassName,
 } from "@/lib/ui/styles";
 import type { GmailSettingsStatus } from "@/types/gmail-settings";
+import { getApiErrorMessage } from "@/lib/ui/user-messages";
 
 interface GmailSettingsCardProps {
   embedded?: boolean;
@@ -41,7 +42,7 @@ export function GmailSettingsCard({ embedded = false }: GmailSettingsCardProps) 
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to load Gmail settings.");
+        setError(getApiErrorMessage(data.error, "Failed to load Gmail settings."));
         return;
       }
 
@@ -70,7 +71,7 @@ export function GmailSettingsCard({ embedded = false }: GmailSettingsCardProps) 
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to save settings.");
+        setError(getApiErrorMessage(data.error, "Failed to save settings."));
         return;
       }
 
@@ -93,7 +94,9 @@ export function GmailSettingsCard({ embedded = false }: GmailSettingsCardProps) 
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? data.result?.message ?? "Test failed.");
+        setError(
+          getApiErrorMessage(data.error, data.result?.message ?? "Test failed.")
+        );
         return;
       }
 
@@ -115,7 +118,7 @@ export function GmailSettingsCard({ embedded = false }: GmailSettingsCardProps) 
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to disconnect Gmail.");
+        setError(getApiErrorMessage(data.error, "Failed to disconnect Gmail."));
         return;
       }
 
@@ -138,7 +141,7 @@ export function GmailSettingsCard({ embedded = false }: GmailSettingsCardProps) 
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to reset settings.");
+        setError(getApiErrorMessage(data.error, "Failed to reset settings."));
         return;
       }
 

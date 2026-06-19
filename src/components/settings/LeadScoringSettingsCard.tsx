@@ -11,10 +11,12 @@ import {
   hintClassName,
   textSecondaryClassName,
 } from "@/lib/ui/styles";
-import type {
-  LeadScoringSettingsStatus,
-  LeadScoringWeights,
+import {
+  DEFAULT_LEAD_SCORING_WEIGHTS,
+  type LeadScoringSettingsStatus,
+  type LeadScoringWeights,
 } from "@/types/lead-scoring-settings";
+import { getApiErrorMessage } from "@/lib/ui/user-messages";
 
 const WEIGHT_FIELDS: Array<{
   key: keyof LeadScoringWeights;
@@ -31,6 +33,14 @@ const WEIGHT_FIELDS: Array<{
     description: "Company industry vs search industry",
     gradientClassName: "from-violet-400 to-violet-600",
     accentClassName: "accent-violet-600",
+  },
+  {
+    key: "companyTypeVerified",
+    label: "Company type verified",
+    shortLabel: "Type",
+    description: "Company is the right industry (not a bank in a hospitality search)",
+    gradientClassName: "from-fuchsia-400 to-fuchsia-600",
+    accentClassName: "accent-fuchsia-600",
   },
   {
     key: "companySize",
@@ -132,13 +142,7 @@ export function LeadScoringSettingsCard({
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [weights, setWeights] = useState<LeadScoringWeights>({
-    industryMatch: 20,
-    companySize: 20,
-    locationMatch: 20,
-    jobRoleMatch: 20,
-    technologyMatch: 20,
-  });
+  const [weights, setWeights] = useState<LeadScoringWeights>(DEFAULT_LEAD_SCORING_WEIGHTS);
 
   const weightTotal = useMemo(
     () => Object.values(weights).reduce((sum, value) => sum + value, 0),
@@ -154,7 +158,7 @@ export function LeadScoringSettingsCard({
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to load lead scoring settings.");
+        setError(getApiErrorMessage(data.error, "Failed to load lead scoring settings."));
         return;
       }
 
@@ -195,7 +199,7 @@ export function LeadScoringSettingsCard({
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to save settings.");
+        setError(getApiErrorMessage(data.error, "Failed to save settings."));
         return;
       }
 
@@ -219,7 +223,7 @@ export function LeadScoringSettingsCard({
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to reset settings.");
+        setError(getApiErrorMessage(data.error, "Failed to reset settings."));
         return;
       }
 

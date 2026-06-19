@@ -19,7 +19,7 @@ import {
   getScheduledFollowUpsWithContext,
 } from "@/lib/follow-ups/queries";
 import { getReplySummary } from "@/lib/reply-tracking/queries";
-import { getConfiguredReplyTrackingProvider } from "@/lib/reply-tracking/factory";
+import { resolveReplyTrackingProvider } from "@/lib/reply-tracking/resolve-provider";
 import { getOutreachEmailsByUserId } from "@/lib/emails/queries";
 import { resolveEmailGenerationConfig } from "@/lib/openai/settings";
 import { resolveSendingProvider } from "@/lib/email-sending/resolve-provider";
@@ -39,7 +39,7 @@ export default async function EmailsPage() {
   const generationConfig = await resolveEmailGenerationConfig(user.id);
   const generationProvider = generationConfig.provider;
   const sendingProvider = await resolveSendingProvider(user.id);
-  const replyProvider = getConfiguredReplyTrackingProvider();
+  const replyProvider = await resolveReplyTrackingProvider(user.id);
 
   const hasAnyActivity =
     emails.length > 0 ||

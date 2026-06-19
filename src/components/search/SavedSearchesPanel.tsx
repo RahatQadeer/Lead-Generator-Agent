@@ -128,15 +128,9 @@ export function SavedSearchesPanel({
       </div>
 
       {searches.length === 0 ? (
-        <PanelEmptyState
-          message="No saved searches yet"
-          hint="Click Create search to get started"
-        />
+        <PanelEmptyState message="No saved searches yet" />
       ) : filtered.length === 0 ? (
-        <PanelEmptyState
-          message="No matches found"
-          hint="Try a different filter or search term"
-        />
+        <PanelEmptyState message="No matches found" />
       ) : (
         <>
           <div className="space-y-4">
@@ -177,13 +171,7 @@ export function SavedSearchesPanel({
   );
 }
 
-function PanelEmptyState({
-  message,
-  hint,
-}: {
-  message: string;
-  hint: string;
-}) {
+function PanelEmptyState({ message }: { message: string }) {
   return (
     <div
       className={`${cardClassName} border-dashed px-6 py-12 text-center`}
@@ -192,7 +180,6 @@ function PanelEmptyState({
         <Search className="h-4 w-4" />
       </div>
       <p className="mt-3 text-sm font-medium text-gray-700">{message}</p>
-      <p className="mt-1 text-xs text-gray-500">{hint}</p>
     </div>
   );
 }

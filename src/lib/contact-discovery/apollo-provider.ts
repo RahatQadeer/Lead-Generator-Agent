@@ -1,6 +1,8 @@
 import { ContactDiscoveryError } from "@/lib/contact-discovery/errors";
 import { normalizeDomain } from "@/lib/search/exclusions";
 import type { ContactDiscoveryProvider, ProviderContactSearchResult } from "@/lib/contact-discovery/types";
+import { inferDepartment, computeContactConfidence } from "@/lib/scraping/relevance";
+import { sanitizePersonLinkedInUrl } from "@/lib/scraping/data-quality";
 import type { ContactDiscoveryParams, DiscoveredContact } from "@/types/contact";
 
 const APOLLO_BASE_URL = "https://api.apollo.io/api/v1";
@@ -96,7 +98,10 @@ function mapApolloPerson(
   const lastName =
     person.last_name ?? person.name?.split(" ").slice(1).join(" ") ?? null;
 
-  return {
+  const title = person.title ?? "Unknown";
+  const linkedinUrl = sanitizePersonLinkedInUrl(person.linkedin_url ?? null);
+
+  const contact: DiscoveredContact = {
     id: person.id ?? `apollo-${person.email ?? person.name ?? "unknown"}`,
     companyId,
     companyName,
@@ -106,10 +111,23 @@ function mapApolloPerson(
     fullName:
       person.name ??
       [firstName, lastName].filter(Boolean).join(" "),
-    title: person.title ?? "Unknown",
+    title,
+    department: inferDepartment(title),
     email: person.email ?? null,
-    linkedinUrl: person.linkedin_url ?? null,
+    emailIsGuessed: false,
+    linkedinUrl,
+    confidenceScore: 0,
   };
+
+  contact.confidenceScore = computeContactConfidence({
+    title: contact.title,
+    email: contact.email,
+    emailIsGuessed: false,
+    linkedinUrl: contact.linkedinUrl,
+    jobTitles: [],
+  });
+
+  return contact;
 }
 
 function buildApolloUrl(params: ContactDiscoveryParams): string {

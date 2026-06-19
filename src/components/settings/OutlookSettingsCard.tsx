@@ -15,6 +15,7 @@ import {
   textSecondaryClassName,
 } from "@/lib/ui/styles";
 import type { OutlookSettingsStatus } from "@/types/outlook-settings";
+import { getApiErrorMessage } from "@/lib/ui/user-messages";
 
 interface OutlookSettingsCardProps {
   embedded?: boolean;
@@ -43,7 +44,7 @@ export function OutlookSettingsCard({
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to load Outlook settings.");
+        setError(getApiErrorMessage(data.error, "Failed to load Outlook settings."));
         return;
       }
 
@@ -72,7 +73,7 @@ export function OutlookSettingsCard({
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to save settings.");
+        setError(getApiErrorMessage(data.error, "Failed to save settings."));
         return;
       }
 
@@ -95,7 +96,9 @@ export function OutlookSettingsCard({
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? data.result?.message ?? "Test failed.");
+        setError(
+          getApiErrorMessage(data.error, data.result?.message ?? "Test failed.")
+        );
         return;
       }
 
@@ -117,7 +120,7 @@ export function OutlookSettingsCard({
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to disconnect Outlook.");
+        setError(getApiErrorMessage(data.error, "Failed to disconnect Outlook."));
         return;
       }
 
@@ -140,7 +143,7 @@ export function OutlookSettingsCard({
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to reset settings.");
+        setError(getApiErrorMessage(data.error, "Failed to reset settings."));
         return;
       }
 

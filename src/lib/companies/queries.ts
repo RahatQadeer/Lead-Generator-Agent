@@ -42,6 +42,24 @@ export async function upsertDiscoveredCompanies(
   }
 }
 
+/** Remove companies from a search when re-running discovery (page 1 refresh). */
+export async function detachCompaniesFromSearch(
+  userId: string,
+  searchId: string
+): Promise<void> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("companies")
+    .update({ search_id: null, updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("search_id", searchId);
+
+  if (error) {
+    console.error("Failed to detach companies from search:", error.message);
+  }
+}
+
 export async function getCompaniesBySearchId(
   userId: string,
   searchId: string

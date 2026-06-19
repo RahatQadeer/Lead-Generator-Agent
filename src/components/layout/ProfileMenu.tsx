@@ -60,10 +60,10 @@ export function ProfileMenu({ profile }: ProfileMenuProps) {
         aria-expanded={open}
         aria-haspopup="menu"
         aria-controls={menuId}
-        className={`rounded-full p-0.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/15 ${
+        className={`rounded-full p-0.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-accent-600)_25%,transparent)] ${
           open
-            ? "bg-gray-100 ring-2 ring-gray-200"
-            : "hover:bg-gray-100/80"
+            ? "bg-[var(--color-surface-elevated)] ring-2 ring-[var(--color-border)]"
+            : "hover:bg-[var(--color-surface-elevated)]"
         }`}
         aria-label="Open account menu"
       >
@@ -83,30 +83,30 @@ export function ProfileMenu({ profile }: ProfileMenuProps) {
           role="menu"
           className={`${profilePopoverClassName} animate-popover-in`}
         >
-          <div className="border-b border-gray-100 bg-gradient-to-b from-gray-50/90 to-white px-4 py-4">
+          <div className="border-b border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-4 py-4">
             <div className="flex items-center gap-3">
               <UserAvatar
                 email={profile.email}
                 fullName={profile.full_name}
                 avatarUrl={profile.avatar_url}
                 size="lg"
-                ringClassName="ring-2 ring-white"
+                ringClassName="ring-2 ring-[var(--color-surface)]"
               />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[0.9375rem] font-semibold tracking-[-0.02em] text-gray-950">
+                <p className="truncate text-[0.9375rem] font-semibold tracking-[-0.02em] text-[var(--color-ink)]">
                   {displayName}
                 </p>
                 <div className="mt-1.5 flex items-start gap-1.5">
-                  <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400" />
+                  <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--color-ink-muted)]" />
                   <p
-                    className="min-w-0 break-words text-xs leading-relaxed text-gray-500"
+                    className="min-w-0 break-words text-xs leading-relaxed text-[var(--color-ink-secondary)]"
                     title={profile.email}
                   >
                     {profile.email}
                   </p>
                 </div>
                 {!profile.avatar_url && (
-                  <p className="mt-1 text-[10px] text-gray-400">
+                  <p className="mt-1 text-[10px] text-[var(--color-ink-muted)]">
                     Initials: {initials}
                   </p>
                 )}
@@ -120,9 +120,9 @@ export function ProfileMenu({ profile }: ProfileMenuProps) {
               role="menuitem"
               onClick={handleSignOut}
               disabled={signingOut}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-all hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-subtle)] px-4 py-2.5 text-sm font-medium text-[var(--color-ink-secondary)] shadow-sm transition-all hover:border-[var(--color-border)] hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-ink)] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <LogOut className="h-4 w-4 text-gray-400" />
+              <LogOut className="h-4 w-4 text-[var(--color-ink-muted)]" />
               {signingOut ? "Signing out…" : "Sign out"}
             </button>
           </div>
