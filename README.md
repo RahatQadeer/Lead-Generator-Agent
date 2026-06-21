@@ -272,6 +272,114 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## DASH-005 — Display Recent Activity Feed
+
+| Event | Source |
+|-------|--------|
+| Search created | `searches.created_at` |
+| Lead discovered / enriched / scored | `contacts` timestamps |
+| Email draft / sent / replied | `outreach_emails` |
+| Campaign finished | `outreach_campaigns` |
+| Follow-up scheduled / cancelled / suggested | `follow_ups` |
+
+**Module:** `src/lib/dashboard/activity-feed.ts` — `getRecentActivity()`
+
+**UI:** `RecentActivityFeed` in dashboard sidebar + **Analytics** aside
+
+### Testing DASH-005
+
+1. Create a search → appears in feed
+2. Discover and enrich leads → discovery/enrichment events show
+3. Generate and send emails → draft/sent events appear
+4. Check replies → reply events with relative timestamps
+
+## DASH-004 — Display Conversion Metrics
+
+| Metric | Formula |
+|--------|---------|
+| Enrich rate | Enriched ÷ discovered |
+| Outreach rate | Contacted ÷ enriched |
+| Email reply rate | Replies ÷ emails sent |
+| Contact reply rate | Replied contacts ÷ contacted |
+| End-to-end | Replied contacts ÷ discovered |
+
+**Funnel:** Discovered → Enriched → Contacted → Replied
+
+**Module:** `src/lib/dashboard/conversion-metrics.ts` — `getConversionMetrics()`
+
+**UI:** `ConversionMetricsPanel` on **Dashboard** and **Analytics**
+
+### Testing DASH-004
+
+1. Discover contacts → funnel shows **Discovered**
+2. Enrich leads → **Enrich rate** updates
+3. Send emails → **Contacted** stage and **Outreach rate** populate
+4. Detect replies → **Replied** stage and reply rates update
+
+## DASH-003 — Display Email Metrics
+
+| Metric | Source |
+|--------|--------|
+| Generated / drafts | `outreach_emails` by status |
+| Sent / replies / conversion | Sent emails + `reply_status` |
+| Follow-ups | `follow_ups` scheduled, cancelled, suggestions |
+| Tone breakdown | Email `tone` distribution |
+| Recent campaigns | `outreach_campaigns` (last 5) |
+| Recent replies | Replied emails with snippets |
+
+**Module:** `src/lib/dashboard/email-metrics.ts` — `getEmailMetrics()`
+
+**UI:** `EmailMetricsPanel` on **Dashboard** and **Analytics**
+
+### Testing DASH-003
+
+1. Generate emails → **Generated** count updates
+2. Send outreach → **Sent** and campaign stats populate
+3. **Check for replies** → **Replies** and recent reply list update
+4. Generate follow-up suggestions → **AI suggestions** count increases
+
+## DASH-002 — Display Lead Metrics
+
+| Metric | Source |
+|--------|--------|
+| Discovered / enriched | `contacts` counts |
+| Scored + average | `lead_score` on contacts |
+| With email / verified | `email`, `email_verification_status` |
+| High quality (8+) | Scored contacts |
+| Score distribution | Buckets: Low, Fair, Good, Hot |
+| Top leads | Top 5 by score |
+
+**Module:** `src/lib/dashboard/lead-metrics.ts` — `getLeadMetrics()`
+
+**UI:** `LeadMetricsPanel` on **Dashboard** and **Analytics**
+
+### Testing DASH-002
+
+1. Discover contacts → **Discovered** count updates
+2. Enrich leads → enriched hint under Discovered
+3. **Score leads** → distribution chart and top leads appear
+4. Verify emails → **verified** count updates under With email
+
+## DASH-001 — Dashboard Layout
+
+| Criteria | Implementation |
+|----------|----------------|
+| Layout shell | `DashboardLayout` — stats row + main/aside grid |
+| Stat cards | `DashboardStatCard` + `DashboardStatsGrid` |
+| Sections | `DashboardSection` for titled panels |
+| Stats query | `getDashboardStats()` — searches, leads, sent, replies, conversion |
+| Onboarding | `DashboardGettingStarted` — progress-linked steps |
+| Quick links | Sidebar panel to Searches, Leads, Emails, Analytics |
+
+**Pages:** `/dashboard` (overview + getting started), `/analytics` (same layout shell)
+
+### Testing DASH-001
+
+1. Sign in → **Dashboard** shows 4 stat cards and getting-started steps
+2. Complete workflow steps — badges turn cyan as you create searches, enrich leads, send emails
+3. **Quick links** panel navigates to each workflow page
+4. **Analytics** uses the same stats grid with a metrics overview panel
+
 ## TRACK-003 — Generate Follow-up Suggestions
 
 | Criteria | Implementation |
