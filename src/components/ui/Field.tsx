@@ -93,7 +93,7 @@ export function Field({
 
         {required && (
           <span
-            className="ml-0.5 text-red-400"
+            className="ml-0.5 text-[var(--color-danger-text)]"
             aria-hidden="true"
           >
             *
@@ -101,7 +101,7 @@ export function Field({
         )}
 
         {optional && (
-          <span className="ml-1.5 text-xs font-normal text-slate-500">
+          <span className="ml-1.5 text-xs font-normal text-[var(--color-ink-muted)]">
             (optional)
           </span>
         )}

@@ -366,7 +366,7 @@ import {
 } from "react";
 import { ChevronDown, Plus, Search } from "lucide-react";
 import { inputClassName } from "@/components/ui/Field";
-import { pillInactiveClassName } from "@/lib/ui/styles";
+import { dropdownPanelClassName, pillInactiveClassName } from "@/lib/ui/styles";
 
 interface ComboboxProps {
   id: string;
@@ -619,12 +619,13 @@ export function Combobox({
     }
   }
 
-  const showDropdown = open && !disabled;  return (
+  const showDropdown = open && !disabled;
+
+  return (
     <div className="space-y-3">
       <div ref={containerRef} className="relative">
         <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--color-ink-muted)]" />
           <input
             ref={inputRef}
             id={id}
@@ -635,19 +636,12 @@ export function Combobox({
             aria-autocomplete="list"
             aria-activedescendant={
               showDropdown
-                ? highlightIndex === 0 &&
-                  showCustomOption
+                ? highlightIndex === 0 && showCustomOption
                   ? `${listboxId}-custom`
                   : filtered[
-                      showCustomOption
-                        ? highlightIndex - 1
-                        : highlightIndex
+                      showCustomOption ? highlightIndex - 1 : highlightIndex
                     ]
-                  ? `${listboxId}-option-${
-                      showCustomOption
-                        ? highlightIndex - 1
-                        : highlightIndex
-                    }`
+                  ? `${listboxId}-option-${showCustomOption ? highlightIndex - 1 : highlightIndex}`
                   : undefined
                 : undefined
             }
@@ -659,11 +653,7 @@ export function Combobox({
             onFocus={() => setOpen(true)}
             onBlur={() => {
               window.setTimeout(() => {
-                if (
-                  !containerRef.current?.contains(
-                    document.activeElement
-                  )
-                ) {
+                if (!containerRef.current?.contains(document.activeElement)) {
                   commitQuery();
                 }
               }, 0);
@@ -674,56 +664,38 @@ export function Combobox({
             autoComplete="off"
             className={`${inputClassName} pl-10 pr-10`}
           />
-
           <button
             type="button"
             tabIndex={-1}
             onClick={() => {
               if (disabled) return;
-
               setOpen((prev) => !prev);
               inputRef.current?.focus();
             }}
             disabled={disabled}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-white/5 hover:text-slate-300 disabled:opacity-50"
-            aria-label={
-              open ? "Close options" : "Open options"
-            }
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-ink-secondary)] disabled:opacity-50"
+            aria-label={open ? "Close options" : "Open options"}
           >
             <ChevronDown
-              className={`h-4 w-4 transition-transform ${
-                open ? "rotate-180" : ""
-              }`}
+              className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`}
             />
           </button>
         </div>
 
         {showDropdown && (
-          <ul
-            id={listboxId}
-            role="listbox"
-            className="absolute z-50 mt-2 max-h-60 w-full overflow-y-auto rounded-xl border border-white/10 bg-slate-900 py-1 shadow-xl shadow-black/40"
-          >
+          <ul id={listboxId} role="listbox" className={dropdownPanelClassName}>
             {showCustomOption && (
               <li
                 id={`${listboxId}-custom`}
                 role="option"
-                aria-selected={
-                  value === trimmedQuery
-                }
-                onMouseDown={(e) =>
-                  e.preventDefault()
-                }
-                onMouseEnter={() =>
-                  setHighlightIndex(0)
-                }
-                onClick={() =>
-                  commitValue(trimmedQuery)
-                }
-                className={`cursor-pointer border-b border-white/5 px-4 py-2.5 text-sm transition-colors ${
+                aria-selected={value === trimmedQuery}
+                onMouseDown={(e) => e.preventDefault()}
+                onMouseEnter={() => setHighlightIndex(0)}
+                onClick={() => commitValue(trimmedQuery)}
+                className={`cursor-pointer border-b border-[var(--color-border-subtle)] px-4 py-2.5 text-sm transition-colors ${
                   highlightIndex === 0
-                    ? "bg-cyan-500/15 text-cyan-100"
-                    : "text-cyan-300 hover:bg-white/5"
+                    ? "bg-[var(--color-accent-50)] text-[var(--color-accent-text)]"
+                    : "text-[var(--color-ink-secondary)] hover:bg-[var(--color-surface-subtle)]"
                 }`}
               >
                 <span className="inline-flex items-center gap-2 font-medium">
@@ -732,23 +704,15 @@ export function Combobox({
                 </span>
               </li>
             )}
-
-            {filtered.length === 0 &&
-            !showCustomOption ? (
-              <li className="px-4 py-3 text-sm text-slate-500">
+            {filtered.length === 0 && !showCustomOption ? (
+              <li className="px-4 py-3 text-sm text-[var(--color-ink-muted)]">
                 {emptyMessage}
               </li>
             ) : (
               filtered.map((option, index) => {
-                const listIndex = showCustomOption
-                  ? index + 1
-                  : index;
-
-                const isHighlighted =
-                  listIndex === highlightIndex;
-
-                const isSelected =
-                  option === value;
+                const listIndex = showCustomOption ? index + 1 : index;
+                const isHighlighted = listIndex === highlightIndex;
+                const isSelected = option === value;
 
                 return (
                   <li
@@ -756,65 +720,48 @@ export function Combobox({
                     id={`${listboxId}-option-${index}`}
                     role="option"
                     aria-selected={isSelected}
-                    onMouseDown={(e) =>
-                      e.preventDefault()
-                    }
-                    onMouseEnter={() =>
-                      setHighlightIndex(listIndex)
-                    }
-                    onClick={() =>
-                      commitValue(option)
-                    }
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseEnter={() => setHighlightIndex(listIndex)}
+                    onClick={() => commitValue(option)}
                     className={`cursor-pointer px-4 py-2.5 text-sm transition-colors ${
                       isHighlighted
-                        ? "bg-cyan-500/15 text-cyan-100"
-                        : "text-slate-300 hover:bg-white/5"
-                    } ${
-                      isSelected
-                        ? "font-medium"
-                        : ""
-                    }`}
+                        ? "bg-[var(--color-accent-50)] text-[var(--color-accent-text)]"
+                        : "text-[var(--color-ink-secondary)] hover:bg-[var(--color-surface-subtle)]"
+                    } ${isSelected ? "font-semibold" : ""}`}
                   >
                     {option}
                   </li>
                 );
               })
             )}
-
-            {!query.trim() &&
-              options.length > maxOptions && (
-                <li className="border-t border-white/5 px-4 py-2 text-xs text-slate-500">
-                  Type to search all{" "}
-                  {options.length} options
-                </li>
-              )}
+            {!query.trim() && options.length > maxOptions && (
+              <li className="border-t border-[var(--color-border-subtle)] px-4 py-2 text-xs text-[var(--color-ink-muted)]">
+                Type to search all {options.length} options
+              </li>
+            )}
           </ul>
         )}
       </div>
 
-      {showSuggestionPills &&
-        options.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {options.map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() =>
-                  commitValue(option)
-                }
-                disabled={disabled}
-                className={`${pillInactiveClassName} !rounded-full hover:border-cyan-300 hover:bg-cyan-500/10 hover:text-cyan-200 ${
-                  value === option
-                    ? "!border-cyan-300 !bg-cyan-500/10 !text-cyan-100"
-                    : ""
-                }`}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-        )}
+      {showSuggestionPills && options.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {options.map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => commitValue(option)}
+              disabled={disabled}
+              className={`${pillInactiveClassName} !rounded-full hover:border-violet-200 hover:bg-violet-50 hover:text-violet-800 ${
+                value === option
+                  ? "!border-violet-300 !bg-violet-50 !text-violet-900"
+                  : ""
+              }`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
-  
