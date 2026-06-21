@@ -69,12 +69,14 @@ export function EnrichLeadsPreview({
     <div className="mt-4 rounded-xl border border-violet-500/20 bg-violet-500/5 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-violet-300">Lead enrichment</p>
+          <p className="text-sm font-medium text-violet-300">
+            Step 3 · Add contact details
+          </p>
           <p className="text-xs text-slate-500">
-            Enrich profiles for contacts from &quot;{searchName}&quot;
+            Fill in missing profile info for contacts from &quot;{searchName}&quot;
           </p>
           <p className="mt-1 text-xs text-slate-400">
-            Name · Role · Company · LinkedIn · Location
+            Adds LinkedIn, location, and other profile details
           </p>
         </div>
         <button
@@ -91,7 +93,7 @@ export function EnrichLeadsPreview({
           ) : (
             <>
               <Sparkles className="h-4 w-4" />
-              Enrich lead profiles
+              Add contact details
             </>
           )}
         </button>

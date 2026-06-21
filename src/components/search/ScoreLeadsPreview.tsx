@@ -83,12 +83,14 @@ export function ScoreLeadsPreview({
     <div className="mt-4 rounded-xl border border-orange-500/20 bg-orange-500/5 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-orange-300">Lead scoring</p>
+          <p className="text-sm font-medium text-orange-300">
+            Step 5 · Rank your leads
+          </p>
           <p className="text-xs text-slate-500">
-            Score leads for &quot;{searchName}&quot; against search criteria
+            See which contacts are the best fit for &quot;{searchName}&quot;
           </p>
           <p className="mt-1 text-xs text-slate-400">
-            Industry · Size · Location · Role · Technology → 1–10
+            Ranks contacts from 1–10 based on how well they match your search
           </p>
         </div>
         <button
@@ -105,7 +107,7 @@ export function ScoreLeadsPreview({
           ) : (
             <>
               <Target className="h-4 w-4" />
-              Score leads
+              Rank leads
             </>
           )}
         </button>

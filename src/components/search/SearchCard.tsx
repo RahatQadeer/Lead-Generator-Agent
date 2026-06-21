@@ -195,7 +195,7 @@ export function SearchCard({
               <div className="space-y-2 rounded-xl border border-red-500/10 bg-red-500/5 p-3">
                 <div className="flex items-center gap-1.5 text-xs font-medium text-red-300">
                   <Ban className="h-3 w-3" />
-                  Exclusion rules
+                  Companies to skip
                 </div>
                 {search.exclusions.domains.length > 0 && (
                   <ExcludeTagGroup label="Domains" tags={search.exclusions.domains} />

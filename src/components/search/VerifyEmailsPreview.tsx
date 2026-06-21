@@ -65,12 +65,14 @@ export function VerifyEmailsPreview({
     <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-medium text-emerald-300">Email verification</p>
+          <p className="text-sm font-medium text-emerald-300">
+            Step 4 · Check emails
+          </p>
           <p className="text-xs text-slate-500">
-            Verify contact emails for &quot;{searchName}&quot;
+            Make sure contact emails are valid before you reach out
           </p>
           <p className="mt-1 text-xs text-slate-400">
-            Syntax → domain → verification API
+            Flags invalid or risky email addresses
           </p>
         </div>
         <button
