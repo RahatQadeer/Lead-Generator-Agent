@@ -1,21 +1,22 @@
 import { Search } from "lucide-react";
+import { getAuthContext } from "@/lib/auth/get-auth-context";
+import { getUserSearches } from "@/lib/search/queries";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { EmptyState } from "@/components/layout/EmptyState";
+import { SearchBuilder } from "@/components/search/SearchBuilder";
 
-export default function SearchesPage() {
+export default async function SearchesPage() {
+  const { user } = await getAuthContext();
+  const searches = await getUserSearches(user.id);
+
   return (
     <>
       <PageHeader
         icon={Search}
         label="Searches"
-        title="Company searches"
-        description="Define your ideal customer profile and let AI find matching companies."
+        title="Search builder"
+        description="Create, save, and manage company search criteria — industry, size, location, technologies, and decision-makers."
       />
-      <EmptyState
-        icon={Search}
-        title="No searches yet"
-        description="Create your first search to find companies that match your target industry, size, and location."
-      />
+      <SearchBuilder initialSearches={searches} />
     </>
   );
 }

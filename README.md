@@ -53,6 +53,135 @@ Open [http://localhost:3000](http://localhost:3000) — you'll be redirected to 
 | Logout | Sign out button in dashboard header |
 | Invalid login handled | Error banner on `/login` with friendly messages |
 
+## SEARCH-001 — Search Criteria Engine
+
+| Criteria | Field |
+|----------|-------|
+| Industry | Dropdown select |
+| Company size | Presets + min/max employees |
+| Country | Dropdown select |
+| Keywords | Tag input |
+| Technologies | Tag input with suggestions |
+| Job titles | Tag input with suggestions (required) |
+
+Run migration `supabase/migrations/002_searches.sql` in the Supabase SQL Editor.
+
+## SEARCH-002 — Search Builder UI
+
+| Criteria | Implementation |
+|----------|----------------|
+| Create search | 3-step builder form with server action |
+| Edit search | Click pencil on a saved search → form pre-fills → Save changes |
+| Validation | Client + server validation with per-field error messages |
+
+## DISC-001 — Company Discovery Provider
+
+| Criteria | Implementation |
+|----------|----------------|
+| Fetch companies | `POST /api/companies/discover` with `searchId` |
+| Pagination | `page` + `perPage` params; `hasMore` in response |
+| Retry support | 3 attempts with exponential backoff on retryable errors |
+| Error handling | Typed errors: rate limit, auth, network, provider |
+
+**Providers:** `mock` (default) or `apollo` (set `COMPANY_DATA_PROVIDER=apollo` + `APOLLO_API_KEY`).
+
+**Apollo plan requirement:** Organization search (`/mixed_companies/search`) is only available on **paid** Apollo plans. Free plans and trials return `403` with `API_INACCESSIBLE` even when the API key is valid. Use `COMPANY_DATA_PROVIDER=mock` for local development until you upgrade at [app.apollo.io](https://app.apollo.io/).
+
+### Testing DISC-001
+
+1. Set `COMPANY_DATA_PROVIDER=mock` in `.env.local`
+2. Go to **Searches** → expand a saved search → click **Discover companies**
+3. Mock returns healthcare companies matching criteria
+4. Click **Load next page** to test pagination
+5. For Apollo: upgrade to a paid plan, create a Master API key (Settings → Integrations → API), set provider + key, restart dev server, run discovery again
+
+```bash
+# API test (while logged in — use browser session cookie)
+curl -X POST http://localhost:3000/api/companies/discover \
+  -H "Content-Type: application/json" \
+  -d '{"searchId":"<your-search-uuid>","page":1,"perPage":10}'
+```
+
+## DISC-002 — Company Filtering Engine
+
+| Filter | Match rule |
+|--------|------------|
+| Industry | Case-insensitive exact match on `company.industry` |
+| Size | `employeeCount` within `companySizeMin`–`companySizeMax` (unknown size passes) |
+| Country | Normalized location match on `company.country` |
+| Technology | All listed technologies must match via `technologies` field or name/domain/industry text |
+
+**Pipeline:** provider fetch → `applyCriteria` (inclusion) → `applyExclusions` (negative rules).
+
+**Module:** `src/lib/company-discovery/apply-criteria.ts` — shared by mock provider (pre-pagination) and discovery orchestrator (post-fetch safety net for Apollo).
+
+### Testing DISC-002
+
+1. Create a search with industry, country, size, and technology filters (e.g. Healthcare, United States, 201–500, React)
+2. Expand the search card → **Discover companies**
+3. Mock data returns only companies matching all four filters
+4. Add exclusion rules (SEARCH-004) to verify exclusion count appears separately from criteria filtering
+
+## DISC-003 — Duplicate Company Detection
+
+| Detection | Rule |
+|-----------|------|
+| Identity key | Normalized `domain` (primary), or `name + country` fallback |
+| In-batch | Duplicate domains/names within the same discovery response are skipped |
+| Cross-search | Companies already saved for the user are skipped as known duplicates |
+
+**Pipeline:** provider fetch → `applyCriteria` → `applyExclusions` → `applyDedup` → persist new companies.
+
+**Persistence:** `supabase/migrations/004_companies.sql` — `companies` table with unique `(user_id, dedup_key)`.
+
+Run migration `004_companies.sql` in the Supabase SQL Editor before testing cross-search dedup.
+
+### Testing DISC-003
+
+1. Run migration `004_companies.sql`
+2. Discover companies on a search — results are saved to `companies`
+3. Run discovery again on the same or a different search with overlapping companies
+4. UI shows `duplicates skipped (N already in pipeline)` for known matches
+
+## SEARCH-004 — Exclusion Rules
+
+| Exclusion | Field | Validation |
+|-----------|-------|------------|
+| Domains | Tag input | Valid domain format, normalized |
+| Industries | Tag input | Cannot match target industry |
+| Keywords | Tag input | Optional |
+| Countries | Tag input | Cannot match target country |
+
+Run migration `supabase/migrations/003_search_exclusions.sql` in the Supabase SQL Editor.
+
+## SEARCH-003 — Saved Searches
+
+| Feature | Implementation |
+|---------|----------------|
+| Persist searches | Supabase `searches` table with RLS |
+| List saved searches | Filterable panel with status tabs |
+| Filter & sort | By status, name/industry/country, newest/oldest/name |
+| Duplicate | Copy button creates draft clone |
+| Status management | Draft / Active / Completed dropdown |
+| Expand details | View full criteria on each card |
+
+### Testing SEARCH-003
+
+1. Create searches — they appear in Saved searches panel.
+2. Filter by Draft / Active / Completed tabs.
+3. Search by name in the filter box.
+4. Click **Duplicate** — a copy appears as draft.
+5. Expand a card — change status, view all criteria.
+6. Delete a search — removed from list after refresh.
+
+### Testing SEARCH-002
+
+1. Create a search — fill all required fields, submit.
+2. Click **Edit** on a saved search — form loads with existing values.
+3. Change criteria and click **Save changes**.
+4. Click **Cancel** during edit — form resets to create mode.
+5. Submit empty form — see validation errors on required fields.
+
 ## AUTH-003 — Protected Routes
 
 | Route | Page |
