@@ -200,6 +200,7 @@ export function Combobox({
     <div ref={containerRef} className="relative">
       <div className="relative">
         <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
         <input
           ref={inputRef}
           id={id}
@@ -248,6 +249,7 @@ export function Combobox({
           }}
           disabled={disabled}
           className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-white/5 hover:text-slate-300 disabled:opacity-50"
           aria-label={open ? "Close options" : "Open options"}
         >
           <ChevronDown
@@ -258,6 +260,11 @@ export function Combobox({
 
       {showDropdown && (
         <ul id={listboxId} role="listbox" className={dropdownPanelClassName}>
+        <ul
+          id={listboxId}
+          role="listbox"
+          className="absolute z-50 mt-2 max-h-60 w-full overflow-y-auto rounded-xl border border-white/10 bg-slate-900 py-1 shadow-xl shadow-black/40"
+        >
           {showCustomOption && (
             <li
               id={`${listboxId}-custom`}
@@ -270,6 +277,12 @@ export function Combobox({
                 highlightIndex === 0
                   ? "bg-violet-50 text-violet-900"
                   : "text-violet-700 hover:bg-gray-50"
+                  ? "bg-blue-50 text-blue-700"
+                  : "text-blue-600 hover:bg-gray-50"
+              className={`cursor-pointer border-b border-white/5 px-4 py-2.5 text-sm transition-colors ${
+                highlightIndex === 0
+                  ? "bg-cyan-500/15 text-cyan-100"
+                  : "text-cyan-300 hover:bg-white/5"
               }`}
             >
               <span className="inline-flex items-center gap-2 font-medium">
@@ -280,6 +293,7 @@ export function Combobox({
           )}
           {filtered.length === 0 && !showCustomOption ? (
             <li className="px-4 py-3 text-sm text-gray-500">{emptyMessage}</li>
+            <li className="px-4 py-3 text-sm text-slate-500">{emptyMessage}</li>
           ) : (
             filtered.map((option, index) => {
               const listIndex = showCustomOption ? index + 1 : index;
@@ -300,6 +314,9 @@ export function Combobox({
                       ? "bg-violet-50 text-violet-900"
                       : "text-gray-700 hover:bg-gray-50"
                   } ${isSelected ? "font-semibold" : ""}`}
+                      ? "bg-cyan-500/15 text-cyan-100"
+                      : "text-slate-300 hover:bg-white/5"
+                  } ${isSelected ? "font-medium" : ""}`}
                 >
                   {option}
                 </li>
@@ -308,6 +325,7 @@ export function Combobox({
           )}
           {!query.trim() && options.length > maxOptions && (
             <li className="border-t border-gray-100 px-4 py-2 text-xs text-gray-400">
+            <li className="border-t border-white/5 px-4 py-2 text-xs text-slate-500">
               Type to search all {options.length} options
             </li>
           )}
