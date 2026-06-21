@@ -31,11 +31,13 @@ export function Field({
         {label}
         {required && (
           <span className="ml-0.5 text-red-500" aria-hidden="true">
+          <span className="ml-0.5 text-red-400" aria-hidden="true">
             *
           </span>
         )}
         {optional && (
           <span className="ml-1.5 text-xs font-normal text-gray-400">
+          <span className="ml-1.5 text-xs font-normal text-slate-500">
             (optional)
           </span>
         )}
