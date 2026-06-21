@@ -10,7 +10,11 @@ export const PROTECTED_ROUTES = [
 export type ProtectedRoute = (typeof PROTECTED_ROUTES)[number];
 
 /** Routes that must bypass session validation — PKCE verifier cookies exist before a user session. */
-export const AUTH_ROUTES = ["/auth/callback", "/auth/oauth"] as const;
+export const AUTH_ROUTES = [
+  "/auth/callback",
+  "/auth/oauth",
+  "/auth/outlook",
+] as const;
 
 export function isProtectedPath(pathname: string): boolean {
   return PROTECTED_ROUTES.some(

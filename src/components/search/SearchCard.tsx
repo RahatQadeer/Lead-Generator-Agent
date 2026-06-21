@@ -23,6 +23,11 @@ import {
 } from "@/lib/search/actions";
 import { countExclusions, hasExclusions } from "@/lib/search/exclusions";
 import { formatCompanySize } from "@/lib/search/mapper";
+import { ContactsPreview } from "@/components/search/ContactsPreview";
+import { DiscoverPreview } from "@/components/search/DiscoverPreview";
+import { EnrichLeadsPreview } from "@/components/search/EnrichLeadsPreview";
+import { ScoreLeadsPreview } from "@/components/search/ScoreLeadsPreview";
+import { VerifyEmailsPreview } from "@/components/search/VerifyEmailsPreview";
 import { SearchStatusBadge } from "@/components/search/SearchStatusBadge";
 import { selectClassName } from "@/components/ui/Field";
 import type { SearchRecord, SearchStatus } from "@/types/search";
@@ -207,42 +212,29 @@ export function SearchCard({
               </div>
             )}
 
-<<<<<<< Updated upstream
-=======
-            <div className="rounded-xl border border-white/5 bg-white/[0.02] p-4">
-              <h4 className="text-sm font-semibold text-white">
-                Outreach steps
-              </h4>
-              <p className="mt-1 text-xs text-slate-500">
-                Run these steps in order to find companies, contacts, and
-                prepare your campaign.
-              </p>
+            <DiscoverPreview searchId={search.id} searchName={search.name} />
 
-              <DiscoverPreview searchId={search.id} searchName={search.name} />
+            <ContactsPreview
+              searchId={search.id}
+              searchName={search.name}
+              jobTitles={search.jobTitles}
+            />
 
-              <ContactsPreview
-                searchId={search.id}
-                searchName={search.name}
-                jobTitles={search.jobTitles}
-              />
+            <EnrichLeadsPreview
+              searchId={search.id}
+              searchName={search.name}
+            />
 
-              <EnrichLeadsPreview
-                searchId={search.id}
-                searchName={search.name}
-              />
+            <VerifyEmailsPreview
+              searchId={search.id}
+              searchName={search.name}
+            />
 
-              <VerifyEmailsPreview
-                searchId={search.id}
-                searchName={search.name}
-              />
+            <ScoreLeadsPreview
+              searchId={search.id}
+              searchName={search.name}
+            />
 
-              <ScoreLeadsPreview
-                searchId={search.id}
-                searchName={search.name}
-              />
-            </div>
-
->>>>>>> Stashed changes
             <div className="flex items-center gap-3 pt-2">
               <label htmlFor={`status-${search.id}`} className="text-xs text-slate-500">
                 Status

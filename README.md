@@ -74,6 +74,548 @@ Run migration `supabase/migrations/002_searches.sql` in the Supabase SQL Editor.
 | Edit search | Click pencil on a saved search → form pre-fills → Save changes |
 | Validation | Client + server validation with per-field error messages |
 
+## DISC-001 — Company Discovery Provider
+
+| Criteria | Implementation |
+|----------|----------------|
+| Fetch companies | `POST /api/companies/discover` with `searchId` |
+| Pagination | `page` + `perPage` params; `hasMore` in response |
+| Retry support | 3 attempts with exponential backoff on retryable errors |
+| Error handling | Typed errors: rate limit, auth, network, provider |
+
+**Providers:** `mock` (default) or `apollo` (set `COMPANY_DATA_PROVIDER=apollo` + `APOLLO_API_KEY`).
+
+**Apollo plan requirement:** Organization search (`/mixed_companies/search`) is only available on **paid** Apollo plans. Free plans and trials return `403` with `API_INACCESSIBLE` even when the API key is valid. Use `COMPANY_DATA_PROVIDER=mock` for local development until you upgrade at [app.apollo.io](https://app.apollo.io/).
+
+### Testing DISC-001
+
+1. Set `COMPANY_DATA_PROVIDER=mock` in `.env.local`
+2. Go to **Searches** → expand a saved search → click **Discover companies**
+3. Mock returns healthcare companies matching criteria
+4. Click **Load next page** to test pagination
+5. For Apollo: upgrade to a paid plan, create a Master API key (Settings → Integrations → API), set provider + key, restart dev server, run discovery again
+
+```bash
+# API test (while logged in — use browser session cookie)
+curl -X POST http://localhost:3000/api/companies/discover \
+  -H "Content-Type: application/json" \
+  -d '{"searchId":"<your-search-uuid>","page":1,"perPage":10}'
+```
+
+## DISC-002 — Company Filtering Engine
+
+| Filter | Match rule |
+|--------|------------|
+| Industry | Case-insensitive exact match on `company.industry` |
+| Size | `employeeCount` within `companySizeMin`–`companySizeMax` (unknown size passes) |
+| Country | Normalized location match on `company.country` |
+| Technology | All listed technologies must match via `technologies` field or name/domain/industry text |
+
+**Pipeline:** provider fetch → `applyCriteria` (inclusion) → `applyExclusions` (negative rules).
+
+**Module:** `src/lib/company-discovery/apply-criteria.ts` — shared by mock provider (pre-pagination) and discovery orchestrator (post-fetch safety net for Apollo).
+
+### Testing DISC-002
+
+1. Create a search with industry, country, size, and technology filters (e.g. Healthcare, United States, 201–500, React)
+2. Expand the search card → **Discover companies**
+3. Mock data returns only companies matching all four filters
+4. Add exclusion rules (SEARCH-004) to verify exclusion count appears separately from criteria filtering
+
+## DISC-003 — Duplicate Company Detection
+
+| Detection | Rule |
+|-----------|------|
+| Identity key | Normalized `domain` (primary), or `name + country` fallback |
+| In-batch | Duplicate domains/names within the same discovery response are skipped |
+| Cross-search | Companies already saved for the user are skipped as known duplicates |
+
+**Pipeline:** provider fetch → `applyCriteria` → `applyExclusions` → `applyDedup` → persist new companies.
+
+**Persistence:** `supabase/migrations/004_companies.sql` — `companies` table with unique `(user_id, dedup_key)`.
+
+Run migration `004_companies.sql` in the Supabase SQL Editor before testing cross-search dedup.
+
+### Testing DISC-003
+
+1. Run migration `004_companies.sql`
+2. Discover companies on a search — results are saved to `companies`
+3. Run discovery again on the same or a different search with overlapping companies
+4. UI shows `duplicates skipped (N already in pipeline)` for known matches
+
+## LEAD-001 — Discover Company Decision Makers
+
+| Criteria | Implementation |
+|----------|----------------|
+| Job titles | `searches.job_titles` → title filter (CEO, Founder, CTO, Marketing Director, VP Sales) |
+| Company scope | Persisted `companies` for the search (`search_id`) |
+| Pagination | `page` + `perPage` params; `hasMore` in response |
+| Dedup | Email, LinkedIn URL, or name+company fallback |
+| API | `POST /api/contacts/discover` with `searchId` |
+
+**Providers:** `mock` (default) or `apollo` (`mixed_people/search` — paid plan required).
+
+**Pipeline:** load companies → provider people search → title filter → dedup → persist contacts.
+
+**Persistence:** `supabase/migrations/005_contacts.sql`
+
+Run migrations `004_companies.sql` and `005_contacts.sql` before testing.
+
+### Testing LEAD-001
+
+1. Create a search with job titles: CEO, Founder, CTO, Marketing Director, VP Sales
+2. Expand the search card → **Discover companies** (saves companies to DB)
+3. Click **Discover decision-makers** — mock returns contacts per company domain
+4. Re-run contact discovery → duplicates skipped for known contacts
+5. If no companies exist, API returns `NO_COMPANIES` with guidance
+
+```bash
+curl -X POST http://localhost:3000/api/contacts/discover \
+  -H "Content-Type: application/json" \
+  -d '{"searchId":"<your-search-uuid>","page":1,"perPage":10}'
+```
+
+## LEAD-002 — Enrich Lead Profiles
+
+| Field | Source |
+|-------|--------|
+| Name | `full_name` from contact + enrichment provider |
+| Role | Job title (`title`) |
+| Company | Company name from joined `companies` row |
+| LinkedIn | `linkedin_url` — filled by enrichment if missing |
+| Location | `city`, `state`, `country` formatted as location string |
+
+**API:** `POST /api/leads/enrich` with `searchId`
+
+**Providers:** `mock` (default) or `apollo` (`people/match` — paid plan required).
+
+**Pipeline:** load contacts for search → enrich profiles → persist to `contacts` table.
+
+**Persistence:** `supabase/migrations/006_contacts_enrichment.sql` adds enrichment columns.
+
+Run migrations `004`–`006` before testing.
+
+### Testing LEAD-002
+
+1. Discover companies → discover decision-makers on a search
+2. Click **Enrich lead profiles** — mock fills LinkedIn + location per contact
+3. Visit **Leads** page to see all enriched profiles
+4. Re-run enrichment to refresh profile data
+
+```bash
+curl -X POST http://localhost:3000/api/leads/enrich \
+  -H "Content-Type: application/json" \
+  -d '{"searchId":"<your-search-uuid>"}'
+```
+
+## LEAD-003 — Email Verification
+
+| Step | Implementation |
+|------|----------------|
+| Syntax validation | RFC-style format check before any API call |
+| Domain validation | MX/A record lookup (mock uses predictable rules) |
+| Verification API | `mock` (default) or `hunter` (`/v2/email-verifier`) |
+
+**API:** `POST /api/leads/verify-emails` with `searchId`
+
+**Pipeline:** syntax check → domain check → provider API → persist status on `contacts`.
+
+**Statuses:** `valid`, `invalid`, `invalid_syntax`, `invalid_domain`, `risky`, `unknown`, `no_email`
+
+**Persistence:** `supabase/migrations/007_contacts_email_verification.sql`
+
+Run migration `007` before testing.
+
+### Testing LEAD-003
+
+1. Discover companies → decision-makers → enrich profiles
+2. Click **Verify emails** on a search card
+3. Mock marks standard emails as **Verified**; use `invalid@...` or `risky@...` local parts to test failures
+4. Visit **Leads** — verification badges appear next to emails
+
+```bash
+curl -X POST http://localhost:3000/api/leads/verify-emails \
+  -H "Content-Type: application/json" \
+  -d '{"searchId":"<your-search-uuid>"}'
+```
+
+## LEAD-004 — Lead Scoring Engine
+
+| Factor | Weight | Match rule |
+|--------|--------|------------|
+| Industry Match | 20% | Company industry vs search industry |
+| Company Size | 20% | Employee count within search size range |
+| Location Match | 20% | Company country vs search country |
+| Job Role Match | 20% | Contact title vs search job titles |
+| Technology Match | 20% | Company technologies vs search technologies |
+
+**Score:** 1–10 (average of factor scores mapped to scale).
+
+**API:** `POST /api/leads/score` with `searchId`
+
+**Module:** `src/lib/lead-scoring/score-lead.ts` — reuses company criteria + title matching.
+
+**Persistence:** `supabase/migrations/008_contacts_lead_scoring.sql`
+
+Run migration `008` before testing.
+
+### Testing LEAD-004
+
+1. Complete discovery → contacts → enrich → verify (optional)
+2. Click **Score leads** on a search card
+3. View per-lead score breakdown (Industry, Size, Location, Role, Technology %)
+4. Visit **Leads** page — score badges appear on enriched leads
+
+```bash
+curl -X POST http://localhost:3000/api/leads/score \
+  -H "Content-Type: application/json" \
+  -d '{"searchId":"<your-search-uuid>"}'
+```
+
+## DASH-005 — Display Recent Activity Feed
+
+| Event | Source |
+|-------|--------|
+| Search created | `searches.created_at` |
+| Lead discovered / enriched / scored | `contacts` timestamps |
+| Email draft / sent / replied | `outreach_emails` |
+| Campaign finished | `outreach_campaigns` |
+| Follow-up scheduled / cancelled / suggested | `follow_ups` |
+
+**Module:** `src/lib/dashboard/activity-feed.ts` — `getRecentActivity()`
+
+**UI:** `RecentActivityFeed` in dashboard sidebar + **Analytics** aside
+
+### Testing DASH-005
+
+1. Create a search → appears in feed
+2. Discover and enrich leads → discovery/enrichment events show
+3. Generate and send emails → draft/sent events appear
+4. Check replies → reply events with relative timestamps
+
+## DASH-004 — Display Conversion Metrics
+
+| Metric | Formula |
+|--------|---------|
+| Enrich rate | Enriched ÷ discovered |
+| Outreach rate | Contacted ÷ enriched |
+| Email reply rate | Replies ÷ emails sent |
+| Contact reply rate | Replied contacts ÷ contacted |
+| End-to-end | Replied contacts ÷ discovered |
+
+**Funnel:** Discovered → Enriched → Contacted → Replied
+
+**Module:** `src/lib/dashboard/conversion-metrics.ts` — `getConversionMetrics()`
+
+**UI:** `ConversionMetricsPanel` on **Dashboard** and **Analytics**
+
+### Testing DASH-004
+
+1. Discover contacts → funnel shows **Discovered**
+2. Enrich leads → **Enrich rate** updates
+3. Send emails → **Contacted** stage and **Outreach rate** populate
+4. Detect replies → **Replied** stage and reply rates update
+
+## DASH-003 — Display Email Metrics
+
+| Metric | Source |
+|--------|--------|
+| Generated / drafts | `outreach_emails` by status |
+| Sent / replies / conversion | Sent emails + `reply_status` |
+| Follow-ups | `follow_ups` scheduled, cancelled, suggestions |
+| Tone breakdown | Email `tone` distribution |
+| Recent campaigns | `outreach_campaigns` (last 5) |
+| Recent replies | Replied emails with snippets |
+
+**Module:** `src/lib/dashboard/email-metrics.ts` — `getEmailMetrics()`
+
+**UI:** `EmailMetricsPanel` on **Dashboard** and **Analytics**
+
+### Testing DASH-003
+
+1. Generate emails → **Generated** count updates
+2. Send outreach → **Sent** and campaign stats populate
+3. **Check for replies** → **Replies** and recent reply list update
+4. Generate follow-up suggestions → **AI suggestions** count increases
+
+## DASH-002 — Display Lead Metrics
+
+| Metric | Source |
+|--------|--------|
+| Discovered / enriched | `contacts` counts |
+| Scored + average | `lead_score` on contacts |
+| With email / verified | `email`, `email_verification_status` |
+| High quality (8+) | Scored contacts |
+| Score distribution | Buckets: Low, Fair, Good, Hot |
+| Top leads | Top 5 by score |
+
+**Module:** `src/lib/dashboard/lead-metrics.ts` — `getLeadMetrics()`
+
+**UI:** `LeadMetricsPanel` on **Dashboard** and **Analytics**
+
+### Testing DASH-002
+
+1. Discover contacts → **Discovered** count updates
+2. Enrich leads → enriched hint under Discovered
+3. **Score leads** → distribution chart and top leads appear
+4. Verify emails → **verified** count updates under With email
+
+## DASH-001 — Dashboard Layout
+
+| Criteria | Implementation |
+|----------|----------------|
+| Layout shell | `DashboardLayout` — stats row + main/aside grid |
+| Stat cards | `DashboardStatCard` + `DashboardStatsGrid` |
+| Sections | `DashboardSection` for titled panels |
+| Stats query | `getDashboardStats()` — searches, leads, sent, replies, conversion |
+| Onboarding | `DashboardGettingStarted` — progress-linked steps |
+| Quick links | Sidebar panel to Searches, Leads, Emails, Analytics |
+
+**Pages:** `/dashboard` (overview + getting started), `/analytics` (same layout shell)
+
+### Testing DASH-001
+
+1. Sign in → **Dashboard** shows 4 stat cards and getting-started steps
+2. Complete workflow steps — badges turn cyan as you create searches, enrich leads, send emails
+3. **Quick links** panel navigates to each workflow page
+4. **Analytics** uses the same stats grid with a metrics overview panel
+
+## TRACK-003 — Generate Follow-up Suggestions
+
+| Criteria | Implementation |
+|----------|----------------|
+| AI suggestions | Mock or OpenAI (`EMAIL_GENERATION_PROVIDER`) |
+| Context | Original sent email + contact profile + sequence number |
+| Persistence | `suggested_*` columns on `follow_ups` |
+| Save as draft | Creates `outreach_emails` draft linked via `draft_email_id` |
+
+**API:**
+- `POST /api/follow-ups/generate` — `{ followUpId }`
+- `POST /api/follow-ups/save-draft` — `{ followUpId }`
+
+**UI:** Scheduled follow-ups list on **Emails** with **Generate suggestion** and **Save as draft**.
+
+**Migration:** `018_follow_up_suggestions.sql`
+
+### Testing TRACK-003
+
+1. Send outreach (mock) → follow-up appears in queue
+2. **Generate suggestion** on a scheduled follow-up
+3. **Save as draft** → new draft appears in email list
+4. Reply detection still cancels follow-ups and blocks paused contacts
+
+## TRACK-002 — Stop Follow-ups After Reply
+
+| Criteria | Implementation |
+|----------|----------------|
+| Follow-up scheduling | Auto-schedule 3 days after initial send |
+| Reply trigger | Cancels pending follow-ups + pauses contact |
+| Outreach guard | Block new email generation for replied contacts |
+| Campaign guard | Exclude paused contacts from batch sends |
+
+**Tables:** `follow_ups`, `contacts.follow_ups_paused_*`
+
+**Migration:** `017_follow_ups.sql`
+
+### Testing TRACK-002
+
+1. Send outreach (mock) → follow-up scheduled in queue
+2. **Check for replies** (mock) → pending follow-ups cancelled
+3. Lead shows **Follow-ups stopped** — cannot generate new emails
+4. **Send all drafts** skips paused contacts
+
+## TRACK-001 — Detect Email Replies
+
+| Criteria | Implementation |
+|----------|----------------|
+| Provider abstraction | `mock` (default), `gmail`, or `outlook` via `REPLY_TRACKING_PROVIDER` |
+| Gmail detection | Search inbox for messages from recipient after send date |
+| Outlook detection | Microsoft Graph filter on received messages from recipient |
+| Persistence | `reply_status`, `replied_at`, `reply_snippet` on `outreach_emails` |
+
+**API:**
+- `POST /api/replies/detect` — scan sent emails for replies
+- `GET /api/replies/status` — reply summary counts
+
+**UI:** **Check for replies** on **Emails**, **Replied** badge + preview, dashboard **Replies** stat.
+
+**Migration:** `016_outreach_email_replies.sql`
+
+### Testing TRACK-001
+
+1. Send outreach emails (mock or real)
+2. **Emails** → **Check for replies**
+3. With `REPLY_TRACKING_PROVIDER=mock`, ~1/3 of sent emails are marked as replied
+4. Dashboard **Replies** count updates
+
+For Gmail/Outlook: reconnect account after scope updates (`gmail.readonly`, `Mail.Read`).
+
+## EMAIL-006 — Send Outreach Campaigns
+
+| Criteria | Implementation |
+|----------|----------------|
+| Batch send | Send all draft emails in one campaign |
+| Campaign tracking | `outreach_campaigns` table with sent/failed counts |
+| Per-email link | `outreach_emails.campaign_id` ties drafts to a campaign |
+| Rate limiting | 400ms delay between sends in a campaign |
+
+**API:** `POST /api/emails/campaigns/send` with optional `{ emailIds?, name? }`
+
+**UI:** **Send all drafts** panel and **Recent campaigns** on **Emails** page.
+
+**Migration:** `015_outreach_campaigns.sql`
+
+### Testing EMAIL-006
+
+1. Generate multiple drafts on **Leads**
+2. Go to **Emails** → click **Send all drafts**
+3. Review campaign status (completed / partial / failed) and per-email results
+4. Use `EMAIL_SENDING_PROVIDER=mock` to test without Gmail or Outlook
+
+## EMAIL-005 — Outlook Sending
+
+| Criteria | Implementation |
+|----------|----------------|
+| Provider | `outlook` via `EMAIL_SENDING_PROVIDER=outlook` |
+| Microsoft Graph | `POST /me/sendMail` with OAuth refresh token |
+| OAuth flow | `/auth/outlook` → Microsoft login → `/auth/outlook/callback` |
+| Token storage | `outlook_connections` table |
+
+**API:**
+- `POST /api/emails/send` (same route, provider selected by env)
+- `GET /api/outlook/status` — connection status
+
+**UI:** **Connect Outlook** on **Settings**, send button label updates to **Send via Outlook**.
+
+**Migration:** `014_outlook_connections.sql`
+
+### Outlook setup
+
+1. Register an app in [Azure Portal](https://portal.azure.com) → Microsoft Entra ID → App registrations
+2. Add redirect URI: `http://localhost:3000/auth/outlook/callback`
+3. Add API permissions: `Mail.Send`, `User.Read`, `offline_access`
+4. Create a client secret and set `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` in `.env.local`
+5. Run migration `014`
+6. Set `EMAIL_SENDING_PROVIDER=outlook`
+7. **Settings → Connect Outlook**, then send from **Emails**
+
+Use `EMAIL_SENDING_PROVIDER=mock` to mark sent without a real API call.
+
+## EMAIL-004 — Gmail Sending
+
+| Criteria | Implementation |
+|----------|----------------|
+| Provider abstraction | `mock` (default), `gmail`, or `outlook` via `EMAIL_SENDING_PROVIDER` |
+| Gmail API | `users.messages.send` with OAuth refresh token |
+| OAuth scopes | `gmail.send` added to Google login flow |
+| Token storage | `gmail_connections` table (refresh token from Supabase session) |
+| Status tracking | `outreach_emails.status` → `sent`, plus `sent_at`, `gmail_message_id` |
+
+**API:**
+- `POST /api/emails/send` with `{ emailId }`
+- `GET /api/gmail/status` — connection status
+
+**UI:** **Send via Gmail** on draft cards (Emails page), Gmail connection card on **Settings**.
+
+**Migrations:** `012_gmail_connections.sql`, `013_outreach_emails_send_tracking.sql`
+
+### Gmail setup
+
+1. In [Google Cloud Console](https://console.cloud.google.com), enable **Gmail API**
+2. Add `gmail.send` scope to your OAuth consent screen
+3. In **Supabase → Authentication → Providers → Google**, enable **Save provider refresh token**
+4. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` in `.env.local` (same OAuth client as Supabase)
+5. Run migrations `012` and `013`
+6. Sign in via **Settings → Connect Gmail** (re-consent grants send scope)
+7. For real sends: `EMAIL_SENDING_PROVIDER=gmail`; use `mock` to mark sent without API calls
+
+### Testing EMAIL-004
+
+1. Generate a draft on **Leads**
+2. Go to **Emails** → click **Send via Gmail** on a draft
+3. With `GMAIL_SENDING_PROVIDER=mock`, status becomes `sent` without a real email
+4. Dashboard **Emails sent** count updates
+
+## EMAIL-003 — Email Tone Selection
+
+| Tone | Style |
+|------|-------|
+| Professional | Polished and businesslike (default) |
+| Friendly | Conversational and approachable |
+| Formal | Traditional business correspondence |
+| Direct | Brief, value-led, minimal filler |
+
+**API:** `POST /api/emails/generate` with `{ contactId, tone?: "professional" | "friendly" | "formal" | "direct" }`
+
+**UI:** Tone picker in the generate-email panel on **Leads**.
+
+**Persistence:** `supabase/migrations/011_outreach_emails_tone.sql`
+
+Run migration `011` before testing.
+
+### Testing EMAIL-003
+
+1. Go to **Leads** → **Generate email**
+2. Select a tone (Professional, Friendly, Formal, or Direct)
+3. Generate the draft and compare subject/body style on **Emails**
+4. With mock provider, each tone uses a distinct template
+
+## EMAIL-002 — Personalized Outreach Emails
+
+| Input | Source |
+|-------|--------|
+| Lead | Contact name + role |
+| Company | Linked company record |
+| Industry | Company industry |
+| Pain points | Auto-inferred from industry, role, tech stack, and search keywords — editable before generate |
+
+**API:**
+- `GET /api/emails/context?contactId=<uuid>` — preview personalization inputs
+- `POST /api/emails/generate` with `{ contactId, painPoints?: string[], tone?: string }`
+
+**Module:** `src/lib/email-generation/infer-pain-points.ts`, updated prompts and mock provider.
+
+**Persistence:** `supabase/migrations/010_outreach_emails_personalization.sql` — stores `lead_company`, `industry`, `pain_points` per draft.
+
+Run migration `010` before testing.
+
+### Testing EMAIL-002
+
+1. Go to **Leads** → click **Generate email**
+2. Review auto-filled lead, company, industry, and pain points
+3. Edit pain points if needed → **Generate personalized draft**
+4. Visit **Emails** to see subject, body, and pain points used
+
+## EMAIL-001 — OpenAI Email Generation Provider
+
+| Criteria | Implementation |
+|----------|----------------|
+| Provider abstraction | `mock` (default) or `openai` via `EMAIL_GENERATION_PROVIDER` |
+| OpenAI integration | Chat Completions API (`gpt-4o-mini` default) |
+| Retry support | 3 attempts with exponential backoff on retryable errors |
+| Persistence | `outreach_emails` table stores draft subject + body |
+
+**API:** `POST /api/emails/generate` with `{ contactId, tone? }`
+
+**Module:** `src/lib/email-generation/` — factory, mock provider, OpenAI provider, prompt builder.
+
+**Persistence:** `supabase/migrations/009_outreach_emails.sql`
+
+Run migration `009` before testing.
+
+### Testing EMAIL-001
+
+1. Complete lead pipeline (discover → contacts → enrich)
+2. Go to **Leads** → click **Generate email** on a lead with an email address
+3. Visit **Emails** page to review saved drafts
+4. For OpenAI: set `EMAIL_GENERATION_PROVIDER=openai` and `OPENAI_API_KEY`, restart dev server
+
+```bash
+curl -X POST http://localhost:3000/api/emails/generate \
+  -H "Content-Type: application/json" \
+  -d '{"contactId":"<contact-uuid>"}'
+```
+
 ## SEARCH-004 — Exclusion Rules
 
 | Exclusion | Field | Validation |
