@@ -272,6 +272,76 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## TRACK-003 — Generate Follow-up Suggestions
+
+| Criteria | Implementation |
+|----------|----------------|
+| AI suggestions | Mock or OpenAI (`EMAIL_GENERATION_PROVIDER`) |
+| Context | Original sent email + contact profile + sequence number |
+| Persistence | `suggested_*` columns on `follow_ups` |
+| Save as draft | Creates `outreach_emails` draft linked via `draft_email_id` |
+
+**API:**
+- `POST /api/follow-ups/generate` — `{ followUpId }`
+- `POST /api/follow-ups/save-draft` — `{ followUpId }`
+
+**UI:** Scheduled follow-ups list on **Emails** with **Generate suggestion** and **Save as draft**.
+
+**Migration:** `018_follow_up_suggestions.sql`
+
+### Testing TRACK-003
+
+1. Send outreach (mock) → follow-up appears in queue
+2. **Generate suggestion** on a scheduled follow-up
+3. **Save as draft** → new draft appears in email list
+4. Reply detection still cancels follow-ups and blocks paused contacts
+
+## TRACK-002 — Stop Follow-ups After Reply
+
+| Criteria | Implementation |
+|----------|----------------|
+| Follow-up scheduling | Auto-schedule 3 days after initial send |
+| Reply trigger | Cancels pending follow-ups + pauses contact |
+| Outreach guard | Block new email generation for replied contacts |
+| Campaign guard | Exclude paused contacts from batch sends |
+
+**Tables:** `follow_ups`, `contacts.follow_ups_paused_*`
+
+**Migration:** `017_follow_ups.sql`
+
+### Testing TRACK-002
+
+1. Send outreach (mock) → follow-up scheduled in queue
+2. **Check for replies** (mock) → pending follow-ups cancelled
+3. Lead shows **Follow-ups stopped** — cannot generate new emails
+4. **Send all drafts** skips paused contacts
+
+## TRACK-001 — Detect Email Replies
+
+| Criteria | Implementation |
+|----------|----------------|
+| Provider abstraction | `mock` (default), `gmail`, or `outlook` via `REPLY_TRACKING_PROVIDER` |
+| Gmail detection | Search inbox for messages from recipient after send date |
+| Outlook detection | Microsoft Graph filter on received messages from recipient |
+| Persistence | `reply_status`, `replied_at`, `reply_snippet` on `outreach_emails` |
+
+**API:**
+- `POST /api/replies/detect` — scan sent emails for replies
+- `GET /api/replies/status` — reply summary counts
+
+**UI:** **Check for replies** on **Emails**, **Replied** badge + preview, dashboard **Replies** stat.
+
+**Migration:** `016_outreach_email_replies.sql`
+
+### Testing TRACK-001
+
+1. Send outreach emails (mock or real)
+2. **Emails** → **Check for replies**
+3. With `REPLY_TRACKING_PROVIDER=mock`, ~1/3 of sent emails are marked as replied
+4. Dashboard **Replies** count updates
+
+For Gmail/Outlook: reconnect account after scope updates (`gmail.readonly`, `Mail.Read`).
+
 ## EMAIL-006 — Send Outreach Campaigns
 
 | Criteria | Implementation |

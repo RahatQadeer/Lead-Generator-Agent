@@ -57,7 +57,7 @@ export async function getValidOutlookAccessToken(
           client_secret: credentials.clientSecret,
           refresh_token: connection.refresh_token,
           grant_type: "refresh_token",
-          scope: "offline_access Mail.Send User.Read",
+          scope: "offline_access Mail.Send Mail.Read User.Read",
         }),
       }
     );

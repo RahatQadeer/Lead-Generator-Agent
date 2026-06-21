@@ -118,6 +118,8 @@ export function toEnrichedLead(contact: ContactRow): EnrichedLead | null {
     companyId: contact.company_id,
     searchId: contact.search_id,
     enrichedAt: contact.enriched_at,
+    followUpsPaused: contact.follow_ups_paused ?? false,
+    followUpsPausedReason: contact.follow_ups_paused_reason,
   };
 }
 

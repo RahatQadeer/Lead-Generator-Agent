@@ -1,4 +1,6 @@
 import { getToneLabel } from "@/lib/email-generation/tone-guidance";
+import { FollowUpStoppedBadge } from "@/components/emails/FollowUpStoppedBadge";
+import { ReplyBadge } from "@/components/emails/ReplyBadge";
 import { SendEmailButton } from "@/components/emails/SendEmailButton";
 import type { SavedEmail } from "@/types/email-generation";
 import type { EmailSendingProviderName } from "@/types/email-sending";
@@ -38,11 +40,25 @@ export function EmailDraftCard({ email, sendingProvider }: EmailDraftCardProps) 
           <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 text-xs text-violet-300">
             {getToneLabel(personalization.tone)}
           </span>
+          <ReplyBadge
+            replyStatus={email.replyStatus}
+            repliedAt={email.repliedAt}
+          />
+          {email.replyStatus === "replied" && (
+            <FollowUpStoppedBadge reason="replied" />
+          )}
           <span className="rounded-full border border-slate-500/30 bg-slate-500/10 px-2 py-0.5 text-xs capitalize text-slate-300">
             {email.status}
           </span>
         </div>
       </div>
+
+      {email.replySnippet && email.replyStatus === "replied" && (
+        <div className="mt-3 rounded-lg border border-sky-500/20 bg-sky-500/5 p-3">
+          <p className="text-xs font-medium text-sky-400">Reply preview</p>
+          <p className="mt-1 text-sm text-slate-300">{email.replySnippet}</p>
+        </div>
+      )}
 
       {personalization.painPoints.length > 0 && (
         <div className="mt-3">

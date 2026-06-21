@@ -30,6 +30,8 @@ export interface GeneratedEmail {
   personalization: EmailPersonalization;
 }
 
+export type ReplyStatus = "none" | "replied";
+
 export interface SavedEmail extends GeneratedEmail {
   id: string;
   contactId: string;
@@ -38,6 +40,10 @@ export interface SavedEmail extends GeneratedEmail {
   recipientEmail: string | null;
   sentAt: string | null;
   gmailMessageId: string | null;
+  replyStatus: ReplyStatus;
+  repliedAt: string | null;
+  replySnippet: string | null;
+  replyCheckedAt: string | null;
 }
 
 export interface EmailGenerationPreview {

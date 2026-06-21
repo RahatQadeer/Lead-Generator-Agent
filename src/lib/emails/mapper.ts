@@ -43,6 +43,10 @@ export function toSavedEmail(
     recipientEmail: row.recipient_email,
     sentAt: row.sent_at,
     gmailMessageId: row.gmail_message_id,
+    replyStatus: (row.reply_status as SavedEmail["replyStatus"]) ?? "none",
+    repliedAt: row.replied_at,
+    replySnippet: row.reply_snippet,
+    replyCheckedAt: row.reply_checked_at,
     personalization: {
       leadName,
       leadRole: "",

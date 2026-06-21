@@ -1,6 +1,7 @@
 import { Building2, Link2, MapPin } from "lucide-react";
 import { EmailVerificationBadge } from "@/components/leads/EmailVerificationBadge";
 import { GenerateEmailButton } from "@/components/leads/GenerateEmailButton";
+import { FollowUpStoppedBadge } from "@/components/emails/FollowUpStoppedBadge";
 import { LeadScoreBadge } from "@/components/leads/LeadScoreBadge";
 import type { EnrichedLead } from "@/types/lead";
 
@@ -25,6 +26,9 @@ export function LeadsList({ leads }: LeadsListProps) {
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-base font-semibold text-white">{lead.name}</p>
                   <LeadScoreBadge score={lead.leadScore} />
+                  {lead.followUpsPaused && (
+                    <FollowUpStoppedBadge reason={lead.followUpsPausedReason} />
+                  )}
                 </div>
                 <p className="text-sm text-violet-300">{lead.role}</p>
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-400">
@@ -51,6 +55,7 @@ export function LeadsList({ leads }: LeadsListProps) {
                   contactId={lead.id}
                   leadName={lead.name}
                   hasEmail={Boolean(lead.email)}
+                  followUpsPaused={lead.followUpsPaused}
                 />
                 {lead.linkedin && (
                   <a
