@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { upsertProfile } from "@/lib/auth/profile";
+import { saveGmailConnection } from "@/lib/gmail/connection";
 import { createClient } from "@/lib/supabase/route-handler";
 
 export async function GET(request: NextRequest) {
@@ -44,6 +45,18 @@ export async function GET(request: NextRequest) {
   }
 
   await upsertProfile(supabase, data.user);
+
+  if (data.session?.provider_refresh_token && data.user.email) {
+    await saveGmailConnection(
+      data.user.id,
+      {
+        gmailAddress: data.user.email,
+        refreshToken: data.session.provider_refresh_token,
+        accessToken: data.session.provider_token ?? null,
+      },
+      supabase
+    );
+  }
 
   return redirectResponse;
 }

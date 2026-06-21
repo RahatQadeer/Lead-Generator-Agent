@@ -270,6 +270,174 @@ export interface Database {
         };
         Relationships: [];
       };
+      outreach_emails: {
+        Row: {
+          id: string;
+          user_id: string;
+          contact_id: string;
+          subject: string;
+          body: string;
+          provider: string;
+          model: string | null;
+          status: string;
+          lead_company: string | null;
+          industry: string | null;
+          pain_points: string[];
+          tone: string;
+          sent_at: string | null;
+          gmail_message_id: string | null;
+          recipient_email: string | null;
+          campaign_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          contact_id: string;
+          subject: string;
+          body: string;
+          provider: string;
+          model?: string | null;
+          status?: string;
+          lead_company?: string | null;
+          industry?: string | null;
+          pain_points?: string[];
+          tone?: string;
+          sent_at?: string | null;
+          gmail_message_id?: string | null;
+          recipient_email?: string | null;
+          campaign_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          contact_id?: string;
+          subject?: string;
+          body?: string;
+          provider?: string;
+          model?: string | null;
+          status?: string;
+          lead_company?: string | null;
+          industry?: string | null;
+          pain_points?: string[];
+          tone?: string;
+          sent_at?: string | null;
+          gmail_message_id?: string | null;
+          recipient_email?: string | null;
+          campaign_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      outreach_campaigns: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          status: string;
+          provider: string;
+          total_count: number;
+          sent_count: number;
+          failed_count: number;
+          started_at: string;
+          completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name?: string;
+          status?: string;
+          provider: string;
+          total_count?: number;
+          sent_count?: number;
+          failed_count?: number;
+          started_at?: string;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          status?: string;
+          provider?: string;
+          total_count?: number;
+          sent_count?: number;
+          failed_count?: number;
+          started_at?: string;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      gmail_connections: {
+        Row: {
+          user_id: string;
+          gmail_address: string;
+          refresh_token: string;
+          access_token: string | null;
+          token_expires_at: string | null;
+          connected_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          gmail_address: string;
+          refresh_token: string;
+          access_token?: string | null;
+          token_expires_at?: string | null;
+          connected_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          gmail_address?: string;
+          refresh_token?: string;
+          access_token?: string | null;
+          token_expires_at?: string | null;
+          connected_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      outlook_connections: {
+        Row: {
+          user_id: string;
+          outlook_address: string;
+          refresh_token: string;
+          access_token: string | null;
+          token_expires_at: string | null;
+          connected_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          outlook_address: string;
+          refresh_token: string;
+          access_token?: string | null;
+          token_expires_at?: string | null;
+          connected_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          outlook_address?: string;
+          refresh_token?: string;
+          access_token?: string | null;
+          token_expires_at?: string | null;
+          connected_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

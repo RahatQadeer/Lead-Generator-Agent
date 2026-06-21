@@ -272,6 +272,172 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## EMAIL-006 — Send Outreach Campaigns
+
+| Criteria | Implementation |
+|----------|----------------|
+| Batch send | Send all draft emails in one campaign |
+| Campaign tracking | `outreach_campaigns` table with sent/failed counts |
+| Per-email link | `outreach_emails.campaign_id` ties drafts to a campaign |
+| Rate limiting | 400ms delay between sends in a campaign |
+
+**API:** `POST /api/emails/campaigns/send` with optional `{ emailIds?, name? }`
+
+**UI:** **Send all drafts** panel and **Recent campaigns** on **Emails** page.
+
+**Migration:** `015_outreach_campaigns.sql`
+
+### Testing EMAIL-006
+
+1. Generate multiple drafts on **Leads**
+2. Go to **Emails** → click **Send all drafts**
+3. Review campaign status (completed / partial / failed) and per-email results
+4. Use `EMAIL_SENDING_PROVIDER=mock` to test without Gmail or Outlook
+
+## EMAIL-005 — Outlook Sending
+
+| Criteria | Implementation |
+|----------|----------------|
+| Provider | `outlook` via `EMAIL_SENDING_PROVIDER=outlook` |
+| Microsoft Graph | `POST /me/sendMail` with OAuth refresh token |
+| OAuth flow | `/auth/outlook` → Microsoft login → `/auth/outlook/callback` |
+| Token storage | `outlook_connections` table |
+
+**API:**
+- `POST /api/emails/send` (same route, provider selected by env)
+- `GET /api/outlook/status` — connection status
+
+**UI:** **Connect Outlook** on **Settings**, send button label updates to **Send via Outlook**.
+
+**Migration:** `014_outlook_connections.sql`
+
+### Outlook setup
+
+1. Register an app in [Azure Portal](https://portal.azure.com) → Microsoft Entra ID → App registrations
+2. Add redirect URI: `http://localhost:3000/auth/outlook/callback`
+3. Add API permissions: `Mail.Send`, `User.Read`, `offline_access`
+4. Create a client secret and set `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET` in `.env.local`
+5. Run migration `014`
+6. Set `EMAIL_SENDING_PROVIDER=outlook`
+7. **Settings → Connect Outlook**, then send from **Emails**
+
+Use `EMAIL_SENDING_PROVIDER=mock` to mark sent without a real API call.
+
+## EMAIL-004 — Gmail Sending
+
+| Criteria | Implementation |
+|----------|----------------|
+| Provider abstraction | `mock` (default), `gmail`, or `outlook` via `EMAIL_SENDING_PROVIDER` |
+| Gmail API | `users.messages.send` with OAuth refresh token |
+| OAuth scopes | `gmail.send` added to Google login flow |
+| Token storage | `gmail_connections` table (refresh token from Supabase session) |
+| Status tracking | `outreach_emails.status` → `sent`, plus `sent_at`, `gmail_message_id` |
+
+**API:**
+- `POST /api/emails/send` with `{ emailId }`
+- `GET /api/gmail/status` — connection status
+
+**UI:** **Send via Gmail** on draft cards (Emails page), Gmail connection card on **Settings**.
+
+**Migrations:** `012_gmail_connections.sql`, `013_outreach_emails_send_tracking.sql`
+
+### Gmail setup
+
+1. In [Google Cloud Console](https://console.cloud.google.com), enable **Gmail API**
+2. Add `gmail.send` scope to your OAuth consent screen
+3. In **Supabase → Authentication → Providers → Google**, enable **Save provider refresh token**
+4. Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` in `.env.local` (same OAuth client as Supabase)
+5. Run migrations `012` and `013`
+6. Sign in via **Settings → Connect Gmail** (re-consent grants send scope)
+7. For real sends: `EMAIL_SENDING_PROVIDER=gmail`; use `mock` to mark sent without API calls
+
+### Testing EMAIL-004
+
+1. Generate a draft on **Leads**
+2. Go to **Emails** → click **Send via Gmail** on a draft
+3. With `GMAIL_SENDING_PROVIDER=mock`, status becomes `sent` without a real email
+4. Dashboard **Emails sent** count updates
+
+## EMAIL-003 — Email Tone Selection
+
+| Tone | Style |
+|------|-------|
+| Professional | Polished and businesslike (default) |
+| Friendly | Conversational and approachable |
+| Formal | Traditional business correspondence |
+| Direct | Brief, value-led, minimal filler |
+
+**API:** `POST /api/emails/generate` with `{ contactId, tone?: "professional" | "friendly" | "formal" | "direct" }`
+
+**UI:** Tone picker in the generate-email panel on **Leads**.
+
+**Persistence:** `supabase/migrations/011_outreach_emails_tone.sql`
+
+Run migration `011` before testing.
+
+### Testing EMAIL-003
+
+1. Go to **Leads** → **Generate email**
+2. Select a tone (Professional, Friendly, Formal, or Direct)
+3. Generate the draft and compare subject/body style on **Emails**
+4. With mock provider, each tone uses a distinct template
+
+## EMAIL-002 — Personalized Outreach Emails
+
+| Input | Source |
+|-------|--------|
+| Lead | Contact name + role |
+| Company | Linked company record |
+| Industry | Company industry |
+| Pain points | Auto-inferred from industry, role, tech stack, and search keywords — editable before generate |
+
+**API:**
+- `GET /api/emails/context?contactId=<uuid>` — preview personalization inputs
+- `POST /api/emails/generate` with `{ contactId, painPoints?: string[], tone?: string }`
+
+**Module:** `src/lib/email-generation/infer-pain-points.ts`, updated prompts and mock provider.
+
+**Persistence:** `supabase/migrations/010_outreach_emails_personalization.sql` — stores `lead_company`, `industry`, `pain_points` per draft.
+
+Run migration `010` before testing.
+
+### Testing EMAIL-002
+
+1. Go to **Leads** → click **Generate email**
+2. Review auto-filled lead, company, industry, and pain points
+3. Edit pain points if needed → **Generate personalized draft**
+4. Visit **Emails** to see subject, body, and pain points used
+
+## EMAIL-001 — OpenAI Email Generation Provider
+
+| Criteria | Implementation |
+|----------|----------------|
+| Provider abstraction | `mock` (default) or `openai` via `EMAIL_GENERATION_PROVIDER` |
+| OpenAI integration | Chat Completions API (`gpt-4o-mini` default) |
+| Retry support | 3 attempts with exponential backoff on retryable errors |
+| Persistence | `outreach_emails` table stores draft subject + body |
+
+**API:** `POST /api/emails/generate` with `{ contactId, tone? }`
+
+**Module:** `src/lib/email-generation/` — factory, mock provider, OpenAI provider, prompt builder.
+
+**Persistence:** `supabase/migrations/009_outreach_emails.sql`
+
+Run migration `009` before testing.
+
+### Testing EMAIL-001
+
+1. Complete lead pipeline (discover → contacts → enrich)
+2. Go to **Leads** → click **Generate email** on a lead with an email address
+3. Visit **Emails** page to review saved drafts
+4. For OpenAI: set `EMAIL_GENERATION_PROVIDER=openai` and `OPENAI_API_KEY`, restart dev server
+
+```bash
+curl -X POST http://localhost:3000/api/emails/generate \
+  -H "Content-Type: application/json" \
+  -d '{"contactId":"<contact-uuid>"}'
+```
+
 ## SEARCH-004 — Exclusion Rules
 
 | Exclusion | Field | Validation |

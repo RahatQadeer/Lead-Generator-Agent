@@ -6,10 +6,12 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { getAuthContext } from "@/lib/auth/get-auth-context";
+import { getSentEmailCount } from "@/lib/emails/queries";
 import { PageHeader } from "@/components/layout/PageHeader";
 
 export default async function DashboardPage() {
-  const { profile } = await getAuthContext();
+  const { profile, user } = await getAuthContext();
+  const sentCount = await getSentEmailCount(user.id);
   const firstName = profile.full_name?.split(" ")[0] ?? "there";
 
   return (
@@ -31,8 +33,8 @@ export default async function DashboardPage() {
         <StatCard
           icon={Send}
           label="Emails sent"
-          value="—"
-          hint="No campaigns yet"
+          value={sentCount > 0 ? String(sentCount) : "—"}
+          hint={sentCount > 0 ? "Outreach delivered" : "No campaigns yet"}
         />
         <StatCard
           icon={MessageSquare}
