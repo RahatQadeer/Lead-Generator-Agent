@@ -5,6 +5,7 @@ import {
   toLeadScoringInputs,
 } from "@/lib/contacts/queries";
 import { mapSearchToScoringCriteria } from "@/lib/lead-scoring/map-criteria";
+import { resolveLeadScoringWeights } from "@/lib/lead-scoring/settings";
 import { scoreLeads } from "@/lib/lead-scoring/score-lead";
 import { createClient } from "@/lib/supabase/server";
 import { getSearchById } from "@/lib/search/queries";
@@ -80,7 +81,8 @@ export async function POST(request: Request) {
 
     const criteria = mapSearchToScoringCriteria(search);
     const inputs = toLeadScoringInputs(contacts);
-    const { results, averageScore } = scoreLeads(inputs, criteria);
+    const weights = await resolveLeadScoringWeights(user.id);
+    const { results, averageScore } = scoreLeads(inputs, criteria, weights);
 
     await saveLeadScores(user.id, results);
 

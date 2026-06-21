@@ -19,7 +19,7 @@ export function buildUserPrompt(context: EmailGenerationContext): string {
     .map((point, index) => `${index + 1}. ${point}`)
     .join("\n");
 
-  return [
+  const lines = [
     `Write a ${context.tone} outreach email from ${context.senderCompanyName}.`,
     `Tone guidance: ${getToneGuidance(context.tone)}`,
     "",
@@ -35,5 +35,17 @@ export function buildUserPrompt(context: EmailGenerationContext): string {
     "Goal: start a conversation about custom software development services.",
     "Reference the lead by first name, mention their company, and tie your value prop to a relevant pain point.",
     "Keep subject under 60 characters. Body under 180 words.",
-  ].join("\n");
+  ];
+
+  if (context.template) {
+    lines.push(
+      "",
+      `Follow the user's "${context.template.name}" template structure:`,
+      `Subject template: ${context.template.subjectTemplate}`,
+      `Body template: ${context.template.bodyTemplate}`,
+      "Substitute placeholders with lead-specific values. Preserve the template's structure and approximate length."
+    );
+  }
+
+  return lines.join("\n");
 }

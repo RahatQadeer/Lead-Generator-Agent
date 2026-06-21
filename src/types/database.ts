@@ -522,6 +522,132 @@ export interface Database {
         };
         Relationships: [];
       };
+      openai_settings: {
+        Row: {
+          user_id: string;
+          generation_provider: string;
+          model: string;
+          api_key: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          generation_provider?: string;
+          model?: string;
+          api_key?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          generation_provider?: string;
+          model?: string;
+          api_key?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      gmail_settings: {
+        Row: {
+          user_id: string;
+          sending_provider: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          sending_provider?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          sending_provider?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      outlook_settings: {
+        Row: {
+          user_id: string;
+          sending_provider: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          sending_provider?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          sending_provider?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      lead_scoring_settings: {
+        Row: {
+          user_id: string;
+          industry_weight: number;
+          company_size_weight: number;
+          location_weight: number;
+          job_role_weight: number;
+          technology_weight: number;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          industry_weight?: number;
+          company_size_weight?: number;
+          location_weight?: number;
+          job_role_weight?: number;
+          technology_weight?: number;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          industry_weight?: number;
+          company_size_weight?: number;
+          location_weight?: number;
+          job_role_weight?: number;
+          technology_weight?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      email_templates: {
+        Row: {
+          id: string;
+          user_id: string;
+          name: string;
+          tone: string;
+          subject_template: string;
+          body_template: string;
+          is_default: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          name: string;
+          tone: string;
+          subject_template: string;
+          body_template: string;
+          is_default?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          name?: string;
+          tone?: string;
+          subject_template?: string;
+          body_template?: string;
+          is_default?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

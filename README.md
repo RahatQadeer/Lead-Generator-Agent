@@ -272,6 +272,147 @@ curl -X POST http://localhost:3000/api/leads/score \
   -d '{"searchId":"<your-search-uuid>"}'
 ```
 
+## SET-005 — Manage Email Templates
+
+| Criteria | Implementation |
+|----------|----------------|
+| Per-user templates | `email_templates` — name, tone, subject/body patterns |
+| Placeholders | `{{firstName}}`, `{{company}}`, `{{painPoint}}`, etc. |
+| Default per tone | One default template per tone per user |
+| Mock provider | Renders placeholders directly from template |
+| OpenAI provider | Uses template as structure guidance in prompt |
+| Generation | Optional `templateId` or auto-resolve default for tone |
+
+**API:**
+- `GET /api/email-templates` — list templates + placeholders
+- `POST /api/email-templates` — create template
+- `GET /api/email-templates/[id]` — get template
+- `PUT /api/email-templates/[id]` — update template
+- `DELETE /api/email-templates/[id]` — delete template
+
+**UI:** **Settings** → Email templates card; template picker on **Leads** generate panel
+
+**Migration:** `023_email_templates.sql`
+
+### Testing SET-005
+
+1. Run migration `023` in Supabase
+2. **Settings** → create a template with placeholders → mark as default
+3. **Leads** → **Generate email** → pick template or use default
+4. **Emails** page shows draft using your template structure
+
+## SET-004 — Configure Lead Scoring Rules
+
+| Criteria | Implementation |
+|----------|----------------|
+| Per-user weights | `lead_scoring_settings` — five factor weights (0–100%) |
+| Default rules | 20% each: industry, company size, location, job role, technology |
+| Validation | Weights must sum to 100% |
+| Scoring engine | `computeLeadScore()` uses weighted average of factor scores |
+| Resolution | User settings → default weights |
+
+**API:**
+- `GET /api/lead-scoring/status` — current weights
+- `PUT /api/lead-scoring/settings` — save factor weights
+- `DELETE /api/lead-scoring/settings` — reset to defaults
+
+**UI:** **Settings** → Lead scoring rules card
+
+**Migration:** `022_lead_scoring_settings.sql`
+
+### Testing SET-004
+
+1. Run migration `022` in Supabase
+2. **Settings** → adjust weights (e.g. 40% job role, 15% each for others)
+3. **Score leads** on a search — scores reflect new weights
+4. **Reset to defaults** restores 20% per factor
+
+## SET-003 — Manage Outlook Configuration
+
+| Criteria | Implementation |
+|----------|----------------|
+| Per-user provider | `outlook_settings.sending_provider` (mock \| outlook) |
+| OAuth connection | Existing `outlook_connections` + connect/reconnect flow |
+| Provider resolution | User preference → Outlook connection → env → mock fallback |
+| Disconnect | `DELETE /api/outlook/connection` |
+| Test connection | `POST /api/outlook/test` — Microsoft Graph `/me` |
+
+**API:**
+- `GET /api/outlook/status` — connection + effective provider
+- `PUT /api/outlook/settings` — save sending provider preference
+- `DELETE /api/outlook/settings` — reset to environment defaults
+- `DELETE /api/outlook/connection` — remove OAuth tokens
+- `POST /api/outlook/test` — verify Microsoft Graph access
+
+**UI:** **Settings** → Outlook sending card
+
+**Migration:** `021_outlook_settings.sql`
+
+### Testing SET-003
+
+1. Run migration `021` in Supabase
+2. **Settings** → save **Mock** → send email uses mock provider
+3. **Connect Outlook** → OAuth flow → status shows connected account
+4. Save **Outlook** provider → **Test connection** → Graph profile success
+5. **Disconnect** removes tokens; effective provider falls back to mock
+
+## SET-002 — Manage Gmail Configuration
+
+| Criteria | Implementation |
+|----------|----------------|
+| Per-user provider | `gmail_settings.sending_provider` (mock \| gmail) |
+| OAuth connection | Existing `gmail_connections` + connect/reconnect flow |
+| Provider resolution | User preference → Gmail connection → mock fallback |
+| Disconnect | `DELETE /api/gmail/connection` |
+| Test connection | `POST /api/gmail/test` — Gmail profile API |
+
+**API:**
+- `GET /api/gmail/status` — connection + effective provider
+- `PUT /api/gmail/settings` — save sending provider preference
+- `DELETE /api/gmail/settings` — reset to environment defaults
+- `DELETE /api/gmail/connection` — remove OAuth tokens
+- `POST /api/gmail/test` — verify Gmail API access
+
+**UI:** **Settings** → Gmail sending card
+
+**Migration:** `020_gmail_settings.sql`
+
+### Testing SET-002
+
+1. Run migration `020` in Supabase
+2. **Settings** → save **Mock** → send email uses mock provider
+3. **Connect Gmail** → OAuth flow → status shows connected account
+4. Save **Gmail** provider → **Test connection** → profile success
+5. **Disconnect** removes tokens; effective provider falls back to mock
+
+## SET-001 — Manage OpenAI Configuration
+
+| Criteria | Implementation |
+|----------|----------------|
+| Per-user settings | `openai_settings` table (provider, model, API key) |
+| Provider choice | Mock or OpenAI per user |
+| Key resolution | User key → env `OPENAI_API_KEY` → mock fallback |
+| Test connection | `POST /api/openai/test` validates API key |
+| Generation | Email + follow-up routes use user-resolved config |
+
+**API:**
+- `GET /api/openai/status` — masked key preview + effective provider
+- `PUT /api/openai/settings` — save provider, model, optional API key
+- `DELETE /api/openai/settings` — reset to environment defaults
+- `POST /api/openai/test` — verify connectivity
+
+**UI:** **Settings** → OpenAI generation card
+
+**Migration:** `019_openai_settings.sql`
+
+### Testing SET-001
+
+1. Run migration `019` in Supabase
+2. **Settings** → select OpenAI, enter API key, choose model → **Save**
+3. **Test connection** → success message
+4. Generate email on **Leads** — uses your configured provider/model
+5. **Reset to defaults** falls back to `.env.local` values
+
 ## DASH-005 — Display Recent Activity Feed
 
 | Event | Source |

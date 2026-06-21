@@ -21,20 +21,29 @@ export function getOpenAIModel(): string {
   return process.env.OPENAI_MODEL?.trim() || DEFAULT_OPENAI_MODEL;
 }
 
-export function createEmailGenerationProvider(): EmailGenerationProvider {
-  const providerName = getConfiguredEmailProviderName();
-
-  if (providerName === "openai") {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
+export function createEmailGenerationProviderFromConfig(input: {
+  provider: EmailGenerationProviderName;
+  apiKey: string | null;
+  model: string;
+}): EmailGenerationProvider {
+  if (input.provider === "openai") {
+    if (!input.apiKey) {
       throw new EmailGenerationError(
         "PROVIDER_NOT_CONFIGURED",
-        "OpenAI API key is not configured. Set OPENAI_API_KEY in your environment.",
+        "OpenAI API key is not configured. Add your key in Settings or set OPENAI_API_KEY.",
         { statusCode: 500, retryable: false }
       );
     }
-    return new OpenAIEmailGenerationProvider(apiKey, getOpenAIModel());
+    return new OpenAIEmailGenerationProvider(input.apiKey, input.model);
   }
 
   return new MockEmailGenerationProvider();
+}
+
+export function createEmailGenerationProvider(): EmailGenerationProvider {
+  return createEmailGenerationProviderFromConfig({
+    provider: getConfiguredEmailProviderName(),
+    apiKey: process.env.OPENAI_API_KEY ?? null,
+    model: getOpenAIModel(),
+  });
 }

@@ -1,3 +1,11 @@
+import {
+  errorClassName,
+  hintClassName,
+  inputClassName,
+  labelClassName,
+  selectClassName,
+} from "@/lib/ui/styles";
+
 interface FieldProps {
   label: string;
   htmlFor: string;
@@ -19,23 +27,25 @@ export function Field({
 }: FieldProps) {
   return (
     <div className="space-y-2">
-      <label htmlFor={htmlFor} className="block text-sm font-medium text-slate-300">
+      <label htmlFor={htmlFor} className={labelClassName}>
         {label}
         {required && (
+          <span className="ml-0.5 text-red-500" aria-hidden="true">
           <span className="ml-0.5 text-red-400" aria-hidden="true">
             *
           </span>
         )}
         {optional && (
+          <span className="ml-1.5 text-xs font-normal text-gray-400">
           <span className="ml-1.5 text-xs font-normal text-slate-500">
             (optional)
           </span>
         )}
       </label>
       {children}
-      {hint && !error && <p className="text-xs text-slate-500">{hint}</p>}
+      {hint && !error && <p className={hintClassName}>{hint}</p>}
       {error && (
-        <p className="text-xs text-red-400" role="alert">
+        <p className={errorClassName} role="alert">
           {error}
         </p>
       )}
@@ -43,8 +53,4 @@ export function Field({
   );
 }
 
-export const inputClassName =
-  "w-full rounded-xl border border-white/10 bg-slate-900/50 px-4 py-2.5 text-sm text-white placeholder:text-slate-500 transition-colors focus:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 disabled:opacity-50";
-
-export const selectClassName =
-  "w-full rounded-xl border border-white/10 bg-slate-900/50 px-4 py-2.5 text-sm text-white transition-colors focus:border-cyan-500/50 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 disabled:opacity-50";
+export { inputClassName, selectClassName };

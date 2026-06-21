@@ -6,7 +6,7 @@ import {
 } from "@/lib/follow-up-generation/generate";
 import { mapFollowUpToGenerationContext } from "@/lib/follow-up-generation/map-context";
 import { EmailGenerationError } from "@/lib/email-generation/errors";
-import { getConfiguredEmailProviderName } from "@/lib/email-generation/factory";
+import { resolveEmailGenerationConfig } from "@/lib/openai/settings";
 import {
   isFollowUpBlockedError,
   isFollowUpNotFoundError,
@@ -112,7 +112,8 @@ export async function POST(request: Request) {
     }
 
     const context = mapFollowUpToGenerationContext(followUp, sourceEmail, contact);
-    const generated = await generateFollowUpSuggestion(context);
+    const generated = await generateFollowUpSuggestion(user.id, context);
+    const generationConfig = await resolveEmailGenerationConfig(user.id);
     const saved = await saveFollowUpSuggestion(user.id, followUpId, generated);
 
     return NextResponse.json({
@@ -126,7 +127,7 @@ export async function POST(request: Request) {
       },
       meta: {
         followUpId,
-        provider: getConfiguredEmailProviderName(),
+        provider: generationConfig.provider,
         model: generated.model,
         attempts: generated.attempts,
       },

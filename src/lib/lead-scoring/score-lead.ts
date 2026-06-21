@@ -6,6 +6,10 @@ import {
 } from "@/lib/company-discovery/apply-criteria";
 import { matchesJobTitle } from "@/lib/contact-discovery/apply-title-filter";
 import type { DiscoveredCompany } from "@/types/company";
+import {
+  DEFAULT_LEAD_SCORING_WEIGHTS,
+  type LeadScoringWeights,
+} from "@/types/lead-scoring-settings";
 import type {
   LeadScoreFactors,
   LeadScoringInput,
@@ -73,21 +77,34 @@ export function scoreTechnologyFactor(
   return matched.length / technologies.length;
 }
 
-export function computeLeadScore(factors: LeadScoreFactors): number {
-  const values = [
-    factors.industryMatch,
-    factors.companySize,
-    factors.locationMatch,
-    factors.jobRoleMatch,
-    factors.technologyMatch,
-  ];
-  const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+export function computeLeadScore(
+  factors: LeadScoreFactors,
+  weights: LeadScoringWeights = DEFAULT_LEAD_SCORING_WEIGHTS
+): number {
+  const totalWeight =
+    weights.industryMatch +
+    weights.companySize +
+    weights.locationMatch +
+    weights.jobRoleMatch +
+    weights.technologyMatch;
+
+  if (totalWeight === 0) return 1;
+
+  const weightedSum =
+    factors.industryMatch * weights.industryMatch +
+    factors.companySize * weights.companySize +
+    factors.locationMatch * weights.locationMatch +
+    factors.jobRoleMatch * weights.jobRoleMatch +
+    factors.technologyMatch * weights.technologyMatch;
+
+  const average = weightedSum / totalWeight;
   return Math.max(1, Math.min(10, Math.round(1 + average * 9)));
 }
 
 export function scoreLead(
   input: LeadScoringInput,
-  criteria: SearchScoringCriteria
+  criteria: SearchScoringCriteria,
+  weights: LeadScoringWeights = DEFAULT_LEAD_SCORING_WEIGHTS
 ): ScoredLeadResult {
   const factors: LeadScoreFactors = {
     industryMatch: scoreIndustryFactor(input.company, criteria.industry),
@@ -103,7 +120,7 @@ export function scoreLead(
 
   return {
     contactId: input.contactId,
-    score: computeLeadScore(factors),
+    score: computeLeadScore(factors, weights),
     factors,
     scoredAt: new Date().toISOString(),
   };
@@ -111,9 +128,10 @@ export function scoreLead(
 
 export function scoreLeads(
   inputs: LeadScoringInput[],
-  criteria: SearchScoringCriteria
+  criteria: SearchScoringCriteria,
+  weights: LeadScoringWeights = DEFAULT_LEAD_SCORING_WEIGHTS
 ): { results: ScoredLeadResult[]; averageScore: number } {
-  const results = inputs.map((input) => scoreLead(input, criteria));
+  const results = inputs.map((input) => scoreLead(input, criteria, weights));
   const averageScore =
     results.length > 0
       ? Math.round(

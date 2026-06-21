@@ -1,3 +1,4 @@
+import { renderEmailTemplate } from "@/lib/email-templates/render";
 import type { EmailGenerationProvider } from "@/lib/email-generation/types";
 import type {
   EmailGenerationContext,
@@ -95,7 +96,9 @@ export class MockEmailGenerationProvider implements EmailGenerationProvider {
   async generate(context: EmailGenerationContext): Promise<GeneratedEmail> {
     await new Promise((r) => setTimeout(r, 400));
 
-    const { subject, body } = buildMockEmail(context);
+    const { subject, body } = context.template
+      ? renderEmailTemplate(context.template, context)
+      : buildMockEmail(context);
 
     return {
       subject,

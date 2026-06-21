@@ -16,9 +16,17 @@ export interface EmailPersonalization {
   tone: EmailTone;
 }
 
+export interface EmailGenerationTemplate {
+  id: string;
+  name: string;
+  subjectTemplate: string;
+  bodyTemplate: string;
+}
+
 export interface EmailGenerationContext extends EmailPersonalization {
   leadLocation: string | null;
   senderCompanyName: string;
+  template?: EmailGenerationTemplate | null;
 }
 
 export interface GeneratedEmail {

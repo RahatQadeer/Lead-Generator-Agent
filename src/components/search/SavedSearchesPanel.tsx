@@ -10,6 +10,12 @@ import {
 } from "@/lib/search/filters";
 import { SearchCard } from "@/components/search/SearchCard";
 import { inputClassName, selectClassName } from "@/components/ui/Field";
+import {
+  cardClassName,
+  iconTileSmClassName,
+  pillActiveClassName,
+  pillInactiveClassName,
+} from "@/lib/ui/styles";
 import type { SearchRecord } from "@/types/search";
 
 const STATUS_TABS: { value: StatusFilter; label: string }[] = [
@@ -44,36 +50,35 @@ export function SavedSearchesPanel({
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400">
           Saved searches
         </h2>
-        <div className="flex items-center gap-2 text-xs text-slate-500">
+        <div className="flex items-center gap-2 text-xs text-gray-500">
           <SlidersHorizontal className="h-3.5 w-3.5" />
           {filtered.length} of {searches.length} shown
         </div>
       </div>
 
-      {/* Status tabs */}
       <div className="flex flex-wrap gap-2">
         {STATUS_TABS.map((tab) => (
           <button
             key={tab.value}
             type="button"
             onClick={() => setStatusFilter(tab.value)}
-            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+            className={
               statusFilter === tab.value
-                ? "border-cyan-500/40 bg-cyan-500/15 text-cyan-300"
-                : "border-white/5 bg-white/5 text-slate-400 hover:border-white/10 hover:text-white"
-            }`}
+                ? pillActiveClassName
+                : pillInactiveClassName
+            }
           >
             {tab.label}
             <span
               className={`rounded-full px-1.5 py-0.5 text-[10px] ${
                 statusFilter === tab.value
-                  ? "bg-cyan-500/20 text-cyan-200"
-                  : "bg-white/10 text-slate-500"
+                  ? "bg-blue-100 text-blue-700"
+                  : "bg-gray-100 text-gray-500"
               }`}
             >
               {counts[tab.value]}
@@ -82,10 +87,9 @@ export function SavedSearchesPanel({
         ))}
       </div>
 
-      {/* Search & sort */}
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+        <div className="relative sm:col-span-1">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="search"
             value={query}
@@ -106,11 +110,13 @@ export function SavedSearchesPanel({
         </select>
       </div>
 
-      {/* List */}
       {searches.length === 0 ? (
-        <EmptyState message="No saved searches yet" hint="Create one using the builder" />
+        <PanelEmptyState
+          message="No saved searches yet"
+          hint="Create one using the builder"
+        />
       ) : filtered.length === 0 ? (
-        <EmptyState
+        <PanelEmptyState
           message="No matches found"
           hint="Try a different filter or search term"
         />
@@ -131,7 +137,7 @@ export function SavedSearchesPanel({
   );
 }
 
-function EmptyState({
+function PanelEmptyState({
   message,
   hint,
 }: {
@@ -139,10 +145,14 @@ function EmptyState({
   hint: string;
 }) {
   return (
-    <div className="rounded-2xl border border-dashed border-white/10 bg-slate-900/30 px-6 py-12 text-center">
-      <Search className="mx-auto h-8 w-8 text-slate-600" />
-      <p className="mt-3 text-sm font-medium text-slate-400">{message}</p>
-      <p className="mt-1 text-xs text-slate-500">{hint}</p>
+    <div
+      className={`${cardClassName} border-dashed px-6 py-12 text-center`}
+    >
+      <div className={`${iconTileSmClassName} mx-auto`}>
+        <Search className="h-4 w-4" />
+      </div>
+      <p className="mt-3 text-sm font-medium text-gray-700">{message}</p>
+      <p className="mt-1 text-xs text-gray-500">{hint}</p>
     </div>
   );
 }

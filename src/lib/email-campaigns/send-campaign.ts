@@ -5,7 +5,7 @@ import {
 import { getDraftOutreachEmails } from "@/lib/emails/queries";
 import { assertSendingProviderReady } from "@/lib/email-sending/assert-provider-ready";
 import { EmailSendingError, isEmailSendingError } from "@/lib/email-sending/errors";
-import { getConfiguredSendingProviderName } from "@/lib/email-sending/factory";
+import { resolveSendingProvider } from "@/lib/email-sending/resolve-provider";
 import { sendOutreachDraft } from "@/lib/email-sending/send-draft";
 import type {
   CampaignSendFailure,
@@ -36,7 +36,7 @@ export async function sendOutreachCampaign(
     name?: string;
   }
 ): Promise<CampaignSendResult> {
-  const provider = getConfiguredSendingProviderName();
+  const provider = await resolveSendingProvider(userId);
   const drafts = await getDraftOutreachEmails(userId, input.emailIds);
 
   if (drafts.length === 0) {

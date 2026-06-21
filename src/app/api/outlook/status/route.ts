@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getOutlookConnection } from "@/lib/outlook/connection";
-import { getConfiguredSendingProviderName } from "@/lib/email-sending/factory";
+import { getOutlookSettingsStatus } from "@/lib/outlook/settings";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
@@ -19,15 +18,14 @@ export async function GET() {
     );
   }
 
-  const connection = await getOutlookConnection(user.id);
-  const provider = getConfiguredSendingProviderName();
+  const status = await getOutlookSettingsStatus(user.id, user.email);
 
   return NextResponse.json({
     success: true,
     status: {
-      connected: Boolean(connection?.refresh_token),
-      accountAddress: connection?.outlook_address ?? null,
-      provider,
+      ...status,
+      outlookAddress: status.accountAddress,
+      provider: status.effectiveProvider,
     },
   });
 }

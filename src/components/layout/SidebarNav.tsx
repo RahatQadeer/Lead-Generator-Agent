@@ -11,6 +11,10 @@ import {
   Settings,
   X,
 } from "lucide-react";
+import {
+  navLinkActiveClassName,
+  navLinkInactiveClassName,
+} from "@/lib/ui/styles";
 import type { LucideIcon } from "lucide-react";
 
 const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
@@ -39,13 +43,13 @@ export function SidebarNav({
     <nav className="flex flex-1 flex-col gap-1 p-4">
       {showClose && (
         <div className="mb-2 flex items-center justify-between lg:hidden">
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+          <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">
             Menu
           </span>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-white/5 hover:text-white"
+            className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
             aria-label="Close menu"
           >
             <X className="h-5 w-5" />
@@ -61,14 +65,14 @@ export function SidebarNav({
             key={href}
             href={href}
             onClick={onNavigate}
-            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
-              isActive
-                ? "bg-cyan-500/15 text-cyan-300 ring-1 ring-cyan-500/20"
-                : "text-slate-400 hover:bg-white/5 hover:text-white"
-            }`}
+            className={
+              isActive ? navLinkActiveClassName : navLinkInactiveClassName
+            }
           >
             <Icon
-              className={`h-4 w-4 shrink-0 ${isActive ? "text-cyan-400" : ""}`}
+              className={`h-4 w-4 shrink-0 ${
+                isActive ? "text-blue-600" : "text-gray-400"
+              }`}
             />
             {label}
           </Link>

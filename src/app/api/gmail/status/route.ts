@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getGmailConnection } from "@/lib/gmail/connection";
-import { getConfiguredSendingProviderName } from "@/lib/email-sending/factory";
+import { getGmailSettingsStatus } from "@/lib/gmail/settings";
 import { createClient } from "@/lib/supabase/server";
 
 export async function GET() {
@@ -19,16 +18,14 @@ export async function GET() {
     );
   }
 
-  const connection = await getGmailConnection(user.id);
-  const provider = getConfiguredSendingProviderName();
+  const status = await getGmailSettingsStatus(user.id, user.email);
 
   return NextResponse.json({
     success: true,
     status: {
-      connected: Boolean(connection?.refresh_token),
-      accountAddress: connection?.gmail_address ?? user.email ?? null,
-      gmailAddress: connection?.gmail_address ?? user.email ?? null,
-      provider,
+      ...status,
+      gmailAddress: status.accountAddress,
+      provider: status.effectiveProvider,
     },
   });
 }

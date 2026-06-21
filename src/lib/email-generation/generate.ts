@@ -1,5 +1,6 @@
-import { createEmailGenerationProvider } from "@/lib/email-generation/factory";
+import { createEmailGenerationProviderFromConfig } from "@/lib/email-generation/factory";
 import { isEmailGenerationError } from "@/lib/email-generation/errors";
+import { resolveEmailGenerationConfig } from "@/lib/openai/settings";
 import { withRetry } from "@/lib/email-generation/retry";
 import type {
   EmailGenerationContext,
@@ -7,9 +8,11 @@ import type {
 } from "@/types/email-generation";
 
 export async function generateOutreachEmail(
+  userId: string,
   context: EmailGenerationContext
 ): Promise<GeneratedEmail & { attempts: number }> {
-  const provider = createEmailGenerationProvider();
+  const config = await resolveEmailGenerationConfig(userId);
+  const provider = createEmailGenerationProviderFromConfig(config);
 
   const { result, attempts } = await withRetry(
     async () => provider.generate(context),

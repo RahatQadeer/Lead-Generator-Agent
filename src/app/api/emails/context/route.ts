@@ -3,6 +3,7 @@ import {
   getContactById,
   getSearchKeywordsForContact,
 } from "@/lib/emails/queries";
+import { listEmailTemplates } from "@/lib/email-templates/queries";
 import {
   mapContactToEmailContext,
   toEmailGenerationPreview,
@@ -63,10 +64,19 @@ export async function GET(request: Request) {
     contact.search_id
   );
 
-  const context = mapContactToEmailContext(contact, { searchKeywords });
+  const [context, templates] = await Promise.all([
+    Promise.resolve(mapContactToEmailContext(contact, { searchKeywords })),
+    listEmailTemplates(user.id),
+  ]);
 
   return NextResponse.json({
     success: true,
     preview: toEmailGenerationPreview(contactId, context),
+    templates: templates.map((template) => ({
+      id: template.id,
+      name: template.name,
+      tone: template.tone,
+      isDefault: template.isDefault,
+    })),
   });
 }
