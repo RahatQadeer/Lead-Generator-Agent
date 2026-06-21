@@ -143,6 +143,135 @@ Run migration `004_companies.sql` in the Supabase SQL Editor before testing cros
 3. Run discovery again on the same or a different search with overlapping companies
 4. UI shows `duplicates skipped (N already in pipeline)` for known matches
 
+## LEAD-001 — Discover Company Decision Makers
+
+| Criteria | Implementation |
+|----------|----------------|
+| Job titles | `searches.job_titles` → title filter (CEO, Founder, CTO, Marketing Director, VP Sales) |
+| Company scope | Persisted `companies` for the search (`search_id`) |
+| Pagination | `page` + `perPage` params; `hasMore` in response |
+| Dedup | Email, LinkedIn URL, or name+company fallback |
+| API | `POST /api/contacts/discover` with `searchId` |
+
+**Providers:** `mock` (default) or `apollo` (`mixed_people/search` — paid plan required).
+
+**Pipeline:** load companies → provider people search → title filter → dedup → persist contacts.
+
+**Persistence:** `supabase/migrations/005_contacts.sql`
+
+Run migrations `004_companies.sql` and `005_contacts.sql` before testing.
+
+### Testing LEAD-001
+
+1. Create a search with job titles: CEO, Founder, CTO, Marketing Director, VP Sales
+2. Expand the search card → **Discover companies** (saves companies to DB)
+3. Click **Discover decision-makers** — mock returns contacts per company domain
+4. Re-run contact discovery → duplicates skipped for known contacts
+5. If no companies exist, API returns `NO_COMPANIES` with guidance
+
+```bash
+curl -X POST http://localhost:3000/api/contacts/discover \
+  -H "Content-Type: application/json" \
+  -d '{"searchId":"<your-search-uuid>","page":1,"perPage":10}'
+```
+
+## LEAD-002 — Enrich Lead Profiles
+
+| Field | Source |
+|-------|--------|
+| Name | `full_name` from contact + enrichment provider |
+| Role | Job title (`title`) |
+| Company | Company name from joined `companies` row |
+| LinkedIn | `linkedin_url` — filled by enrichment if missing |
+| Location | `city`, `state`, `country` formatted as location string |
+
+**API:** `POST /api/leads/enrich` with `searchId`
+
+**Providers:** `mock` (default) or `apollo` (`people/match` — paid plan required).
+
+**Pipeline:** load contacts for search → enrich profiles → persist to `contacts` table.
+
+**Persistence:** `supabase/migrations/006_contacts_enrichment.sql` adds enrichment columns.
+
+Run migrations `004`–`006` before testing.
+
+### Testing LEAD-002
+
+1. Discover companies → discover decision-makers on a search
+2. Click **Enrich lead profiles** — mock fills LinkedIn + location per contact
+3. Visit **Leads** page to see all enriched profiles
+4. Re-run enrichment to refresh profile data
+
+```bash
+curl -X POST http://localhost:3000/api/leads/enrich \
+  -H "Content-Type: application/json" \
+  -d '{"searchId":"<your-search-uuid>"}'
+```
+
+## LEAD-003 — Email Verification
+
+| Step | Implementation |
+|------|----------------|
+| Syntax validation | RFC-style format check before any API call |
+| Domain validation | MX/A record lookup (mock uses predictable rules) |
+| Verification API | `mock` (default) or `hunter` (`/v2/email-verifier`) |
+
+**API:** `POST /api/leads/verify-emails` with `searchId`
+
+**Pipeline:** syntax check → domain check → provider API → persist status on `contacts`.
+
+**Statuses:** `valid`, `invalid`, `invalid_syntax`, `invalid_domain`, `risky`, `unknown`, `no_email`
+
+**Persistence:** `supabase/migrations/007_contacts_email_verification.sql`
+
+Run migration `007` before testing.
+
+### Testing LEAD-003
+
+1. Discover companies → decision-makers → enrich profiles
+2. Click **Verify emails** on a search card
+3. Mock marks standard emails as **Verified**; use `invalid@...` or `risky@...` local parts to test failures
+4. Visit **Leads** — verification badges appear next to emails
+
+```bash
+curl -X POST http://localhost:3000/api/leads/verify-emails \
+  -H "Content-Type: application/json" \
+  -d '{"searchId":"<your-search-uuid>"}'
+```
+
+## LEAD-004 — Lead Scoring Engine
+
+| Factor | Weight | Match rule |
+|--------|--------|------------|
+| Industry Match | 20% | Company industry vs search industry |
+| Company Size | 20% | Employee count within search size range |
+| Location Match | 20% | Company country vs search country |
+| Job Role Match | 20% | Contact title vs search job titles |
+| Technology Match | 20% | Company technologies vs search technologies |
+
+**Score:** 1–10 (average of factor scores mapped to scale).
+
+**API:** `POST /api/leads/score` with `searchId`
+
+**Module:** `src/lib/lead-scoring/score-lead.ts` — reuses company criteria + title matching.
+
+**Persistence:** `supabase/migrations/008_contacts_lead_scoring.sql`
+
+Run migration `008` before testing.
+
+### Testing LEAD-004
+
+1. Complete discovery → contacts → enrich → verify (optional)
+2. Click **Score leads** on a search card
+3. View per-lead score breakdown (Industry, Size, Location, Role, Technology %)
+4. Visit **Leads** page — score badges appear on enriched leads
+
+```bash
+curl -X POST http://localhost:3000/api/leads/score \
+  -H "Content-Type: application/json" \
+  -d '{"searchId":"<your-search-uuid>"}'
+```
+
 ## SEARCH-004 — Exclusion Rules
 
 | Exclusion | Field | Validation |
