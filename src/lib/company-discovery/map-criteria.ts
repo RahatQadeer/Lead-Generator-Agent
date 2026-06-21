@@ -7,6 +7,7 @@ export function mapSearchToDiscoveryParams(
   perPage = 25
 ): CompanyDiscoveryParams {
   return {
+    searchName: search.name,
     industry: search.industry,
     country: search.country,
     companySizeMin: search.companySizeMin,

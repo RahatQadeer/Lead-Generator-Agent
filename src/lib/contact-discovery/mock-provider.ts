@@ -1,5 +1,10 @@
 import { applyTitleFilter } from "@/lib/contact-discovery/apply-title-filter";
 import type { ContactDiscoveryProvider, ProviderContactSearchResult } from "@/lib/contact-discovery/types";
+import {
+  computeContactConfidence,
+  inferDepartment,
+} from "@/lib/scraping/relevance";
+import { sanitizePersonLinkedInUrl } from "@/lib/scraping/data-quality";
 import { normalizeDomain } from "@/lib/search/exclusions";
 import type { ContactDiscoveryParams, DiscoveredContact } from "@/types/contact";
 
@@ -140,6 +145,15 @@ const MOCK_CONTACTS_BY_DOMAIN: Record<string, MockContactSeed[]> = {
       linkedinUrl: null,
     },
   ],
+  "butterbee.co": [
+    {
+      firstName: "Laiba",
+      lastName: "Kafayat",
+      title: "CEO",
+      email: "layibakafayat@gmail.com",
+      linkedinUrl: null,
+    },
+  ],
 };
 
 function buildMockContacts(params: ContactDiscoveryParams): DiscoveredContact[] {
@@ -151,7 +165,9 @@ function buildMockContacts(params: ContactDiscoveryParams): DiscoveredContact[] 
 
     const seeds = MOCK_CONTACTS_BY_DOMAIN[domain] ?? [];
     for (const seed of seeds) {
-      contacts.push({
+      const department = inferDepartment(seed.title);
+      const linkedinUrl = sanitizePersonLinkedInUrl(seed.linkedinUrl);
+      const contact: DiscoveredContact = {
         id: `mock-${domain}-${seed.email}`,
         companyId: company.id,
         companyName: company.name,
@@ -160,9 +176,20 @@ function buildMockContacts(params: ContactDiscoveryParams): DiscoveredContact[] 
         lastName: seed.lastName,
         fullName: `${seed.firstName} ${seed.lastName}`,
         title: seed.title,
+        department,
         email: seed.email,
-        linkedinUrl: seed.linkedinUrl,
+        emailIsGuessed: false,
+        linkedinUrl,
+        confidenceScore: 0,
+      };
+      contact.confidenceScore = computeContactConfidence({
+        title: contact.title,
+        email: contact.email,
+        emailIsGuessed: false,
+        linkedinUrl: contact.linkedinUrl,
+        jobTitles: params.jobTitles,
       });
+      contacts.push(contact);
     }
   }
 
@@ -176,7 +203,11 @@ export class MockContactDiscoveryProvider implements ContactDiscoveryProvider {
     await new Promise((r) => setTimeout(r, 300));
 
     const allContacts = buildMockContacts(params);
-    const { contacts: matched } = applyTitleFilter(allContacts, params.jobTitles);
+    const scrapedCount = allContacts.length;
+    const { contacts: matched, filteredCount } = applyTitleFilter(
+      allContacts,
+      params.jobTitles
+    );
 
     const totalEntries = matched.length;
     const totalPages = Math.max(1, Math.ceil(totalEntries / params.perPage));
@@ -185,6 +216,8 @@ export class MockContactDiscoveryProvider implements ContactDiscoveryProvider {
 
     return {
       contacts: pageItems,
+      scrapedCount,
+      filteredCount,
       pagination: {
         page: params.page,
         perPage: params.perPage,

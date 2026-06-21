@@ -9,6 +9,7 @@ import {
   toEmailVerificationErrorResponse,
   verifyContactEmails,
 } from "@/lib/email-verification/verify";
+import { toEmailVerificationView } from "@/lib/pipeline/public-views";
 import { createClient } from "@/lib/supabase/server";
 import { getSearchById } from "@/lib/search/queries";
 
@@ -66,14 +67,24 @@ export async function POST(request: Request) {
     }
 
     const contacts = await getContactsBySearchId(user.id, searchId);
-    if (contacts.length === 0) {
+    const enrichedContacts = contacts.filter((contact) => contact.enriched_at);
+    const emailContacts = enrichedContacts.filter(
+      (contact) =>
+        contact.outreach_channel === "email" ||
+        (!contact.outreach_channel && contact.email)
+    );
+    const linkedInLeadCount = enrichedContacts.filter(
+      (contact) => contact.outreach_channel === "linkedin"
+    ).length;
+
+    if (enrichedContacts.length === 0) {
       return NextResponse.json(
         {
           success: false,
           error: {
             code: "NO_CONTACTS",
             message:
-              "No contacts found for this search. Discover decision-makers first.",
+              "No enriched contacts found. Run step 3 (Add contact details) first.",
             retryable: false,
           },
         },
@@ -81,20 +92,27 @@ export async function POST(request: Request) {
       );
     }
 
-    const inputs = toEmailVerificationInputs(contacts);
+    const inputs = toEmailVerificationInputs(emailContacts);
     const result = await verifyContactEmails(inputs);
 
     await saveEmailVerificationResults(user.id, result.results);
 
+    const nameByContactId = new Map(
+      enrichedContacts.map((contact) => [contact.id, contact.full_name])
+    );
+
     return NextResponse.json({
       success: true,
       provider: result.provider,
-      results: result.results,
+      results: result.results.map((item) =>
+        toEmailVerificationView(item, nameByContactId.get(item.contactId) ?? "Unknown")
+      ),
       meta: {
         validCount: result.validCount,
         invalidCount: result.invalidCount,
         riskyCount: result.riskyCount,
         skippedCount: result.skippedCount,
+        linkedInLeadCount,
         searchId: search.id,
         searchName: search.name,
       },

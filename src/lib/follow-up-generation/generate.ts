@@ -38,7 +38,7 @@ export function toFollowUpGenerationErrorResponse(error: unknown) {
     success: false as const,
     error: {
       code: "PROVIDER_ERROR" as const,
-      message: "An unexpected error occurred during follow-up generation.",
+      message: "Something went wrong while writing the follow-up. Please try again.",
       retryable: false,
     },
   };

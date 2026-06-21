@@ -3,7 +3,13 @@
 import { useState } from "react";
 import { Loader2, Send } from "lucide-react";
 import { getSendingProviderLabel } from "@/lib/email-sending/factory";
+import {
+  alertSuccessClassName,
+  btnSmPrimaryClassName,
+  hintClassName,
+} from "@/lib/ui/styles";
 import type { EmailSendingProviderName } from "@/types/email-sending";
+import { getApiErrorMessage } from "@/lib/ui/user-messages";
 
 interface SendEmailButtonProps {
   emailId: string;
@@ -39,7 +45,7 @@ export function SendEmailButton({
       const data = await res.json();
 
       if (!data.success) {
-        setMessage(data.error?.message ?? "Failed to send email.");
+        setMessage(getApiErrorMessage(data.error, "Failed to send email."));
         return;
       }
 
@@ -53,13 +59,15 @@ export function SendEmailButton({
   }
 
   if (sent) {
-    return <p className="text-xs text-emerald-400">Sent successfully</p>;
+    return (
+      <div className={alertSuccessClassName} role="status">
+        Sent successfully
+      </div>
+    );
   }
 
   if (!recipientEmail) {
-    return (
-      <p className="text-xs text-slate-600">No recipient email on file</p>
-    );
+    return <p className={hintClassName}>No recipient email on file</p>;
   }
 
   return (
@@ -68,7 +76,7 @@ export function SendEmailButton({
         type="button"
         onClick={handleSend}
         disabled={loading}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20 disabled:opacity-50"
+        className={btnSmPrimaryClassName}
       >
         {loading ? (
           <>
@@ -83,7 +91,12 @@ export function SendEmailButton({
         )}
       </button>
       {message && (
-        <p className="max-w-xs text-right text-xs text-slate-400">{message}</p>
+        <p
+          className="max-w-xs break-words text-right text-xs text-red-600"
+          role="alert"
+        >
+          {message}
+        </p>
       )}
     </div>
   );

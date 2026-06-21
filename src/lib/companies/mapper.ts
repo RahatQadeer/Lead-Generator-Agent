@@ -29,6 +29,9 @@ export function toCompanyInsert(
     linkedin_url: company.linkedinUrl,
     website_url: company.websiteUrl,
     technologies: company.technologies ?? [],
+    description: company.description,
+    confidence_score: company.confidenceScore,
+    scraped_at: new Date().toISOString(),
     last_seen_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };

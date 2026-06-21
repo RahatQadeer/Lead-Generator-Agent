@@ -258,19 +258,4 @@ export async function getRecentActivity(
   return sortAndLimit(items, limit);
 }
 
-export function getActivityTypeLabel(type: ActivityType): string {
-  const labels: Record<ActivityType, string> = {
-    search_created: "Search",
-    lead_discovered: "Discovery",
-    lead_enriched: "Enrichment",
-    lead_scored: "Scoring",
-    email_generated: "Draft",
-    email_sent: "Sent",
-    email_replied: "Reply",
-    campaign_completed: "Campaign",
-    follow_up_scheduled: "Follow-up",
-    follow_up_cancelled: "Follow-up",
-    follow_up_suggested: "Follow-up",
-  };
-  return labels[type];
-}
+export { getActivityTypeLabel } from "@/lib/dashboard/activity-labels";

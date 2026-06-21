@@ -38,7 +38,7 @@ export function toEmailSendingErrorResponse(error: unknown) {
     success: false as const,
     error: {
       code: "SEND_FAILED" as const,
-      message: "An unexpected error occurred while sending the email.",
+      message: "Something went wrong while sending the email. Please try again.",
       retryable: false,
     },
   };

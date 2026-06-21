@@ -2,17 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import {
-  Menu,
-  Search,
-  Bell,
-  Settings,
-  LayoutGrid,
-  Plus,
-} from "lucide-react";
-import { LogoutButton } from "@/components/auth/LogoutButton";
+import { Menu, Bell, Settings, Plus } from "lucide-react";
+import { BrandMark } from "@/components/layout/BrandMark";
+import { ProfileMenu } from "@/components/layout/ProfileMenu";
 import { SidebarNav } from "@/components/layout/SidebarNav";
-import { inputClassName } from "@/components/ui/Field";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import {
   btnPrimaryClassName,
   headerClassName,
@@ -29,21 +23,12 @@ interface AppShellProps {
 export function AppShell({ profile, children }: AppShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const initials = profile.full_name
-    ? profile.full_name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase()
-    : profile.email[0]?.toUpperCase() ?? "U";
-
   return (
     <div className={pageSurfaceClassName}>
       {mobileMenuOpen && (
         <button
           type="button"
-          className="fixed inset-0 z-40 bg-gray-900/20 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
           onClick={() => setMobileMenuOpen(false)}
           aria-label="Close menu"
         />
@@ -54,16 +39,11 @@ export function AppShell({ profile, children }: AppShellProps) {
       >
         <SidebarBrand />
         <SidebarNav />
-        <div className="mt-auto border-t border-gray-200 p-4">
-          <Link href="/searches" className={`${btnPrimaryClassName} w-full`}>
-            <Plus className="h-4 w-4" />
-            Create search
-          </Link>
-        </div>
+        <SidebarCreateSearch />
       </aside>
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-gray-200 bg-white transition-transform duration-300 lg:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)] transition-transform duration-300 lg:hidden ${
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -73,82 +53,39 @@ export function AppShell({ profile, children }: AppShellProps) {
           onClose={() => setMobileMenuOpen(false)}
           onNavigate={() => setMobileMenuOpen(false)}
         />
-        <div className="mt-auto border-t border-gray-200 p-4">
-          <Link
-            href="/searches"
-            onClick={() => setMobileMenuOpen(false)}
-            className={`${btnPrimaryClassName} w-full`}
-          >
-            <Plus className="h-4 w-4" />
-            Create search
-          </Link>
-        </div>
+        <SidebarCreateSearch onNavigate={() => setMobileMenuOpen(false)} />
       </aside>
 
       <div className="lg:pl-64">
         <header className={headerClassName}>
-          <div className="flex h-16 items-center gap-4 px-4 sm:px-6 lg:px-8">
+          <div className="flex h-[4.25rem] items-center gap-4 px-4 sm:px-6 lg:px-8">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-              className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900 lg:hidden"
+              className="rounded-xl p-2 text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-ink)] lg:hidden"
               aria-label="Open menu"
             >
               <Menu className="h-5 w-5" />
             </button>
 
-            <div className="hidden min-w-0 flex-1 md:block md:max-w-xl">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="search"
-                  placeholder="Search campaigns, leads, or companies…"
-                  className={`${inputClassName} rounded-full pl-10`}
-                  aria-label="Global search"
-                />
-              </div>
-            </div>
-
-            <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <div className="ml-auto flex items-center gap-0.5 sm:gap-1">
+              <ThemeToggle />
               <button
                 type="button"
-                className="hidden rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 sm:inline-flex"
+                className="rounded-xl p-2.5 text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-ink-secondary)]"
                 aria-label="Notifications"
               >
-                <Bell className="h-5 w-5" />
+                <Bell className="h-[1.125rem] w-[1.125rem]" />
               </button>
               <Link
                 href="/settings"
-                className="hidden rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 sm:inline-flex"
+                className="rounded-xl p-2.5 text-[var(--color-ink-muted)] transition-colors hover:bg-[var(--color-surface-elevated)] hover:text-[var(--color-ink-secondary)]"
                 aria-label="Settings"
               >
-                <Settings className="h-5 w-5" />
+                <Settings className="h-[1.125rem] w-[1.125rem]" />
               </Link>
-
-              <div className="hidden h-8 w-px bg-gray-200 sm:block" />
-
-              <div className="flex items-center gap-3">
-                {profile.avatar_url ? (
-                  <img
-                    src={profile.avatar_url}
-                    alt={profile.full_name ?? "User"}
-                    className="h-9 w-9 rounded-full ring-2 ring-gray-100"
-                  />
-                ) : (
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
-                    {initials}
-                  </div>
-                )}
-                <div className="hidden text-right lg:block">
-                  <p className="text-sm font-medium text-gray-900">
-                    {profile.full_name ?? "User"}
-                  </p>
-                  <p className="max-w-[180px] truncate text-xs text-gray-500">
-                    {profile.email}
-                  </p>
-                </div>
-              </div>
-              <LogoutButton />
+              <div className="mx-1 hidden h-6 w-px bg-[var(--color-border)] sm:block" />
+              <ProfileMenu profile={profile} />
             </div>
           </div>
         </header>
@@ -161,16 +98,25 @@ export function AppShell({ profile, children }: AppShellProps) {
   );
 }
 
+function SidebarCreateSearch({ onNavigate }: { onNavigate?: () => void }) {
+  return (
+    <div className="mt-auto shrink-0 border-t border-[var(--color-border)] p-4">
+      <Link
+        href="/searches"
+        onClick={onNavigate}
+        className={`${btnPrimaryClassName} w-full`}
+      >
+        <Plus className="h-4 w-4" />
+        Create search
+      </Link>
+    </div>
+  );
+}
+
 function SidebarBrand() {
   return (
-    <div className="flex h-16 items-center gap-3 border-b border-gray-200 px-5">
-      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gray-900 shadow-sm">
-        <LayoutGrid className="h-4 w-4 text-white" />
-      </div>
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-gray-900">LeadForge</p>
-        <p className="truncate text-xs text-gray-500">Revenue Operations</p>
-      </div>
+    <div className="flex h-[4.25rem] shrink-0 items-center border-b border-[var(--color-border)] px-5">
+      <BrandMark href="/dashboard" />
     </div>
   );
 }

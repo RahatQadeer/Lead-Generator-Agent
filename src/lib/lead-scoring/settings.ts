@@ -14,8 +14,10 @@ type LeadScoringSettingsRow =
 export { DEFAULT_LEAD_SCORING_WEIGHTS };
 
 function rowToWeights(row: LeadScoringSettingsRow): LeadScoringWeights {
+  const halfIndustry = Math.round(row.industry_weight / 2);
   return {
-    industryMatch: row.industry_weight,
+    industryMatch: halfIndustry,
+    companyTypeVerified: row.industry_weight - halfIndustry,
     companySize: row.company_size_weight,
     locationMatch: row.location_weight,
     jobRoleMatch: row.job_role_weight,
@@ -25,7 +27,7 @@ function rowToWeights(row: LeadScoringSettingsRow): LeadScoringWeights {
 
 function weightsToRow(weights: LeadScoringWeights) {
   return {
-    industry_weight: weights.industryMatch,
+    industry_weight: weights.industryMatch + weights.companyTypeVerified,
     company_size_weight: weights.companySize,
     location_weight: weights.locationMatch,
     job_role_weight: weights.jobRoleMatch,
@@ -38,6 +40,7 @@ export function validateLeadScoringWeights(
 ): string | null {
   const entries: Array<[string, number]> = [
     ["industryMatch", weights.industryMatch],
+    ["companyTypeVerified", weights.companyTypeVerified],
     ["companySize", weights.companySize],
     ["locationMatch", weights.locationMatch],
     ["jobRoleMatch", weights.jobRoleMatch],

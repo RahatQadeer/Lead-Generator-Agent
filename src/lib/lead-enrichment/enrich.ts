@@ -1,30 +1,36 @@
 import { createLeadEnrichmentProvider } from "@/lib/lead-enrichment/factory";
 import { isLeadEnrichmentError } from "@/lib/lead-enrichment/errors";
-import type { EnrichedLead, LeadEnrichmentInput, LeadEnrichmentResult } from "@/types/lead";
+import { partitionEnrichedLeads } from "@/lib/lead-enrichment/finalize-lead";
+import type { LeadEnrichmentInput, LeadEnrichmentResult } from "@/types/lead";
 
 export async function enrichLeadProfiles(
   inputs: LeadEnrichmentInput[],
   searchId: string
-): Promise<LeadEnrichmentResult> {
+): Promise<LeadEnrichmentResult & { discardedIds: string[] }> {
   if (inputs.length === 0) {
     return {
       leads: [],
       provider: "none",
       enrichedCount: 0,
       skippedCount: 0,
+      discardedCount: 0,
+      discardedIds: [],
     };
   }
 
   const provider = createLeadEnrichmentProvider();
   const enriched = await provider.enrich(inputs);
 
-  const leads = enriched.map((lead) => ({ ...lead, searchId }));
+  const withSearch = enriched.map((lead) => ({ ...lead, searchId }));
+  const { kept, discardedIds } = partitionEnrichedLeads(withSearch);
 
   return {
-    leads,
+    leads: kept,
     provider: provider.name,
-    enrichedCount: leads.length,
+    enrichedCount: kept.length,
     skippedCount: 0,
+    discardedCount: discardedIds.length,
+    discardedIds,
   };
 }
 
@@ -44,7 +50,7 @@ export function toLeadEnrichmentErrorResponse(error: unknown) {
     success: false as const,
     error: {
       code: "PROVIDER_ERROR" as const,
-      message: "An unexpected error occurred during lead enrichment.",
+      message: "Something went wrong while enriching profiles. Please try again.",
       retryable: false,
     },
   };

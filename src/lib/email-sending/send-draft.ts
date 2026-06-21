@@ -33,6 +33,7 @@ export async function sendOutreachDraft(
   const saved = await markOutreachEmailSent(userId, draft.id, {
     recipientEmail,
     gmailMessageId: result.messageId,
+    providerThreadId: result.threadId,
     sentAt: result.sentAt,
     campaignId,
   });

@@ -15,17 +15,12 @@ export default async function LeadsPage() {
 
   return (
     <>
-      <PageHeader
-        icon={Users}
-        label="Leads"
-        title="Lead pipeline"
-        description="Review enriched lead profiles with name, role, company, LinkedIn, and location."
-      />
+      <PageHeader icon={Users} title="Leads" />
       {leads.length === 0 ? (
         <EmptyState
           icon={Users}
-          title="No enriched leads yet"
-          description="Run company discovery, find decision-makers, then enrich lead profiles from a saved search."
+          title="No leads yet"
+          description="Enrich contacts from a saved search and set its status to Active to see leads here. Draft searches stay in the pipeline until you're ready."
         />
       ) : (
         <LeadsList leads={leads} />

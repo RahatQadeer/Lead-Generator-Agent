@@ -3,7 +3,19 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Calendar, Loader2, Sparkles, FileText } from "lucide-react";
+import {
+  alertErrorClassName,
+  btnSmPrimaryClassName,
+  btnSmSecondaryClassName,
+  cardClassName,
+  headingSubsectionClassName,
+  hintClassName,
+  nestedCardClassName,
+  textPrimaryClassName,
+  textSecondaryClassName,
+} from "@/lib/ui/styles";
 import type { ScheduledFollowUpWithContext } from "@/types/follow-up";
+import { getApiErrorMessage } from "@/lib/ui/user-messages";
 
 interface FollowUpQueueListProps {
   followUps: ScheduledFollowUpWithContext[];
@@ -41,7 +53,7 @@ export function FollowUpQueueList({ followUps }: FollowUpQueueListProps) {
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to generate suggestion.");
+        setError(getApiErrorMessage(data.error, "Failed to generate suggestion."));
         return;
       }
 
@@ -73,7 +85,7 @@ export function FollowUpQueueList({ followUps }: FollowUpQueueListProps) {
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to save draft.");
+        setError(getApiErrorMessage(data.error, "Failed to save draft."));
         return;
       }
 
@@ -87,9 +99,7 @@ export function FollowUpQueueList({ followUps }: FollowUpQueueListProps) {
 
   return (
     <div className="mb-6 space-y-3">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-        Scheduled follow-ups
-      </p>
+      <p className={headingSubsectionClassName}>Scheduled follow-ups</p>
       <ul className="space-y-3">
         {followUps.map((followUp) => {
           const suggestion =
@@ -98,21 +108,20 @@ export function FollowUpQueueList({ followUps }: FollowUpQueueListProps) {
           const isSaving = savingId === followUp.id;
 
           return (
-            <li
-              key={followUp.id}
-              className="rounded-xl border border-white/10 bg-slate-900/50 p-4"
-            >
+            <li key={followUp.id} className={`${cardClassName} p-4`}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-white">
+                  <p className="break-words text-sm font-medium text-gray-900">
                     {followUp.leadName}
                   </p>
-                  <p className="text-xs text-slate-400">{followUp.leadCompany}</p>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className={`break-words ${textSecondaryClassName}`}>
+                    {followUp.leadCompany}
+                  </p>
+                  <p className={`mt-1 break-words ${hintClassName}`}>
                     Re: {followUp.originalSubject}
                   </p>
-                  <p className="mt-2 inline-flex items-center gap-1 text-xs text-amber-300">
-                    <Calendar className="h-3.5 w-3.5" />
+                  <p className="mt-2 inline-flex items-center gap-1 text-xs text-amber-700">
+                    <Calendar className="h-3.5 w-3.5 shrink-0" />
                     Due {formatScheduledDate(followUp.scheduledAt)}
                   </p>
                 </div>
@@ -121,7 +130,7 @@ export function FollowUpQueueList({ followUps }: FollowUpQueueListProps) {
                     type="button"
                     onClick={() => handleGenerate(followUp.id)}
                     disabled={isGenerating || isSaving}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-violet-500/30 bg-violet-500/10 px-3 py-1.5 text-xs font-medium text-violet-200 transition-colors hover:bg-violet-500/20 disabled:opacity-50"
+                    className={btnSmSecondaryClassName}
                   >
                     {isGenerating ? (
                       <>
@@ -140,7 +149,7 @@ export function FollowUpQueueList({ followUps }: FollowUpQueueListProps) {
                       type="button"
                       onClick={() => handleSaveDraft(followUp.id)}
                       disabled={isGenerating || isSaving}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-200 transition-colors hover:bg-emerald-500/20 disabled:opacity-50"
+                      className={btnSmPrimaryClassName}
                     >
                       {isSaving ? (
                         <>
@@ -156,18 +165,18 @@ export function FollowUpQueueList({ followUps }: FollowUpQueueListProps) {
                     </button>
                   )}
                   {followUp.draftEmailId && (
-                    <span className="inline-flex items-center rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-1.5 text-xs text-emerald-300">
+                    <span className="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-700">
                       Draft saved
                     </span>
                   )}
                 </div>
               </div>
               {suggestion && (
-                <div className="mt-3 rounded-lg border border-white/5 bg-slate-950/50 p-3">
-                  <p className="text-xs font-medium text-slate-300">
+                <div className={`mt-3 ${nestedCardClassName} p-3`}>
+                  <p className={`break-words ${textPrimaryClassName}`}>
                     {suggestion.subject}
                   </p>
-                  <p className="mt-2 whitespace-pre-wrap text-xs leading-relaxed text-slate-400">
+                  <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-600">
                     {suggestion.body}
                   </p>
                 </div>
@@ -176,7 +185,11 @@ export function FollowUpQueueList({ followUps }: FollowUpQueueListProps) {
           );
         })}
       </ul>
-      {error && <p className="text-xs text-rose-300">{error}</p>}
+      {error && (
+        <div className={alertErrorClassName} role="alert">
+          {error}
+        </div>
+      )}
     </div>
   );
 }

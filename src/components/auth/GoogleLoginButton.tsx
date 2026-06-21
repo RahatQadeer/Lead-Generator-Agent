@@ -21,7 +21,7 @@ export function GoogleLoginButton({ redirectTo = "/dashboard" }: GoogleLoginButt
         type="button"
         onClick={handleGoogleLogin}
         disabled={loading}
-        className="group flex w-full min-h-[48px] items-center justify-center gap-3 rounded-xl border border-gray-200 bg-white px-5 py-3.5 text-sm font-semibold text-gray-900 shadow-sm transition-all hover:border-gray-300 hover:bg-gray-50 hover:shadow disabled:cursor-not-allowed disabled:opacity-60"
+        className="group flex w-full min-h-[48px] items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white px-5 py-3.5 text-sm font-semibold text-gray-900 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:border-gray-300 hover:bg-gray-50 hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] disabled:cursor-not-allowed disabled:opacity-60"
       >
         <GoogleIcon />
         {loading ? "Redirecting to Google…" : "Continue with Google"}

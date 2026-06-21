@@ -15,19 +15,27 @@ export function getContactDedupKey(contact: DiscoveredContact): string | null {
   return `company:${contact.companyId}|name:${name}`;
 }
 
+export interface ApplyContactDedupOptions {
+  /** Re-include known DB duplicates so they can be linked to the current search. */
+  relinkKnown?: boolean;
+}
+
 export function applyDedup(
   contacts: DiscoveredContact[],
-  knownKeys: ReadonlySet<string> = new Set()
+  knownKeys: ReadonlySet<string> = new Set(),
+  options: ApplyContactDedupOptions = {}
 ): {
   contacts: DiscoveredContact[];
   duplicateCount: number;
   batchDuplicateCount: number;
   knownDuplicateCount: number;
 } {
+  const relinkKnown = options.relinkKnown !== false;
   const seenInBatch = new Set<string>();
   const unique: DiscoveredContact[] = [];
   let batchDuplicateCount = 0;
   let knownDuplicateCount = 0;
+  let droppedDuplicateCount = 0;
 
   for (const contact of contacts) {
     const key = getContactDedupKey(contact);
@@ -39,11 +47,18 @@ export function applyDedup(
 
     if (seenInBatch.has(key)) {
       batchDuplicateCount += 1;
+      droppedDuplicateCount += 1;
       continue;
     }
 
     if (knownKeys.has(key)) {
       knownDuplicateCount += 1;
+      if (relinkKnown) {
+        seenInBatch.add(key);
+        unique.push(contact);
+      } else {
+        droppedDuplicateCount += 1;
+      }
       continue;
     }
 
@@ -53,7 +68,7 @@ export function applyDedup(
 
   return {
     contacts: unique,
-    duplicateCount: batchDuplicateCount + knownDuplicateCount,
+    duplicateCount: droppedDuplicateCount,
     batchDuplicateCount,
     knownDuplicateCount,
   };

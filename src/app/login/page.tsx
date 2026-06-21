@@ -1,16 +1,35 @@
+import Image from "next/image";
 import { Suspense } from "react";
-import { LayoutGrid, Target, Mail, BarChart3 } from "lucide-react";
+import {
+  LoginPipelineGraph,
+  LoginPipelineSteps,
+} from "@/components/auth/LoginPipelineGraph";
 import { GoogleLoginButton } from "@/components/auth/GoogleLoginButton";
 import { AuthErrorBanner } from "@/components/auth/AuthErrorBanner";
-import {
-  cardClassName,
-  cardPaddingClassName,
-  headingPageClassName,
-  iconTileClassName,
-} from "@/lib/ui/styles";
+
+const LOGO_SRC = "/lead-generation-logo.png";
 
 interface LoginPageProps {
   searchParams: Promise<{ error?: string; redirect?: string }>;
+}
+
+function LoginBackdrop() {
+  return (
+    <>
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_0%,rgba(139,92,246,0.11),transparent)]"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute -right-20 bottom-0 h-96 w-96 rounded-full bg-indigo-600/10 blur-3xl"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute -left-16 top-1/4 h-64 w-64 rounded-full bg-violet-500/6 blur-3xl"
+        aria-hidden
+      />
+    </>
+  );
 }
 
 function LoginContent({
@@ -21,80 +40,58 @@ function LoginContent({
   redirectTo: string;
 }) {
   return (
-    <div className="flex min-h-screen flex-col lg:flex-row">
-      <div className="flex flex-1 flex-col justify-center bg-white px-6 py-12 sm:px-12 lg:px-16">
-        <div className="mx-auto w-full max-w-lg lg:mx-0">
-          <div className="mb-8 flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gray-900 shadow-sm">
-              <LayoutGrid className="h-5 w-5 text-white" />
+    <div className="relative min-h-screen overflow-hidden bg-[#0a0f18]">
+      <LoginBackdrop />
+      <div className="relative z-10 grid min-h-screen lg:grid-cols-2">
+        <div className="flex flex-col justify-center px-6 py-10 sm:px-10 lg:px-12 xl:px-16">
+          <div className="mx-auto w-full max-w-lg lg:mx-0">
+            <div className="flex w-full justify-center">
+              <div className="inline-flex flex-col items-center text-center">
+                <div className="flex items-center gap-4">
+                  <Image
+                    src={LOGO_SRC}
+                    alt=""
+                    width={56}
+                    height={56}
+                    className="h-14 w-14 shrink-0 rounded-xl object-contain"
+                    priority
+                  />
+                  <h1 className="text-xl font-bold tracking-[-0.02em] !text-white sm:text-2xl">
+                    RightTail
+                  </h1>
+                </div>
+                <h2 className="mt-2 text-xl font-semibold tracking-[-0.01em] !text-white sm:text-2xl">
+                  Lead Generation Agent
+                </h2>
+              </div>
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">LeadForge</h2>
-              <p className="text-sm text-gray-500">Enterprise Revenue Operations</p>
-            </div>
-          </div>
+            <p className="mt-4 text-center text-sm leading-relaxed text-gray-400">
+              AI-powered prospecting, lead scoring, and outreach — all in one
+              place.
+            </p>
 
-          <h1 className={`${headingPageClassName} lg:text-5xl`}>
-            Find leads.
-            <br />
-            <span className="text-blue-600">Close faster.</span>
-          </h1>
+            <LoginPipelineSteps className="mt-6" />
 
-          <p className="mt-4 text-base leading-relaxed text-gray-600 sm:text-lg">
-            Automate prospecting, contact discovery, and personalized outreach —
-            so your sales team focuses on closing deals.
-          </p>
+            <div className="mt-8">
+              <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-sm sm:p-8">
+                <AuthErrorBanner errorCode={error} />
+                <GoogleLoginButton redirectTo={redirectTo} />
+              </div>
 
-          <div className="mt-10 grid gap-3 sm:grid-cols-3">
-            <FeaturePill icon={Target} label="Smart targeting" />
-            <FeaturePill icon={Mail} label="AI outreach" />
-            <FeaturePill icon={BarChart3} label="Live analytics" />
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-1 items-center justify-center bg-gray-50 px-6 py-12 sm:px-12">
-        <div className="w-full max-w-md">
-          <div className={`${cardClassName} ${cardPaddingClassName}`}>
-            <div className="mb-8 text-center">
-              <h3 className="text-xl font-semibold text-gray-900">
-                Sign in to continue
-              </h3>
-              <p className="mt-2 text-sm text-gray-500">
-                Use your Google Workspace account to access the platform.
+              <p className="mt-6 text-[11px] leading-relaxed text-gray-500">
+                By signing in, you agree to our terms of service and privacy
+                policy.
               </p>
             </div>
-
-            <AuthErrorBanner errorCode={error} />
-
-            <GoogleLoginButton redirectTo={redirectTo} />
-
-            <p className="mt-6 text-center text-xs text-gray-400">
-              By signing in, you agree to our terms of service and privacy
-              policy.
-            </p>
           </div>
+        </div>
 
-          <p className="mt-6 text-center text-xs text-gray-400">
-            Secure authentication powered by Google OAuth
-          </p>
+        <div className="flex flex-col justify-center px-6 py-10 sm:px-10 lg:px-12 xl:px-16">
+          <div className="mx-auto w-full max-w-3xl">
+            <LoginPipelineGraph />
+          </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function FeaturePill({
-  icon: Icon,
-  label,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-}) {
-  return (
-    <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5">
-      <Icon className="h-4 w-4 shrink-0 text-blue-600" />
-      <span className="text-xs font-medium text-gray-700">{label}</span>
     </div>
   );
 }
@@ -109,16 +106,17 @@ async function LoginPageInner({ searchParams }: LoginPageProps) {
 
 export default function LoginPage(props: LoginPageProps) {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Suspense
-        fallback={
-          <div className="flex min-h-screen items-center justify-center text-gray-500">
-            Loading…
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#0a0f18]">
+          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+            <span className="text-sm font-medium text-gray-300">Loading…</span>
           </div>
-        }
-      >
-        <LoginPageInner {...props} />
-      </Suspense>
-    </div>
+        </div>
+      }
+    >
+      <LoginPageInner {...props} />
+    </Suspense>
   );
 }

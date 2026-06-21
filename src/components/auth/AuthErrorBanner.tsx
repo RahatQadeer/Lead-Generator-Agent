@@ -7,7 +7,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   login_required: "Please sign in to access this page.",
   session_expired: "Your session has expired. Please sign in again.",
   invalid_session: "Your session is invalid. Please sign in again.",
-  access_denied: "Sign-in was cancelled. Please try again.",
+  access_denied:
+    "Google sign-in was blocked or cancelled. Try again, or use an account added as a test user in Google Cloud if the app is still in testing mode.",
   missing_auth_code: "Authentication failed — no authorization code received.",
   session_creation_failed: "Could not create your session. Please try again.",
   auth_failed: "Authentication failed. Please try again.",

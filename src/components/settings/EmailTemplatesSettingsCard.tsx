@@ -4,11 +4,25 @@ import { useEffect, useMemo, useState } from "react";
 import { FileText, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { getToneLabel } from "@/lib/email-generation/tone-guidance";
 import { inputClassName, selectClassName } from "@/components/ui/Field";
+import { SettingsCard } from "@/components/ui/SettingsCard";
+import {
+  alertErrorClassName,
+  alertSuccessClassName,
+  btnGhostClassName,
+  btnIconClassName,
+  btnPrimaryClassName,
+  btnSmPrimaryClassName,
+  hintClassName,
+  labelClassName,
+  tagDefaultClassName,
+  textSecondaryClassName,
+} from "@/lib/ui/styles";
 import { EMAIL_TONES, type EmailTone } from "@/types/email-generation";
 import type {
   EmailTemplate,
   EmailTemplatePlaceholder,
 } from "@/types/email-templates";
+import { getApiErrorMessage } from "@/lib/ui/user-messages";
 
 interface TemplateFormState {
   name: string;
@@ -37,7 +51,20 @@ const EMPTY_FORM: TemplateFormState = {
   isDefault: false,
 };
 
-export function EmailTemplatesSettingsCard() {
+const TONE_ACCENT: Record<EmailTone, string> = {
+  professional: "border-l-violet-400",
+  friendly: "border-l-emerald-400",
+  formal: "border-l-sky-400",
+  direct: "border-l-amber-400",
+};
+
+interface EmailTemplatesSettingsCardProps {
+  embedded?: boolean;
+}
+
+export function EmailTemplatesSettingsCard({
+  embedded = false,
+}: EmailTemplatesSettingsCardProps) {
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [placeholders, setPlaceholders] = useState<EmailTemplatePlaceholder[]>(
     []
@@ -67,7 +94,7 @@ export function EmailTemplatesSettingsCard() {
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to load email templates.");
+        setError(getApiErrorMessage(data.error, "Failed to load email templates."));
         return;
       }
 
@@ -127,7 +154,7 @@ export function EmailTemplatesSettingsCard() {
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to save template.");
+        setError(getApiErrorMessage(data.error, "Failed to save template."));
         return;
       }
 
@@ -153,7 +180,7 @@ export function EmailTemplatesSettingsCard() {
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to delete template.");
+        setError(getApiErrorMessage(data.error, "Failed to delete template."));
         return;
       }
 
@@ -167,232 +194,237 @@ export function EmailTemplatesSettingsCard() {
     }
   }
 
-  return (
-    <div className="rounded-2xl border border-white/5 bg-slate-900/50 p-6 sm:p-8 lg:col-span-2">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/10">
-            <FileText className="h-5 w-5 text-cyan-400" />
-          </div>
-          <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
-              Email templates
-            </h2>
-            <p className="mt-0.5 text-xs text-slate-500">
-              Reusable outreach subject and body patterns
-            </p>
-          </div>
-        </div>
+  const content = loading ? (
+    <div className={`flex items-center gap-2 ${textSecondaryClassName}`}>
+      <Loader2 className="h-4 w-4 animate-spin" />
+      Loading templates…
+    </div>
+  ) : (
+    <>
+      <div className="flex items-center justify-between gap-3">
+        <p className={`${hintClassName} min-w-0`}>
+          {templates.length} template{templates.length === 1 ? "" : "s"} · defaults
+          apply per tone when generating outreach
+        </p>
         <button
           type="button"
           onClick={openCreateForm}
-          className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-200 transition-colors hover:bg-cyan-500/20"
+          className={btnSmPrimaryClassName}
         >
           <Plus className="h-4 w-4" />
-          New template
+          New
         </button>
       </div>
 
-      {loading ? (
-        <div className="mt-6 flex items-center gap-2 text-sm text-slate-400">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading templates…
+      {placeholders.length > 0 && (
+        <div className="mt-4 rounded-xl border border-cyan-100/80 bg-gradient-to-br from-cyan-50/40 to-white p-4">
+          <p className={labelClassName}>Placeholders</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {placeholders.map((placeholder) => (
+              <span
+                key={placeholder.key}
+                title={placeholder.description}
+                className={`${tagDefaultClassName} !bg-white`}
+              >
+                {placeholder.key}
+              </span>
+            ))}
+          </div>
         </div>
-      ) : (
-        <>
-          {placeholders.length > 0 && (
-            <div className="mt-6 rounded-xl border border-white/5 bg-slate-950/40 p-4">
-              <p className="text-xs font-medium text-slate-400">
-                Available placeholders
-              </p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {placeholders.map((placeholder) => (
-                  <span
-                    key={placeholder.key}
-                    title={placeholder.description}
-                    className="rounded-full border border-white/10 bg-slate-900 px-2.5 py-1 text-xs text-slate-300"
-                  >
-                    {placeholder.key}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+      )}
 
-          {showForm && (
-            <div className="mt-6 space-y-4 rounded-xl border border-cyan-500/20 bg-slate-950/50 p-4">
-              <p className="text-sm font-medium text-white">
-                {editingId ? "Edit template" : "Create template"}
-              </p>
+      {showForm && (
+        <div className="mt-4 space-y-4 rounded-xl border border-gray-200 bg-gray-50/40 p-4 sm:p-5">
+          <p className="text-sm font-semibold text-gray-900">
+            {editingId ? "Edit template" : "Create template"}
+          </p>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <label htmlFor="template-name" className="mb-2 block text-xs text-slate-400">
-                    Name
-                  </label>
-                  <input
-                    id="template-name"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className={inputClassName}
-                    placeholder="Professional outreach"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="template-tone" className="mb-2 block text-xs text-slate-400">
-                    Tone
-                  </label>
-                  <select
-                    id="template-tone"
-                    value={form.tone}
-                    onChange={(e) =>
-                      setForm({ ...form, tone: e.target.value as EmailTone })
-                    }
-                    className={selectClassName}
-                  >
-                    {EMAIL_TONES.map((tone) => (
-                      <option key={tone} value={tone}>
-                        {getToneLabel(tone)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="template-subject"
-                  className="mb-2 block text-xs text-slate-400"
-                >
-                  Subject template
-                </label>
-                <input
-                  id="template-subject"
-                  value={form.subjectTemplate}
-                  onChange={(e) =>
-                    setForm({ ...form, subjectTemplate: e.target.value })
-                  }
-                  className={inputClassName}
-                />
-              </div>
-
-              <div>
-                <label htmlFor="template-body" className="mb-2 block text-xs text-slate-400">
-                  Body template
-                </label>
-                <textarea
-                  id="template-body"
-                  value={form.bodyTemplate}
-                  onChange={(e) =>
-                    setForm({ ...form, bodyTemplate: e.target.value })
-                  }
-                  rows={10}
-                  className={`${inputClassName} font-mono text-xs`}
-                />
-              </div>
-
-              <label className="flex items-center gap-2 text-sm text-slate-300">
-                <input
-                  type="checkbox"
-                  checked={form.isDefault}
-                  onChange={(e) =>
-                    setForm({ ...form, isDefault: e.target.checked })
-                  }
-                  className="rounded border-white/20 bg-slate-900"
-                />
-                Set as default for this tone
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="template-name" className={labelClassName}>
+                Name
               </label>
-
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  disabled={saving || !form.name.trim()}
-                  className="inline-flex items-center gap-2 rounded-lg border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-200 transition-colors hover:bg-cyan-500/20 disabled:opacity-50"
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Saving…
-                    </>
-                  ) : (
-                    "Save template"
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={closeForm}
-                  disabled={saving}
-                  className="text-sm text-slate-500 transition-colors hover:text-slate-300"
-                >
-                  Cancel
-                </button>
-              </div>
+              <input
+                id="template-name"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className={`mt-2 ${inputClassName}`}
+                placeholder="Professional outreach"
+              />
             </div>
-          )}
-
-          <div className="mt-6 space-y-3">
-            {sortedTemplates.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                No templates yet. Create one to customize outreach generation.
-              </p>
-            ) : (
-              sortedTemplates.map((template) => (
-                <div
-                  key={template.id}
-                  className="rounded-xl border border-white/5 bg-slate-950/40 p-4"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-medium text-white">
-                        {template.name}
-                        {template.isDefault && (
-                          <span className="ml-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-2 py-0.5 text-xs text-cyan-200">
-                            Default
-                          </span>
-                        )}
-                      </p>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {getToneLabel(template.tone)} tone
-                      </p>
-                      <p className="mt-2 text-xs text-slate-400">
-                        Subject: {template.subjectTemplate}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openEditForm(template)}
-                        className="rounded-lg border border-white/10 p-2 text-slate-300 transition-colors hover:bg-white/5"
-                        aria-label={`Edit ${template.name}`}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(template.id)}
-                        disabled={saving}
-                        className="rounded-lg border border-white/10 p-2 text-rose-300 transition-colors hover:bg-rose-500/10 disabled:opacity-50"
-                        aria-label={`Delete ${template.name}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
+            <div>
+              <label htmlFor="template-tone" className={labelClassName}>
+                Tone
+              </label>
+              <select
+                id="template-tone"
+                value={form.tone}
+                onChange={(e) =>
+                  setForm({ ...form, tone: e.target.value as EmailTone })
+                }
+                className={`mt-2 ${selectClassName}`}
+              >
+                {EMAIL_TONES.map((tone) => (
+                  <option key={tone} value={tone}>
+                    {getToneLabel(tone)}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {message && <p className="mt-3 text-xs text-emerald-300">{message}</p>}
-          {error && <p className="mt-3 text-xs text-rose-300">{error}</p>}
+          <div>
+            <label htmlFor="template-subject" className={labelClassName}>
+              Subject template
+            </label>
+            <input
+              id="template-subject"
+              value={form.subjectTemplate}
+              onChange={(e) =>
+                setForm({ ...form, subjectTemplate: e.target.value })
+              }
+              className={`mt-2 ${inputClassName}`}
+            />
+          </div>
 
-          <p className="mt-3 text-xs text-slate-600">
-            Default templates apply automatically when generating outreach. You can
-            also pick a specific template on the Leads page.
-          </p>
-        </>
+          <div>
+            <label htmlFor="template-body" className={labelClassName}>
+              Body template
+            </label>
+            <textarea
+              id="template-body"
+              value={form.bodyTemplate}
+              onChange={(e) =>
+                setForm({ ...form, bodyTemplate: e.target.value })
+              }
+              rows={8}
+              className={`mt-2 ${inputClassName} font-mono text-xs`}
+            />
+          </div>
+
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={form.isDefault}
+              onChange={(e) =>
+                setForm({ ...form, isDefault: e.target.checked })
+              }
+              className="rounded border-gray-300 text-violet-600 focus:ring-violet-500/20"
+            />
+            Set as default for this tone
+          </label>
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || !form.name.trim()}
+              className={btnPrimaryClassName}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                "Save template"
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={closeForm}
+              disabled={saving}
+              className={btnGhostClassName}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
-    </div>
+
+      <div className="mt-4 space-y-2">
+        {sortedTemplates.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/50 px-4 py-8 text-center">
+            <p className="text-sm font-medium text-gray-700">No templates yet</p>
+            <p className={`mt-1 ${hintClassName}`}>
+              Create one to customize how outreach emails are composed.
+            </p>
+          </div>
+        ) : (
+          sortedTemplates.map((template) => (
+            <div
+              key={template.id}
+              className={`group relative overflow-hidden rounded-xl border border-gray-100 border-l-4 bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.03)] transition-shadow hover:shadow-[0_4px_12px_rgba(0,0,0,0.05)] ${
+                TONE_ACCENT[template.tone] ?? "border-l-gray-300"
+              }`}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="break-words text-sm font-semibold text-gray-900">
+                      {template.name}
+                    </p>
+                    {template.isDefault && (
+                      <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cyan-700">
+                        Default
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs font-medium text-gray-500">
+                    {getToneLabel(template.tone)} tone
+                  </p>
+                  <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-gray-500">
+                    {template.subjectTemplate}
+                  </p>
+                </div>
+                <div className="flex gap-1 opacity-100 sm:opacity-70 sm:group-hover:opacity-100">
+                  <button
+                    type="button"
+                    onClick={() => openEditForm(template)}
+                    className={btnIconClassName}
+                    aria-label={`Edit ${template.name}`}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(template.id)}
+                    disabled={saving}
+                    className="inline-flex items-center justify-center rounded-lg p-2 text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+                    aria-label={`Delete ${template.name}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {message && (
+        <div className={`mt-3 ${alertSuccessClassName}`} role="status">
+          {message}
+        </div>
+      )}
+      {error && (
+        <div className={`mt-3 ${alertErrorClassName}`} role="alert">
+          {error}
+        </div>
+      )}
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <SettingsCard
+      icon={FileText}
+      iconClassName="bg-cyan-50 text-cyan-600"
+      title="Email templates"
+      description="Reusable outreach subject and body patterns"
+    >
+      {content}
+    </SettingsCard>
   );
 }

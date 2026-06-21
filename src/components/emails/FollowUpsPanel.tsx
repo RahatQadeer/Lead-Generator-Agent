@@ -1,4 +1,6 @@
+import { Clock } from "lucide-react";
 import { DEFAULT_FOLLOW_UP_DELAY_DAYS } from "@/lib/follow-ups/constants";
+import { cardClassName } from "@/lib/ui/styles";
 import type { FollowUpSummary } from "@/types/follow-up";
 
 interface FollowUpsPanelProps {
@@ -15,29 +17,45 @@ export function FollowUpsPanel({ summary }: FollowUpsPanelProps) {
   }
 
   return (
-    <div className="mb-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-      <p className="text-sm font-medium text-white">Follow-up queue</p>
-      <p className="mt-1 text-xs text-slate-400">
-        New follow-ups are scheduled {DEFAULT_FOLLOW_UP_DELAY_DAYS} days after
-        send. Generate AI suggestions below, then save as a draft to send.
-        Replies automatically cancel pending follow-ups.
-      </p>
-      <dl className="mt-3 grid gap-3 text-xs sm:grid-cols-3">
-        <div>
-          <dt className="text-slate-500">Scheduled</dt>
-          <dd className="mt-0.5 text-sm text-white">{summary.scheduledCount}</dd>
+    <div className={`${cardClassName} p-5 sm:p-6`}>
+      <div className="flex items-start gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-50 text-amber-600 ring-1 ring-amber-100">
+          <Clock className="h-4 w-4" />
         </div>
-        <div>
-          <dt className="text-slate-500">Cancelled (replied)</dt>
-          <dd className="mt-0.5 text-sm text-white">{summary.cancelledCount}</dd>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-gray-900">Follow-ups</p>
+          <p className="mt-1 text-xs leading-relaxed text-gray-500">
+            Scheduled {DEFAULT_FOLLOW_UP_DELAY_DAYS} days after send. Replies
+            cancel pending follow-ups automatically.
+          </p>
+          <dl className="mt-4 grid grid-cols-3 gap-4">
+            <div>
+              <dt className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                Scheduled
+              </dt>
+              <dd className="mt-1 text-lg font-bold tabular-nums text-gray-900">
+                {summary.scheduledCount}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                Cancelled
+              </dt>
+              <dd className="mt-1 text-lg font-bold tabular-nums text-gray-900">
+                {summary.cancelledCount}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                Paused
+              </dt>
+              <dd className="mt-1 text-lg font-bold tabular-nums text-gray-900">
+                {summary.pausedContactCount}
+              </dd>
+            </div>
+          </dl>
         </div>
-        <div>
-          <dt className="text-slate-500">Contacts paused</dt>
-          <dd className="mt-0.5 text-sm text-white">
-            {summary.pausedContactCount}
-          </dd>
-        </div>
-      </dl>
+      </div>
     </div>
   );
 }

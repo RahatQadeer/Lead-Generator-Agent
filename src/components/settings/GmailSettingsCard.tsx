@@ -3,9 +3,25 @@
 import { useEffect, useState } from "react";
 import { Loader2, Mail, Sparkles } from "lucide-react";
 import { selectClassName } from "@/components/ui/Field";
+import { SettingsCard } from "@/components/ui/SettingsCard";
+import {
+  alertErrorClassName,
+  alertSuccessClassName,
+  btnGhostClassName,
+  btnPrimaryClassName,
+  btnSecondaryClassName,
+  hintClassName,
+  labelClassName,
+  textSecondaryClassName,
+} from "@/lib/ui/styles";
 import type { GmailSettingsStatus } from "@/types/gmail-settings";
+import { getApiErrorMessage } from "@/lib/ui/user-messages";
 
-export function GmailSettingsCard() {
+interface GmailSettingsCardProps {
+  embedded?: boolean;
+}
+
+export function GmailSettingsCard({ embedded = false }: GmailSettingsCardProps) {
   const [status, setStatus] = useState<GmailSettingsStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -26,7 +42,7 @@ export function GmailSettingsCard() {
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to load Gmail settings.");
+        setError(getApiErrorMessage(data.error, "Failed to load Gmail settings."));
         return;
       }
 
@@ -55,7 +71,7 @@ export function GmailSettingsCard() {
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to save settings.");
+        setError(getApiErrorMessage(data.error, "Failed to save settings."));
         return;
       }
 
@@ -78,7 +94,9 @@ export function GmailSettingsCard() {
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? data.result?.message ?? "Test failed.");
+        setError(
+          getApiErrorMessage(data.error, data.result?.message ?? "Test failed.")
+        );
         return;
       }
 
@@ -100,7 +118,7 @@ export function GmailSettingsCard() {
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to disconnect Gmail.");
+        setError(getApiErrorMessage(data.error, "Failed to disconnect Gmail."));
         return;
       }
 
@@ -123,7 +141,7 @@ export function GmailSettingsCard() {
       const data = await res.json();
 
       if (!data.success) {
-        setError(data.error?.message ?? "Failed to reset settings.");
+        setError(getApiErrorMessage(data.error, "Failed to reset settings."));
         return;
       }
 
@@ -137,60 +155,38 @@ export function GmailSettingsCard() {
     }
   }
 
-  return (
-    <div className="rounded-2xl border border-white/5 bg-slate-900/50 p-6 sm:p-8">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10">
-          <Mail className="h-5 w-5 text-emerald-400" />
-        </div>
-        <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500">
-            Gmail sending
-          </h2>
-          <p className="mt-0.5 text-xs text-slate-500">
-            OAuth connection and send provider
-          </p>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="mt-6 flex items-center gap-2 text-sm text-slate-400">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading configuration…
-        </div>
-      ) : (
-        <>
-          <dl className="mt-6 grid gap-4 sm:grid-cols-2">
+  const content = loading ? (
+    <div className={`flex items-center gap-2 ${textSecondaryClassName}`}>
+      <Loader2 className="h-4 w-4 animate-spin" />
+      Loading configuration…
+    </div>
+  ) : (
+    <>
+          <dl className="grid gap-4 sm:grid-cols-2">
             <div>
-              <dt className="text-xs font-medium text-slate-500">
-                Active provider
-              </dt>
-              <dd className="mt-1 text-sm text-white">
+              <dt className={labelClassName}>Active provider</dt>
+              <dd className="mt-1 break-words text-sm text-gray-900">
                 {status?.effectiveProvider ?? "—"}
               </dd>
             </div>
             <div>
-              <dt className="text-xs font-medium text-slate-500">Connection</dt>
-              <dd className="mt-1 text-sm text-white">
+              <dt className={labelClassName}>Connection</dt>
+              <dd className="mt-1 text-sm text-gray-900">
                 {status?.connected ? "Connected" : "Not connected"}
               </dd>
             </div>
             {status?.accountAddress && (
               <div className="sm:col-span-2">
-                <dt className="text-xs font-medium text-slate-500">
-                  Gmail account
-                </dt>
-                <dd className="mt-1 text-sm text-white">
+                <dt className={labelClassName}>Gmail account</dt>
+                <dd className="mt-1 break-all text-sm text-gray-900">
                   {status.accountAddress}
                 </dd>
               </div>
             )}
             {status?.connectedAt && (
               <div className="sm:col-span-2">
-                <dt className="text-xs font-medium text-slate-500">
-                  Connected since
-                </dt>
-                <dd className="mt-1 text-sm text-white">
+                <dt className={labelClassName}>Connected since</dt>
+                <dd className="mt-1 text-sm text-gray-900">
                   {new Date(status.connectedAt).toLocaleDateString()}
                 </dd>
               </div>
@@ -198,10 +194,7 @@ export function GmailSettingsCard() {
           </dl>
 
           <div className="mt-6">
-            <label
-              htmlFor="gmail-sending-provider"
-              className="mb-2 block text-xs font-medium text-slate-400"
-            >
+            <label htmlFor="gmail-sending-provider" className={labelClassName}>
               Sending provider
             </label>
             <select
@@ -210,12 +203,12 @@ export function GmailSettingsCard() {
               onChange={(e) =>
                 setSendingProvider(e.target.value as "mock" | "gmail")
               }
-              className={selectClassName}
+              className={`mt-2 ${selectClassName}`}
             >
               <option value="mock">Mock (no delivery)</option>
               <option value="gmail">Gmail</option>
             </select>
-            <p className="mt-1 text-xs text-slate-600">
+            <p className={`mt-1 ${hintClassName}`}>
               Env default: {status?.envProvider ?? "mock"}
               {!status?.oauthConfigured && " · Google OAuth not configured"}
             </p>
@@ -226,7 +219,7 @@ export function GmailSettingsCard() {
               type="button"
               onClick={handleSave}
               disabled={saving || testing || disconnecting}
-              className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-200 transition-colors hover:bg-emerald-500/20 disabled:opacity-50"
+              className={btnPrimaryClassName}
             >
               {saving ? (
                 <>
@@ -238,8 +231,8 @@ export function GmailSettingsCard() {
               )}
             </button>
             <a
-              href="/auth/oauth?redirect=/settings"
-              className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-300 transition-colors hover:bg-emerald-500/20"
+              href="/auth/oauth?redirect=/settings&connect=gmail"
+              className={btnSecondaryClassName}
             >
               {status?.connected ? "Reconnect Gmail" : "Connect Gmail"}
             </a>
@@ -248,7 +241,7 @@ export function GmailSettingsCard() {
                 type="button"
                 onClick={handleTest}
                 disabled={saving || testing || disconnecting}
-                className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-200 transition-colors hover:bg-white/10 disabled:opacity-50"
+                className={btnSecondaryClassName}
               >
                 {testing ? (
                   <>
@@ -268,7 +261,7 @@ export function GmailSettingsCard() {
                 type="button"
                 onClick={handleDisconnect}
                 disabled={saving || testing || disconnecting}
-                className="text-sm text-rose-400 transition-colors hover:text-rose-300 disabled:opacity-50"
+                className="text-sm font-medium text-red-600 transition-colors hover:text-red-700 disabled:opacity-50"
               >
                 {disconnecting ? "Disconnecting…" : "Disconnect"}
               </button>
@@ -278,22 +271,41 @@ export function GmailSettingsCard() {
                 type="button"
                 onClick={handleReset}
                 disabled={saving || testing || disconnecting}
-                className="text-sm text-slate-500 transition-colors hover:text-slate-300 disabled:opacity-50"
+                className={btnGhostClassName}
               >
                 Reset to defaults
               </button>
             )}
           </div>
 
-          {message && <p className="mt-3 text-xs text-emerald-300">{message}</p>}
-          {error && <p className="mt-3 text-xs text-rose-300">{error}</p>}
+          {message && (
+            <div className={`mt-3 ${alertSuccessClassName}`} role="status">
+              {message}
+            </div>
+          )}
+          {error && (
+            <div className={`mt-3 ${alertErrorClassName}`} role="alert">
+              {error}
+            </div>
+          )}
 
-          <p className="mt-3 text-xs text-slate-600">
+          <p className={`mt-3 ${hintClassName}`}>
             Connect Gmail to send real outreach. Enable provider token storage in
             Supabase Auth settings.
           </p>
-        </>
-      )}
-    </div>
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <SettingsCard
+      icon={Mail}
+      iconClassName="bg-emerald-50 text-emerald-600"
+      title="Gmail sending"
+      description="OAuth connection and send provider"
+    >
+      {content}
+    </SettingsCard>
   );
 }

@@ -189,7 +189,7 @@ export async function POST(request: Request) {
         success: false,
         error: {
           code: "SAVE_FAILED",
-          message: "An unexpected error occurred while saving the draft.",
+          message: "Something went wrong while saving the draft. Please try again.",
           retryable: false,
         },
       },

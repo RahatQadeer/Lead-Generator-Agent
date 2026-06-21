@@ -5,6 +5,7 @@ export interface DiscoveredCompany {
   name: string;
   domain: string | null;
   industry: string | null;
+  description: string | null;
   employeeCount: number | null;
   country: string | null;
   city: string | null;
@@ -12,9 +13,11 @@ export interface DiscoveredCompany {
   linkedinUrl: string | null;
   websiteUrl: string | null;
   technologies: string[] | null;
+  confidenceScore: number;
 }
 
 export interface CompanyDiscoveryParams {
+  searchName?: string;
   industry: string;
   country: string;
   companySizeMin: number | null;
@@ -43,6 +46,10 @@ export interface CompanyDiscoveryResult {
   duplicateCount: number;
   batchDuplicateCount: number;
   knownDuplicateCount: number;
+  seedCount?: number;
+  enrichedCount?: number;
+  relaxedMatch?: boolean;
+  rejected?: import("@/lib/company-discovery/validate-company").RejectedCompanyView[];
 }
 
 export interface DiscoverCompaniesOptions {

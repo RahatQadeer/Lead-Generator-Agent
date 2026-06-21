@@ -38,7 +38,7 @@ export function toEmailGenerationErrorResponse(error: unknown) {
     success: false as const,
     error: {
       code: "PROVIDER_ERROR" as const,
-      message: "An unexpected error occurred during email generation.",
+      message: "Something went wrong while writing the email. Please try again.",
       retryable: false,
     },
   };

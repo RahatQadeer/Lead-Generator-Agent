@@ -1,12 +1,15 @@
 import { Mail } from "lucide-react";
 import { CheckRepliesPanel } from "@/components/emails/CheckRepliesPanel";
+import { EmailCampaignActions } from "@/components/emails/EmailCampaignActions";
+import { EmailCampaignStats } from "@/components/emails/EmailCampaignStats";
 import { FollowUpQueueList } from "@/components/emails/FollowUpQueueList";
 import { FollowUpsPanel } from "@/components/emails/FollowUpsPanel";
 import { CampaignHistory } from "@/components/emails/CampaignHistory";
-import { EmailDraftCard } from "@/components/emails/EmailDraftCard";
+import { EmailDraftsSection } from "@/components/emails/EmailDraftsSection";
 import { SendCampaignPanel } from "@/components/emails/SendCampaignPanel";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { EmptyState } from "@/components/layout/EmptyState";
+import { SectionCard } from "@/components/ui/SectionCard";
+import { cardClassName } from "@/lib/ui/styles";
 import {
   getCampaignSummary,
   getOutreachCampaignsByUserId,
@@ -16,80 +19,109 @@ import {
   getScheduledFollowUpsWithContext,
 } from "@/lib/follow-ups/queries";
 import { getReplySummary } from "@/lib/reply-tracking/queries";
-import { getConfiguredReplyTrackingProvider } from "@/lib/reply-tracking/factory";
+import { resolveReplyTrackingProvider } from "@/lib/reply-tracking/resolve-provider";
 import { getOutreachEmailsByUserId } from "@/lib/emails/queries";
 import { resolveEmailGenerationConfig } from "@/lib/openai/settings";
 import { resolveSendingProvider } from "@/lib/email-sending/resolve-provider";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthContext } from "@/lib/auth/get-auth-context";
+import { toSenderProfile } from "@/lib/profile/initials";
 
 export default async function EmailsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, profile } = await getAuthContext();
+  const sender = toSenderProfile(profile);
 
-  const emails = user ? await getOutreachEmailsByUserId(user.id) : [];
-  const summary = user
-    ? await getCampaignSummary(user.id)
-    : { draftCount: 0, sentCount: 0, campaignCount: 0 };
-  const campaigns = user ? await getOutreachCampaignsByUserId(user.id) : [];
-  const replySummary = user
-    ? await getReplySummary(user.id)
-    : { sentCount: 0, repliedCount: 0, awaitingReplyCount: 0 };
-  const followUpSummary = user
-    ? await getFollowUpSummary(user.id)
-    : { scheduledCount: 0, cancelledCount: 0, pausedContactCount: 0 };
-  const scheduledFollowUps = user
-    ? await getScheduledFollowUpsWithContext(user.id)
-    : [];
-  const generationConfig = user
-    ? await resolveEmailGenerationConfig(user.id)
-    : { provider: "mock" as const, apiKey: null, model: "gpt-4o-mini", keySource: "none" as const };
+  const emails = await getOutreachEmailsByUserId(user.id);
+  const summary = await getCampaignSummary(user.id);
+  const campaigns = await getOutreachCampaignsByUserId(user.id);
+  const replySummary = await getReplySummary(user.id);
+  const followUpSummary = await getFollowUpSummary(user.id);
+  const scheduledFollowUps = await getScheduledFollowUpsWithContext(user.id);
+  const generationConfig = await resolveEmailGenerationConfig(user.id);
   const generationProvider = generationConfig.provider;
-  const sendingProvider = user
-    ? await resolveSendingProvider(user.id)
-    : "mock";
-  const replyProvider = getConfiguredReplyTrackingProvider();
+  const sendingProvider = await resolveSendingProvider(user.id);
+  const replyProvider = await resolveReplyTrackingProvider(user.id);
+
+  const hasAnyActivity =
+    emails.length > 0 ||
+    summary.sentCount > 0 ||
+    summary.draftCount > 0 ||
+    campaigns.length > 0;
 
   return (
     <>
       <PageHeader
         icon={Mail}
-        label="Emails"
         title="Outreach campaigns"
         description="Review AI-generated emails, launch batch campaigns, and track delivery status."
       />
-      <p className="mb-4 text-xs text-slate-500">
-        Generation: <span className="text-slate-300">{generationProvider}</span>
-        {" · "}
-        Sending: <span className="text-slate-300">{sendingProvider}</span>
-        {" · "}
-        Reply tracking: <span className="text-slate-300">{replyProvider}</span>
+
+      <p className="-mt-4 mb-6 text-xs text-gray-400">
+        Generation {generationProvider} · Sending {sendingProvider} · Reply
+        tracking {replyProvider}
       </p>
 
-      <CheckRepliesPanel summary={replySummary} />
-      <FollowUpsPanel summary={followUpSummary} />
-      <FollowUpQueueList followUps={scheduledFollowUps} />
-      <SendCampaignPanel summary={summary} sendingProvider={sendingProvider} />
-      <CampaignHistory campaigns={campaigns} />
+      <div className="space-y-6">
+        {hasAnyActivity && (
+          <>
+            <EmailCampaignStats summary={summary} replySummary={replySummary} />
+            <EmailCampaignActions
+              summary={summary}
+              replySummary={replySummary}
+              sendingProvider={sendingProvider}
+              replyProvider={replyProvider}
+            />
+            <FollowUpsPanel summary={followUpSummary} />
+          </>
+        )}
 
-      {emails.length === 0 ? (
-        <EmptyState
-          icon={Mail}
-          title="No emails yet"
-          description="Generate outreach emails from the Leads page after discovering and enriching contacts."
-        />
-      ) : (
-        <div className="space-y-4">
-          {emails.map((email) => (
-            <EmailDraftCard
-              key={email.id}
-              email={email}
+        {!hasAnyActivity && (
+          <div className={`${cardClassName} p-5 sm:p-6`}>
+            <SendCampaignPanel
+              summary={summary}
               sendingProvider={sendingProvider}
             />
-          ))}
-        </div>
-      )}
+            {replySummary.sentCount > 0 && (
+              <div className="mt-4 border-t border-gray-100 pt-4">
+                <CheckRepliesPanel
+                  summary={replySummary}
+                  replyProvider={replyProvider}
+                  autoCheck
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        <EmailDraftsSection
+          emails={emails}
+          sendingProvider={sendingProvider}
+          sender={sender}
+        />
+
+        {campaigns.length > 0 && (
+          <SectionCard
+            title="Campaign history"
+            padContent={false}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-gray-100 p-5 sm:p-6">
+              <CampaignHistory campaigns={campaigns} />
+            </div>
+          </SectionCard>
+        )}
+
+        {scheduledFollowUps.length > 0 && (
+          <SectionCard
+            title="Follow-up queue"
+            padContent={false}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-gray-100 p-5 sm:p-6">
+              <FollowUpQueueList followUps={scheduledFollowUps} />
+            </div>
+          </SectionCard>
+        )}
+      </div>
     </>
   );
 }

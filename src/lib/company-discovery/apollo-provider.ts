@@ -15,6 +15,7 @@ interface ApolloOrganization {
   website_url?: string;
   linkedin_url?: string;
   industry?: string;
+  short_description?: string;
   estimated_num_employees?: number;
   city?: string;
   state?: string;
@@ -41,6 +42,7 @@ function mapApolloOrg(org: ApolloOrganization): DiscoveredCompany {
     name: org.name ?? "Unknown",
     domain: org.primary_domain ?? null,
     industry: org.industry ?? null,
+    description: org.short_description ?? null,
     employeeCount: org.estimated_num_employees ?? null,
     country: org.country ?? null,
     city: org.city ?? null,
@@ -48,6 +50,7 @@ function mapApolloOrg(org: ApolloOrganization): DiscoveredCompany {
     linkedinUrl: org.linkedin_url ?? null,
     websiteUrl: org.website_url ?? null,
     technologies: null,
+    confidenceScore: 90,
   };
 }
 

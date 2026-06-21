@@ -1,5 +1,4 @@
 import { applyDedup } from "@/lib/contact-discovery/apply-dedup";
-import { applyTitleFilter } from "@/lib/contact-discovery/apply-title-filter";
 import { isContactDiscoveryError } from "@/lib/contact-discovery/errors";
 import { createContactDiscoveryProvider } from "@/lib/contact-discovery/factory";
 import { withRetry } from "@/lib/contact-discovery/retry";
@@ -20,26 +19,26 @@ export async function discoverContacts(
     { maxAttempts: 3, baseDelayMs: 600, maxDelayMs: 5000 }
   );
 
-  const { contacts: titleMatched, filteredCount } = applyTitleFilter(
-    result.contacts,
-    params.jobTitles
-  );
-
   const {
     contacts,
     duplicateCount,
     batchDuplicateCount,
     knownDuplicateCount,
-  } = applyDedup(titleMatched, options.knownDedupKeys);
+  } = applyDedup(result.contacts, options.knownDedupKeys);
 
   return {
     contacts,
     pagination: result.pagination,
     provider: provider.name,
-    filteredCount,
+    scrapedCount: result.scrapedCount ?? result.contacts.length,
+    parsedCount: result.parsedCount ?? result.scrapedCount ?? result.contacts.length,
+    filteredCount: result.filteredCount ?? 0,
+    rejectedCount: result.rejectedCount ?? 0,
     duplicateCount,
     batchDuplicateCount,
     knownDuplicateCount,
+    relaxedMatch: result.relaxedMatch,
+    companiesWithContacts: result.companiesWithContacts,
     attempts,
   };
 }
@@ -60,7 +59,7 @@ export function toContactDiscoveryErrorResponse(error: unknown) {
     success: false as const,
     error: {
       code: "PROVIDER_ERROR" as const,
-      message: "An unexpected error occurred during contact discovery.",
+      message: "Something went wrong while looking for people. Please try again.",
       retryable: false,
     },
   };

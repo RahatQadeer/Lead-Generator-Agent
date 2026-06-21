@@ -156,6 +156,7 @@ export async function markOutreachEmailSent(
   input: {
     recipientEmail: string;
     gmailMessageId: string;
+    providerThreadId?: string;
     sentAt: string;
     campaignId?: string;
   }
@@ -168,6 +169,7 @@ export async function markOutreachEmailSent(
       status: "sent",
       recipient_email: input.recipientEmail,
       gmail_message_id: input.gmailMessageId,
+      provider_thread_id: input.providerThreadId ?? null,
       sent_at: input.sentAt,
       campaign_id: input.campaignId ?? null,
       updated_at: new Date().toISOString(),
