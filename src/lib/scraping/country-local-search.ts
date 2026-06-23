@@ -53,17 +53,10 @@ export function buildCountryLocalCompanyQueries(input: {
     }
   }
 
-  if (keyword && country) {
-    queries.push(`${keyword} company ${country}`);
-  }
-
   if (ccTld && ccTld !== "com") {
     const siteFilter = `site:.${ccTld}`;
     if (industry) {
       queries.push(`${industry} company ${country} ${siteFilter}`);
-    }
-    if (keyword) {
-      queries.push(`${keyword} ${country} ${siteFilter}`);
     }
   }
 
@@ -73,6 +66,14 @@ export function buildCountryLocalCompanyQueries(input: {
       queries.push(`site:yellowpages.com.pk ${industry}`);
       queries.push(`site:company.com.pk ${industry}`);
     }
+  }
+
+  if (keyword && country) {
+    queries.push(`${keyword} company ${country}`);
+  }
+
+  if (ccTld && ccTld !== "com" && keyword) {
+    queries.push(`${keyword} ${country} site:.${ccTld}`);
   }
 
   return [...new Set(queries.map((q) => q.trim()).filter(Boolean))].slice(0, 6);
