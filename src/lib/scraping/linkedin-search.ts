@@ -10,6 +10,7 @@ const log = createLogger("scraping.linkedin-search");
 export interface LinkedInDiscoveryResult {
   url: string | null;
   source: LinkedInSource;
+  resolvedFullName?: string | null;
   headline?: string | null;
   companyMatch?: boolean;
   confidenceScore?: number;
@@ -19,6 +20,14 @@ export interface LinkedInDiscoveryResult {
 export type { LinkedInProfileSearchInput, LinkedInProfileSearchResult } from "@/lib/scraping/linkedin-profile-search";
 export {
   buildLinkedInProfileSearchQueries,
+  buildNameAndRoleLinkedInQuery,
+  buildNaturalLinkedInSearchQuery,
+  buildPrimaryLinkedInGoogleQuery,
+  extractLinkedInHitsFromMixedResults,
+  isExactLinkedInSearchHit,
+  isLinkedInWebSearchAvailable,
+  meaningfulRoleKeywords,
+  pickLinkedInFromOrderedHits,
   searchLinkedInProfile,
 } from "@/lib/scraping/linkedin-profile-search";
 
@@ -29,13 +38,15 @@ export async function discoverPersonLinkedIn(
   fullName: string,
   companyName: string,
   companyDomain?: string | null,
-  jobTitle?: string | null
+  jobTitle?: string | null,
+  options?: { requireCompanyMatch?: boolean }
 ): Promise<LinkedInDiscoveryResult> {
   const result = await searchLinkedInProfile({
     fullName,
     jobTitle: jobTitle?.trim() || "Team Member",
     companyName,
     companyDomain,
+    requireCompanyMatch: options?.requireCompanyMatch,
   });
 
   if (!result) {
@@ -55,6 +66,7 @@ export async function discoverPersonLinkedIn(
   return {
     url: result.url,
     source: result.source,
+    resolvedFullName: result.fullName,
     headline: result.headline,
     companyMatch: result.companyMatch,
     confidenceScore: result.confidenceScore,

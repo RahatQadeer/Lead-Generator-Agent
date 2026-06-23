@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Users, ChevronRight } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Users } from "lucide-react";
 import {
   OutreachStepPanel,
 } from "@/components/ui/OutreachStepPanel";
@@ -11,10 +11,25 @@ import {
   DiscoveryProgressPanel,
   type DiscoveryProgressState,
 } from "@/components/search/DiscoveryProgressPanel";
-import { previewResultItemClassName } from "@/lib/ui/styles";
-import { CONTACT_DISCOVERY_STAGES } from "@/lib/ui/discovery-stages";
 import { getNoContactsMessage, getRelaxedContactsNotice } from "@/lib/ui/user-messages";
 import type { PersonPublicView } from "@/lib/pipeline/public-views";
+import {
+  DiscoveryItemDetailModal,
+  type DiscoveryDetailItem,
+} from "@/components/search/DiscoveryItemDetailModal";
+import { PreviewResultRow } from "@/components/search/PreviewResultRow";
+import {
+  DiscoveryLoadMoreButton,
+  DiscoveryResultsToolbar,
+} from "@/components/search/DiscoveryResultsToolbar";
+import { CONTACT_DISCOVERY_STAGES } from "@/lib/ui/discovery-stages";
+import {
+  DISCOVERY_DISPLAY_BATCH,
+  filterContacts,
+  sortContacts,
+  type ContactFilterKey,
+  type ContactSortKey,
+} from "@/lib/ui/discovery-results-utils";
 import { useElapsedSeconds } from "@/hooks/useElapsedSeconds";
 import { useRotatingStage } from "@/hooks/useRotatingStage";
 import {
@@ -70,6 +85,19 @@ interface ContactsDiscoverResponse {
 }
 
 const PER_PAGE = 25;
+
+const CONTACT_SORT_OPTIONS = [
+  { value: "relevance", label: "Best relevance" },
+  { value: "name", label: "Name (A–Z)" },
+  { value: "company", label: "Company (A–Z)" },
+] as const;
+
+const CONTACT_FILTER_OPTIONS = [
+  { value: "all", label: "All people" },
+  { value: "title_match", label: "Exact title match" },
+  { value: "linkedin", label: "Has LinkedIn" },
+  { value: "alt_only", label: "Alt. decision-makers" },
+] as const;
 
 function mergeContacts(
   existing: PersonPublicView[],
@@ -132,7 +160,12 @@ export function ContactsPreview({
 }: ContactsPreviewProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ContactsDiscoverResponse | null>(null);
+  const [contacts, setContacts] = useState<PersonPublicView[]>([]);
+  const [visibleCount, setVisibleCount] = useState(DISCOVERY_DISPLAY_BATCH);
+  const [sortBy, setSortBy] = useState<ContactSortKey>("relevance");
+  const [filterBy, setFilterBy] = useState<ContactFilterKey>("all");
   const [progress, setProgress] = useState<DiscoveryProgressState | null>(null);
+  const [detailItem, setDetailItem] = useState<DiscoveryDetailItem | null>(null);
   const elapsedSeconds = useElapsedSeconds(loading);
   const rotatingStage = useRotatingStage(CONTACT_DISCOVERY_STAGES, loading);
 
@@ -172,6 +205,10 @@ export function ContactsPreview({
   async function runDiscovery() {
     setLoading(true);
     setResult(null);
+    setContacts([]);
+    setVisibleCount(DISCOVERY_DISPLAY_BATCH);
+    setSortBy("relevance");
+    setFilterBy("all");
     setProgress(null);
 
     try {
@@ -205,6 +242,7 @@ export function ContactsPreview({
         );
         lastProvider = data.provider;
 
+        setContacts(aggregated);
         setResult({
           success: true,
           provider: lastProvider,
@@ -238,11 +276,35 @@ export function ContactsPreview({
     }
   }
 
+  const processedContacts = useMemo(
+    () => filterContacts(sortContacts(contacts, sortBy), filterBy),
+    [contacts, sortBy, filterBy]
+  );
+
+  const displayedContacts = processedContacts.slice(0, visibleCount);
+  const canLoadMore = visibleCount < processedContacts.length;
+
+  function handleSortChange(value: string) {
+    setSortBy(value as ContactSortKey);
+    setVisibleCount(DISCOVERY_DISPLAY_BATCH);
+  }
+
+  function handleFilterChange(value: string) {
+    setFilterBy(value as ContactFilterKey);
+    setVisibleCount(DISCOVERY_DISPLAY_BATCH);
+  }
+
+  function loadMore() {
+    setVisibleCount((count) => count + DISCOVERY_DISPLAY_BATCH);
+  }
+
   const activeProgress: DiscoveryProgressState = {
     ...(progress ?? {}),
     stage: rotatingStage,
-    foundCount: progress?.foundCount ?? result?.contacts?.length,
+    foundCount: progress?.foundCount ?? contacts.length,
   };
+
+  const relaxedMatch = result?.meta?.relaxedMatch;
 
   return (
     <OutreachStepPanel
@@ -277,7 +339,7 @@ export function ContactsPreview({
         />
       )}
 
-      {result?.success && result.contacts && (
+      {result?.success && (
         <div className="mt-4 space-y-3">
           <div className="flex flex-wrap gap-3 text-xs text-gray-500">
             <span>{result.meta?.companyCount ?? 0} companies searched</span>
@@ -287,14 +349,14 @@ export function ContactsPreview({
                 companies with people
               </span>
             )}
-            <span>{result.pagination?.totalEntries ?? result.contacts.length} people found</span>
-            <span>{result.contacts.length} saved for enrichment</span>
+            <span>{contacts.length} people found</span>
+            <span>{contacts.length} saved for enrichment</span>
             {(result.meta?.parsedCount ?? 0) > 0 && (
               <span>{result.meta?.parsedCount} on company websites</span>
             )}
             {(result.meta?.filteredCount ?? 0) > 0 &&
               !result.meta?.relaxedMatch &&
-              result.contacts.length === 0 && (
+              contacts.length === 0 && (
               <span className="text-amber-800">
                 {result.meta?.filteredCount} didn&apos;t match{" "}
                 {result.meta?.jobTitles?.length
@@ -314,8 +376,12 @@ export function ContactsPreview({
               </span>
             )}
           </div>
+          <p className="text-xs text-gray-400">
+            Relevance % reflects job title match to your search, plus LinkedIn or email found on
+            the company site.
+          </p>
 
-          {result.meta?.relaxedMatch && result.contacts.length > 0 && (
+          {relaxedMatch && contacts.length > 0 && (
             <p className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900">
               {getRelaxedContactsNotice({
                 jobTitles: result.meta?.jobTitles,
@@ -325,7 +391,7 @@ export function ContactsPreview({
             </p>
           )}
 
-          {result.contacts.length === 0 ? (
+          {contacts.length === 0 ? (
             <StepEmptyNotice
               message={getNoContactsMessage({
                 scrapedCount: result.meta?.scrapedCount,
@@ -339,40 +405,88 @@ export function ContactsPreview({
               })}
             />
           ) : (
-            <ul className="space-y-2">
-              {result.contacts.map((contact) => (
-                <li
-                  key={`${contact.companyId}-${contact.id}`}
-                  className={previewResultItemClassName}
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="break-words text-sm font-medium text-gray-900">
-                        {contact.fullName}
-                      </p>
-                      <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700">
-                        {contact.confidenceScore}% relevance
-                      </span>
-                      {result.meta?.relaxedMatch && contact.titleMatched === false && (
-                        <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-800">
-                          Alt. decision-maker
-                        </span>
-                      )}
-                    </div>
-                    <p className="break-words text-xs text-gray-500">
-                      {contact.title}
-                      {contact.department ? ` · ${contact.department}` : ""}
-                      {" · "}
-                      {contact.companyName}
-                    </p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" />
-                </li>
-              ))}
-            </ul>
+            <>
+              <DiscoveryResultsToolbar
+                sortValue={sortBy}
+                sortOptions={[...CONTACT_SORT_OPTIONS]}
+                onSortChange={handleSortChange}
+                filterValue={filterBy}
+                filterOptions={
+                  relaxedMatch
+                    ? [...CONTACT_FILTER_OPTIONS]
+                    : CONTACT_FILTER_OPTIONS.filter((option) => option.value !== "alt_only")
+                }
+                onFilterChange={handleFilterChange}
+                shownCount={displayedContacts.length}
+                totalCount={processedContacts.length}
+                totalLoadedLabel={
+                  processedContacts.length < contacts.length
+                    ? `${contacts.length} total before filters`
+                    : undefined
+                }
+              />
+
+              {processedContacts.length === 0 ? (
+                <StepEmptyNotice message="No people match the current filter. Try “All people” or a different sort." />
+              ) : (
+                <ul className="space-y-2">
+                  {displayedContacts.map((contact) => (
+                    <PreviewResultRow
+                      key={`${contact.companyId}-${contact.id}`}
+                      onClick={() => setDetailItem({ kind: "person", data: contact })}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="break-words text-sm font-medium text-gray-900">
+                            {contact.fullName}
+                          </p>
+                          <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700">
+                            {contact.confidenceScore}% relevance
+                          </span>
+                          {relaxedMatch && contact.titleMatched === false && (
+                            <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-800">
+                              Alt. decision-maker
+                            </span>
+                          )}
+                          {contact.linkedinUrl && (
+                            <a
+                              href={contact.linkedinUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(event) => event.stopPropagation()}
+                              className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700 hover:bg-sky-100"
+                            >
+                              LinkedIn
+                            </a>
+                          )}
+                        </div>
+                        <p className="break-words text-xs text-gray-500">
+                          {contact.title}
+                          {contact.department ? ` · ${contact.department}` : ""}
+                          {" · "}
+                          {contact.companyName}
+                        </p>
+                      </div>
+                    </PreviewResultRow>
+                  ))}
+                </ul>
+              )}
+
+              {canLoadMore && processedContacts.length > 0 && (
+                <DiscoveryLoadMoreButton
+                  onClick={loadMore}
+                  label="Show more people"
+                />
+              )}
+            </>
           )}
         </div>
       )}
+
+      <DiscoveryItemDetailModal
+        item={detailItem}
+        onClose={() => setDetailItem(null)}
+      />
     </OutreachStepPanel>
   );
 }

@@ -1139,6 +1139,18 @@ describe("company affiliation", () => {
     expect(
       verifyPersonCompanyAffiliation(
         {
+          title: "Group Chief Executive Officer",
+          bioText:
+            "Dino Varkey - Group Chief Executive Officer, GEMS Education · GEMS Education | LinkedIn",
+          source: "linkedin_search",
+        },
+        { name: "EduTech Global", domain: "edutechglobal.com" }
+      ).matches
+    ).toBe(false);
+
+    expect(
+      verifyPersonCompanyAffiliation(
+        {
           title: "Chief Human Resource Officer",
           bioText: "Paras Kaushik",
           source: "website_team",
@@ -2182,6 +2194,9 @@ describe("linkedin data quality", () => {
     expect(isPlausiblePersonName("Mr. Bilal Aslam Qureshi")).toBe(true);
     expect(isPlausiblePersonName("Our Mission")).toBe(false);
     expect(isPlausiblePersonName("Contact Us")).toBe(false);
+    expect(isPlausiblePersonName("Partner Enquiry")).toBe(false);
+    expect(isPlausiblePersonName("Your Product Modernization Partner")).toBe(false);
+    expect(isPlausiblePersonName("Our Trusted Technology Partner")).toBe(false);
   });
 
   it("parses IDC-style key management cards (h3 + span.qualification)", async () => {

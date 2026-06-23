@@ -164,7 +164,7 @@ export async function finalizeCompanyDiscovery(
   const { companies: matched, filteredCount, relaxedMatch, rejected } = applyCriteria(
     enriched,
     params,
-    { targetMinResults: Math.max(30, params.perPage * 3) }
+    { targetMinResults: Math.max(50, params.perPage * 5) }
   );
 
   if (filteredCount > 0) {

@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
     const searchId = body.searchId as string | undefined;
     const page = Math.max(1, Number(body.page) || 1);
-    const perPage = Math.min(100, Math.max(1, Number(body.perPage) || 25));
+    const perPage = Math.max(1, Number(body.perPage) || 50);
     const asyncMode = Boolean(body.async) && isQueueEnabled();
 
     if (!searchId) {

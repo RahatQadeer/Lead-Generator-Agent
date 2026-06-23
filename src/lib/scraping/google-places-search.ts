@@ -1,21 +1,27 @@
 import { createLogger } from "@/lib/logger";
+import { getMajorCitiesForCountry } from "@/lib/scraping/country-major-cities";
 import { extractDomainFromUrl } from "@/lib/scraping/extract-domain";
 import type { CompanyDirectorySeed } from "@/lib/scraping/company-directory-seeds";
+import {
+  getGooglePlacesMaxQueries,
+  getGooglePlacesMaxResultsPerRun,
+  getGooglePlacesPageSize,
+  getGooglePlacesPagesPerQuery,
+  getGooglePlacesPageTokenDelayMs,
+} from "@/lib/scraping/google-places-config";
 import { buildCompanySearchQuery } from "@/lib/scraping/web-search";
 import { countryToIsoCode } from "@/lib/search/jurisdiction-codes";
 import { parseSearchIntent } from "@/lib/search/search-intent";
 
 const log = createLogger("scraping.google-places");
 const SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
+const FIELD_MASK =
+  "places.displayName,places.formattedAddress,places.websiteUri,places.types,places.primaryType,places.businessStatus,places.nationalPhoneNumber,places.internationalPhoneNumber,nextPageToken";
 
-/** Types we don't want as B2B company leads. */
+/** Types we don't want as B2B company leads (unless the search targets that category). */
 const EXCLUDED_PLACE_TYPES = new Set([
   "school",
   "university",
-  "hospital",
-  "doctor",
-  "dentist",
-  "pharmacy",
   "church",
   "mosque",
   "hindu_temple",
@@ -45,6 +51,36 @@ const EXCLUDED_PLACE_TYPES = new Set([
   "hotel",
 ]);
 
+/** Healthcare place types — excluded for generic B2B, kept when the user searches hospitals/clinics. */
+const HEALTHCARE_PLACE_TYPES = new Set([
+  "hospital",
+  "doctor",
+  "dentist",
+  "pharmacy",
+  "medical_clinic",
+  "health",
+]);
+
+function isHealthcarePlaceSearch(input: GooglePlacesSearchInput): boolean {
+  const text = [input.industry, input.searchName, ...input.keywords]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return /\b(hospital|clinic|healthcare|health care|medical|pharma|diagnostic|health|dentist|nursing)\b/i.test(
+    text
+  );
+}
+
+export interface GooglePlacesSearchInput {
+  industry: string;
+  country: string;
+  keywords: string[];
+  searchName?: string;
+  companySizeMin?: number | null;
+  companySizeMax?: number | null;
+}
+
 interface GooglePlace {
   displayName?: { text?: string };
   formattedAddress?: string;
@@ -58,6 +94,7 @@ interface GooglePlace {
 
 interface GooglePlacesSearchResponse {
   places?: GooglePlace[];
+  nextPageToken?: string;
   error?: { message?: string; status?: string };
 }
 
@@ -74,18 +111,37 @@ function isGoogleMapsDirectoryEnabled(): boolean {
   return true;
 }
 
-function buildTextQueries(input: {
-  industry: string;
-  country: string;
-  keywords: string[];
-  searchName?: string;
-  companySizeMin?: number | null;
-  companySizeMax?: number | null;
-}): string[] {
+function isPlacesSafeQuery(query: string): boolean {
+  const trimmed = query.trim();
+  if (!trimmed) return false;
+  if (/\bsite:/i.test(trimmed)) return false;
+  return true;
+}
+
+function uniqueQueries(queries: string[]): string[] {
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const query of queries) {
+    const normalized = query.trim().replace(/\s+/g, " ");
+    if (!isPlacesSafeQuery(normalized)) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(normalized);
+  }
+  return unique;
+}
+
+/** Build text queries: national + intent variants + major cities for broader country coverage. */
+export function buildGooglePlacesTextQueries(input: GooglePlacesSearchInput): string[] {
+  const industry = input.industry.trim();
+  const country = input.country.trim();
+  const keywords = input.keywords.map((k) => k.trim()).filter(Boolean);
+
   const primary = buildCompanySearchQuery({
-    industry: input.industry,
-    country: input.country,
-    keywords: input.keywords,
+    industry,
+    country,
+    keywords,
     technologies: [],
     companySizeMin: input.companySizeMin,
     companySizeMax: input.companySizeMax,
@@ -93,15 +149,34 @@ function buildTextQueries(input: {
 
   const intent = parseSearchIntent({
     searchName: input.searchName,
-    industry: input.industry,
-    country: input.country,
-    keywords: input.keywords,
+    industry,
+    country,
+    keywords,
     companySizeMin: input.companySizeMin,
     companySizeMax: input.companySizeMax,
   });
 
-  const queries = [primary, ...intent.queryVariants].filter(Boolean);
-  return [...new Set(queries.map((query) => query.trim()))].slice(0, 6);
+  const queries: string[] = [primary, ...intent.queryVariants];
+
+  if (industry && country) {
+    queries.push(`${industry} companies ${country}`);
+    queries.push(`${industry} company ${country}`);
+    if (keywords[0]) {
+      queries.push(`${keywords[0]} company ${country}`);
+    }
+  }
+
+  const searchCore = [industry, ...keywords.slice(0, 2)].filter(Boolean).join(" ").trim();
+
+  for (const city of getMajorCitiesForCountry(country)) {
+    if (searchCore) {
+      queries.push(`${searchCore} company ${city} ${country}`);
+    } else if (industry) {
+      queries.push(`${industry} company ${city} ${country}`);
+    }
+  }
+
+  return uniqueQueries(queries).slice(0, getGooglePlacesMaxQueries());
 }
 
 function placeCompletenessScore(place: GooglePlace): number {
@@ -124,21 +199,32 @@ function parseCityFromAddress(address: string | undefined): string | null {
   return segments[0] ?? null;
 }
 
-function isExcludedPlace(types: string[] | undefined): boolean {
+function isExcludedPlace(
+  types: string[] | undefined,
+  options?: { allowHealthcare?: boolean }
+): boolean {
   if (!types?.length) return false;
-  return types.some((type) => EXCLUDED_PLACE_TYPES.has(type.toLowerCase()));
+
+  return types.some((type) => {
+    const normalized = type.toLowerCase();
+    if (options?.allowHealthcare && HEALTHCARE_PLACE_TYPES.has(normalized)) {
+      return false;
+    }
+    return EXCLUDED_PLACE_TYPES.has(normalized);
+  });
 }
 
 function mapPlaceToSeed(
   place: GooglePlace,
-  fallbackCountry: string
+  fallbackCountry: string,
+  options?: { allowHealthcare?: boolean }
 ): CompanyDirectorySeed | null {
   const name = place.displayName?.text?.trim();
   const website = place.websiteUri?.trim();
   if (!name || !website) return null;
 
   if (place.businessStatus && place.businessStatus !== "OPERATIONAL") return null;
-  if (isExcludedPlace(place.types)) return null;
+  if (isExcludedPlace(place.types, options)) return null;
 
   const domain = extractDomainFromUrl(website);
   if (!domain) return null;
@@ -175,87 +261,172 @@ function mapPlaceToSeed(
   };
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchPlacesPage(
+  apiKey: string,
+  options: {
+    textQuery: string;
+    regionCode?: string;
+    pageSize: number;
+    pageToken?: string;
+  }
+): Promise<GooglePlacesSearchResponse> {
+  const body: Record<string, unknown> = {
+    textQuery: options.textQuery,
+    languageCode: "en",
+    pageSize: options.pageSize,
+    ...(options.regionCode ? { regionCode: options.regionCode } : {}),
+    ...(options.pageToken ? { pageToken: options.pageToken } : {}),
+  };
+
+  const response = await fetch(SEARCH_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": apiKey,
+      "X-Goog-FieldMask": FIELD_MASK,
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(25_000),
+  });
+
+  const payload = (await response.json()) as GooglePlacesSearchResponse;
+  if (!response.ok && !payload.error?.message) {
+    return {
+      error: { message: `HTTP ${response.status}`, status: String(response.status) },
+    };
+  }
+  return payload;
+}
+
+async function collectPlacesForQuery(
+  apiKey: string,
+  textQuery: string,
+  regionCode: string | undefined,
+  options: {
+    maxPlaces: number;
+    pageSize: number;
+    maxPages: number;
+    pageTokenDelayMs: number;
+  }
+): Promise<GooglePlace[]> {
+  const collected: GooglePlace[] = [];
+  let pageToken: string | undefined;
+  let page = 0;
+
+  while (collected.length < options.maxPlaces && page < options.maxPages) {
+    let body: GooglePlacesSearchResponse;
+
+    try {
+      body = await fetchPlacesPage(apiKey, {
+        textQuery,
+        regionCode,
+        pageSize: Math.min(options.pageSize, options.maxPlaces - collected.length),
+        pageToken,
+      });
+    } catch (error) {
+      log.warn("Google Places request failed", {
+        query: textQuery,
+        page,
+        error: String(error),
+      });
+      break;
+    }
+
+    if (body.error?.message) {
+      log.warn("Google Places API error", {
+        query: textQuery,
+        page,
+        message: body.error.message,
+      });
+      break;
+    }
+
+    const batch = body.places ?? [];
+    if (batch.length === 0 && !body.nextPageToken) break;
+
+    collected.push(...batch);
+    page += 1;
+
+    const nextToken = body.nextPageToken?.trim();
+    if (!nextToken || collected.length >= options.maxPlaces) break;
+
+    pageToken = nextToken;
+    await sleep(options.pageTokenDelayMs);
+  }
+
+  return collected.slice(0, options.maxPlaces);
+}
+
 export function isGooglePlacesConfigured(): boolean {
   return Boolean(getApiKey()) && isGoogleMapsDirectoryEnabled();
 }
 
-export async function searchGooglePlacesCompanies(input: {
-  industry: string;
-  country: string;
-  keywords: string[];
-  searchName?: string;
-  maxResults?: number;
-}): Promise<CompanyDirectorySeed[]> {
+export async function searchGooglePlacesCompanies(
+  input: GooglePlacesSearchInput & { maxResults?: number }
+): Promise<CompanyDirectorySeed[]> {
   const apiKey = getApiKey();
   if (!apiKey) {
     log.info(
-      "Google Places skipped — set GOOGLE_PLACES_API_KEY (free $200/mo credit at console.cloud.google.com)"
+      "Google Places skipped — set GOOGLE_PLACES_API_KEY (Places API Text Search Pro SKU)"
     );
     return [];
   }
 
-  const textQueries = buildTextQueries(input);
+  const textQueries = buildGooglePlacesTextQueries(input);
   if (textQueries.length === 0) return [];
 
-  const maxResults = Math.min(input.maxResults ?? 15, 30);
+  const configuredCap = getGooglePlacesMaxResultsPerRun();
+  const maxResults = Math.min(input.maxResults ?? configuredCap, configuredCap);
+  const pageSize = getGooglePlacesPageSize();
+  const maxPages = getGooglePlacesPagesPerQuery();
+  const pageTokenDelayMs = getGooglePlacesPageTokenDelayMs();
   const regionCode = countryToIsoCode(input.country)?.toUpperCase() ?? undefined;
-  const perQuery = Math.max(3, Math.ceil(maxResults / textQueries.length));
+  const allowHealthcare = isHealthcarePlaceSearch(input);
+
+  const perQueryCap = Math.min(
+    pageSize * maxPages,
+    Math.max(pageSize, Math.ceil(maxResults / Math.max(1, textQueries.length)))
+  );
 
   const seeds: CompanyDirectorySeed[] = [];
   const seen = new Set<string>();
+  let apiCalls = 0;
 
   for (const textQuery of textQueries) {
     if (seeds.length >= maxResults) break;
 
-    try {
-      const response = await fetch(SEARCH_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Goog-Api-Key": apiKey,
-          "X-Goog-FieldMask":
-            "places.displayName,places.formattedAddress,places.websiteUri,places.types,places.primaryType,places.businessStatus,places.nationalPhoneNumber,places.internationalPhoneNumber",
-        },
-        body: JSON.stringify({
-          textQuery,
-          maxResultCount: Math.min(perQuery, 20),
-          languageCode: "en",
-          ...(regionCode ? { regionCode } : {}),
-        }),
-        signal: AbortSignal.timeout(25_000),
-      });
+    const remaining = maxResults - seeds.length;
+    const places = await collectPlacesForQuery(apiKey, textQuery, regionCode, {
+      maxPlaces: Math.min(perQueryCap, remaining + pageSize),
+      pageSize,
+      maxPages,
+      pageTokenDelayMs,
+    });
+    apiCalls += Math.min(maxPages, Math.max(1, Math.ceil(places.length / pageSize)));
 
-      const body = (await response.json()) as GooglePlacesSearchResponse;
-
-      if (!response.ok) {
-        log.warn("Google Places API error", {
-          query: textQuery,
-          status: response.status,
-          message: body.error?.message ?? "unknown",
-        });
-        continue;
-      }
-
-      for (const place of body.places ?? []) {
-        const seed = mapPlaceToSeed(place, input.country);
-        if (!seed?.domain || seen.has(seed.domain)) continue;
-        seen.add(seed.domain);
-        seeds.push(seed);
-        if (seeds.length >= maxResults) break;
-      }
-    } catch (error) {
-      log.warn("Google Places request failed", {
-        query: textQuery,
-        error: String(error),
-      });
+    for (const place of places) {
+      const seed = mapPlaceToSeed(place, input.country, { allowHealthcare });
+      if (!seed?.domain || seen.has(seed.domain)) continue;
+      seen.add(seed.domain);
+      seeds.push(seed);
+      if (seeds.length >= maxResults) break;
     }
   }
 
   log.info("Google Places search completed", {
-    queries: textQueries,
+    queries: textQueries.length,
+    apiCallsEstimate: apiCalls,
     regionCode: regionCode ?? null,
+    cap: maxResults,
     withWebsite: seeds.length,
   });
 
   return seeds;
 }
+
+/** @deprecated Use buildGooglePlacesTextQueries */
+export const buildTextQueries = buildGooglePlacesTextQueries;

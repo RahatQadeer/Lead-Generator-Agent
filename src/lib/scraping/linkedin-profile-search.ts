@@ -3,6 +3,7 @@ import { createLogger } from "@/lib/logger";
 import {
   textMentionsTargetCompany,
   verifyPersonCompanyAffiliation,
+  linkedInTextNamesOtherEmployer,
   type CompanyAffiliationTarget,
 } from "@/lib/scraping/company-affiliation";
 import {
@@ -19,6 +20,7 @@ import { parseLinkedInProfileTitle } from "@/lib/scraping/linkedin-profile-scrap
 import { getSearxngBaseUrl } from "@/lib/scraping/searxng-search";
 import { normalizeCompanyNameForSearch } from "@/lib/search/search-name-utils";
 import {
+  isScrapingToolAvailable,
   recordScrapingToolFailure,
   recordScrapingToolSuccess,
 } from "@/lib/scraping/tool-health";
@@ -28,13 +30,26 @@ const log = createLogger("scraping.linkedin-profile-search");
 
 const SEARCH_TIMEOUT_MS = 12_000;
 const MIN_CONFIDENCE = 45;
-const HIGH_CONFIDENCE = 78;
+const MIN_CONFIDENCE_WITHOUT_COMPANY = 30;
+const FIRST_RESULT_MIN_CONFIDENCE = 28;
+const FIRST_RESULT_MIN_CONFIDENCE_WITHOUT_COMPANY = 22;
+
+/** Whether any backend can run LinkedIn profile web search (Google via SearXNG, Bing, or DuckDuckGo). */
+export function isLinkedInWebSearchAvailable(): boolean {
+  if (getSearxngBaseUrl() && isScrapingToolAvailable("searxng")) return true;
+  return isScrapingToolAvailable("duckduckgo");
+}
 
 export interface LinkedInProfileSearchInput {
   fullName: string;
   jobTitle: string;
   companyName: string;
   companyDomain?: string | null;
+  /**
+   * When true (default), reject profiles that do not mention the target company.
+   * Set false only for website-verified contacts where name match is enough.
+   */
+  requireCompanyMatch?: boolean;
 }
 
 export interface LinkedInProfileSearchResult {
@@ -70,24 +85,118 @@ function primaryRoleToken(jobTitle: string): string {
   return match?.[0] ?? cleaned.split(/\s+/).slice(0, 3).join(" ");
 }
 
-/** Google/Bing structured queries: site:linkedin.com/in "Name" Role "Company". */
+const ROLE_KEYWORD_STOP = new Set([
+  "and",
+  "the",
+  "of",
+  "at",
+  "for",
+  "with",
+  "our",
+  "your",
+]);
+
+/** Role keywords for manual Google search (e.g. "software engineer full stack developer"). */
+export function meaningfulRoleKeywords(jobTitle: string): string {
+  const cleaned = jobTitle.trim();
+  if (!cleaned || /^team member$/i.test(cleaned)) return "";
+
+  const words = cleaned
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((word) => word.length > 2 && !ROLE_KEYWORD_STOP.has(word));
+
+  return words.slice(0, 6).join(" ");
+}
+
+function roleTextForNaturalSearch(jobTitle: string): string {
+  const cleaned = jobTitle.trim();
+  if (!cleaned || /^team member$/i.test(cleaned)) return "";
+
+  const executiveMatch = cleaned.match(
+    /\b(ceo|cto|cfo|coo|cmo|cpo|founder|co[-\s]?founder|president|director|owner|manager|vp|vice president|chief\s+[\w\s]+officer|head of[\w\s]*|partner)\b/i
+  );
+  if (executiveMatch?.[0]) return executiveMatch[0];
+
+  return meaningfulRoleKeywords(cleaned);
+}
+
+/** Manual Google search: "First Last role keywords linkedin" without company name. */
+export function buildNameAndRoleLinkedInQuery(
+  fullName: string,
+  jobTitle: string
+): string | null {
+  const name = fullName.trim();
+  const rolePart = roleTextForNaturalSearch(jobTitle);
+  if (!name || !rolePart) return null;
+  return `${name} ${rolePart} linkedin`;
+}
+
+/** Natural Google search: name + role + company + linkedin (no site: filter). */
+export function buildNaturalLinkedInSearchQuery(
+  input: LinkedInProfileSearchInput
+): string {
+  const name = input.fullName.trim();
+  const company = normalizeCompanyNameForSearch(input.companyName);
+  const role = input.jobTitle.trim();
+
+  if (role && !/^team member$/i.test(role)) {
+    return `${name} ${role} ${company} linkedin`;
+  }
+
+  return `${name} ${company} linkedin`;
+}
+
+/** Primary Google query: "Name" Role "Company" site:linkedin.com/in */
+export function buildPrimaryLinkedInGoogleQuery(
+  input: LinkedInProfileSearchInput
+): string {
+  const name = quoteToken(input.fullName.trim());
+  const company = quoteToken(normalizeCompanyNameForSearch(input.companyName));
+  const role = primaryRoleToken(input.jobTitle);
+
+  if (role) {
+    return `site:linkedin.com/in ${name} ${quoteToken(role)} ${company}`;
+  }
+
+  return `site:linkedin.com/in ${name} ${company}`;
+}
+
+/** Google/Bing structured queries — natural search first, then site:linkedin.com/in variants. */
 export function buildLinkedInProfileSearchQueries(
   input: LinkedInProfileSearchInput
 ): string[] {
   const name = quoteToken(input.fullName.trim());
+  const plainName = input.fullName.trim();
   const company = quoteToken(normalizeCompanyNameForSearch(input.companyName));
   const role = primaryRoleToken(input.jobTitle);
   const fullRole = quoteToken(input.jobTitle.trim());
+  const roleKeywords = meaningfulRoleKeywords(input.jobTitle);
   const domain = input.companyDomain?.replace(/^www\./, "").trim();
+  const natural = buildNaturalLinkedInSearchQuery(input);
+  const primary = buildPrimaryLinkedInGoogleQuery(input);
+  const nameAndRole = buildNameAndRoleLinkedInQuery(plainName, input.jobTitle);
 
   const queries = [
+    nameAndRole,
+    roleKeywords && roleKeywords !== role ? `${plainName} ${roleKeywords} linkedin` : null,
+    fullRole && !/^team member$/i.test(input.jobTitle.trim())
+      ? `${plainName} ${input.jobTitle.trim()} linkedin`
+      : null,
+    fullRole && !/^team member$/i.test(input.jobTitle.trim())
+      ? `site:linkedin.com/in ${plainName} ${input.jobTitle.trim()}`
+      : null,
+    natural,
+    primary,
+    role ? `${name} ${quoteToken(role)} ${company} linkedin` : null,
     role ? `site:linkedin.com/in ${name} ${role} ${company}` : null,
-    role ? `site:linkedin.com/in ${name} ${quoteToken(role)} ${company}` : null,
     fullRole && fullRole !== quoteToken(role)
       ? `site:linkedin.com/in ${name} ${fullRole} ${company}`
       : null,
     `site:linkedin.com/in ${name} ${company}`,
     role ? `site:linkedin.com/in ${name} ${role}` : null,
+    nameAndRole ? `site:linkedin.com/in ${plainName} ${roleKeywords}` : null,
     `site:linkedin.com/in ${name}`,
     domain ? `site:linkedin.com/in ${name} ${domain}` : null,
     role ? `${name} ${role} ${company} linkedin` : `${name} ${company} linkedin`,
@@ -114,6 +223,170 @@ function titlesRoughlyMatch(expected: string, found: string): boolean {
 
 function isLinkedInProfileUrl(url: string): boolean {
   return /linkedin\.com\/in\//i.test(url) && !/\/company\//i.test(url) && !/\/school\//i.test(url);
+}
+
+function linkedInSlugFromUrl(url: string): string {
+  const match = url.match(/linkedin\.com\/in\/([^/?#]+)/i);
+  return (match?.[1] ?? "").toLowerCase().replace(/\/$/, "");
+}
+
+function nameAppearsInLinkedInHit(
+  input: LinkedInProfileSearchInput,
+  hit: Pick<SearchHit, "title" | "url" | "content">
+): boolean {
+  const hitText = `${hit.title} ${hit.content}`.trim();
+  if (personNameAppearsInText(input.fullName, hitText)) return true;
+
+  const url = sanitizePersonLinkedInUrl(hit.url);
+  if (!url) return false;
+  if (linkedinProfileMatchesPerson(url, input.fullName, input.companyName)) return true;
+
+  const slug = linkedInSlugFromUrl(url);
+  if (!slug) return false;
+
+  const parts = input.fullName
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((part) => part.length > 1);
+  if (parts.length === 0) return false;
+  if (parts.length === 1) return slug.includes(parts[0]);
+
+  return slug.includes(parts[0]) && slug.includes(parts[parts.length - 1]);
+}
+
+async function searchSearxngMixed(
+  query: string,
+  maxResults: number,
+  engines?: string
+): Promise<SearchHit[]> {
+  const baseUrl = getSearxngBaseUrl();
+  if (!baseUrl) return [];
+
+  const searchUrl = new URL("/search", baseUrl);
+  searchUrl.searchParams.set("q", query);
+  searchUrl.searchParams.set("format", "json");
+  searchUrl.searchParams.set("categories", "general");
+  if (engines) searchUrl.searchParams.set("engines", engines);
+
+  try {
+    const response = await fetch(searchUrl.toString(), {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "LeadForge/1.0 (linkedin profile research)",
+      },
+      signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+      recordScrapingToolFailure("searxng");
+      return [];
+    }
+
+    const body = (await response.json()) as {
+      results?: Array<{ title?: string; url?: string; content?: string }>;
+    };
+
+    const hits: SearchHit[] = [];
+    for (const item of body.results ?? []) {
+      if (!item.url || !item.title) continue;
+      hits.push({
+        title: item.title.trim(),
+        url: item.url.trim(),
+        content: item.content?.trim() ?? "",
+        backend: "searxng",
+      });
+      if (hits.length >= maxResults) break;
+    }
+
+    if (hits.length > 0) recordScrapingToolSuccess("searxng");
+    return hits;
+  } catch (error) {
+    log.warn("SearXNG mixed search failed", { query, error: String(error) });
+    recordScrapingToolFailure("searxng");
+    return [];
+  }
+}
+
+/** Walk Google/SearXNG results in order and keep linkedin.com/in links. */
+export function extractLinkedInHitsFromMixedResults(
+  results: Array<Pick<SearchHit, "title" | "url" | "content" | "backend">>
+): SearchHit[] {
+  const hits: SearchHit[] = [];
+  const seen = new Set<string>();
+
+  for (const item of results) {
+    let url = item.url?.trim() ?? "";
+    if (!url) continue;
+
+    if (!isLinkedInProfileUrl(url)) {
+      const linkedInMatch = `${item.title} ${item.content}`.match(
+        /https?:\/\/(?:[\w-]+\.)?linkedin\.com\/in\/[^\s"'<>]+/i
+      );
+      url = linkedInMatch?.[0] ?? "";
+    }
+
+    if (!url || !isLinkedInProfileUrl(url)) continue;
+
+    const normalized = sanitizePersonLinkedInUrl(url);
+    if (!normalized || seen.has(normalized)) continue;
+
+    seen.add(normalized);
+    hits.push({
+      title: item.title?.trim() ?? "",
+      url: normalized,
+      content: item.content?.trim() ?? "",
+      backend: item.backend ?? "searxng",
+    });
+  }
+
+  return hits;
+}
+
+async function searchGoogleLinkedIn(query: string, maxResults: number): Promise<SearchHit[]> {
+  const baseUrl = getSearxngBaseUrl();
+  if (!baseUrl) return [];
+
+  const searchUrl = new URL("/search", baseUrl);
+  searchUrl.searchParams.set("q", query);
+  searchUrl.searchParams.set("format", "json");
+  searchUrl.searchParams.set("categories", "general");
+  searchUrl.searchParams.set("engines", "google");
+
+  try {
+    const response = await fetch(searchUrl.toString(), {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "LeadForge/1.0 (linkedin profile research)",
+      },
+      signal: AbortSignal.timeout(SEARCH_TIMEOUT_MS),
+    });
+
+    if (!response.ok) {
+      recordScrapingToolFailure("searxng");
+      return [];
+    }
+
+    const body = (await response.json()) as {
+      results?: Array<{ title?: string; url?: string; content?: string }>;
+    };
+
+    const hits = (body.results ?? [])
+      .filter((item) => item.url && isLinkedInProfileUrl(item.url))
+      .slice(0, maxResults)
+      .map((item) => ({
+        title: item.title?.trim() ?? "",
+        url: item.url!.trim(),
+        content: item.content?.trim() ?? "",
+        backend: "searxng" as const,
+      }));
+
+    if (hits.length > 0) recordScrapingToolSuccess("searxng");
+    return hits;
+  } catch (error) {
+    log.warn("Google LinkedIn search failed", { query, error: String(error) });
+    recordScrapingToolFailure("searxng");
+    return [];
+  }
 }
 
 async function searchSearxngLinkedIn(query: string, maxResults: number): Promise<SearchHit[]> {
@@ -197,6 +470,16 @@ async function searchBingLinkedIn(query: string, maxResults: number): Promise<Se
   return hits.slice(0, maxResults);
 }
 
+async function searchDuckDuckGoMixed(query: string, maxResults: number): Promise<SearchHit[]> {
+  const results = await searchWeb(query, maxResults);
+  return results.map((item) => ({
+    title: item.title ?? "",
+    url: item.url ?? "",
+    content: item.content ?? "",
+    backend: "duckduckgo" as const,
+  }));
+}
+
 async function searchDuckDuckGoLinkedIn(query: string, maxResults: number): Promise<SearchHit[]> {
   const results = await searchWeb(query, maxResults);
   return results
@@ -210,13 +493,184 @@ async function searchDuckDuckGoLinkedIn(query: string, maxResults: number): Prom
 }
 
 async function searchAllBackends(query: string): Promise<SearchHit[]> {
-  const searxngHits = await searchSearxngLinkedIn(query, 10);
-  if (searxngHits.length > 0) return searxngHits;
+  const useMixedSearch = !/\bsite:/i.test(query);
+
+  if (useMixedSearch && getSearxngBaseUrl()) {
+    const googleMixed = extractLinkedInHitsFromMixedResults(
+      await searchSearxngMixed(query, 20, "google")
+    );
+    if (googleMixed.length > 0) return googleMixed;
+
+    const searxngMixed = extractLinkedInHitsFromMixedResults(
+      await searchSearxngMixed(query, 20)
+    );
+    if (searxngMixed.length > 0) return searxngMixed;
+  }
+
+  if (useMixedSearch && isScrapingToolAvailable("duckduckgo")) {
+    const ddgMixed = extractLinkedInHitsFromMixedResults(
+      await searchDuckDuckGoMixed(query, 15)
+    );
+    if (ddgMixed.length > 0) return ddgMixed;
+  }
+
+  if (getSearxngBaseUrl()) {
+    const googleHits = await searchGoogleLinkedIn(query, 10);
+    if (googleHits.length > 0) return googleHits;
+
+    const searxngHits = await searchSearxngLinkedIn(query, 10);
+    if (searxngHits.length > 0) return searxngHits;
+  }
 
   const bingHits = await searchBingLinkedIn(query, 10);
   if (bingHits.length > 0) return bingHits;
 
-  return searchDuckDuckGoLinkedIn(query, 10);
+  if (isScrapingToolAvailable("duckduckgo")) {
+    return searchDuckDuckGoLinkedIn(query, 10);
+  }
+
+  return [];
+}
+
+/** Exact match: name + company appear in the Google result snippet/title. */
+export function isExactLinkedInSearchHit(
+  input: LinkedInProfileSearchInput,
+  hit: Pick<SearchHit, "title" | "url" | "content">
+): boolean {
+  const hitText = `${hit.title} ${hit.content}`.trim();
+  const target: CompanyAffiliationTarget = {
+    name: normalizeCompanyNameForSearch(input.companyName),
+    domain: input.companyDomain,
+  };
+
+  const parsed =
+    parseLinkedInProfileTitle(hit.title) ??
+    (() => {
+      const fromSearch = parseLinkedInSearchHit(hit.title, hit.content);
+      return fromSearch
+        ? {
+            fullName: fromSearch.fullName,
+            jobTitle: fromSearch.jobTitle,
+            affiliationText: hitText,
+          }
+        : null;
+    })();
+
+  const resolvedName = parsed?.fullName ?? input.fullName;
+  if (
+    !personNamesMatch(input.fullName, resolvedName) &&
+    !personNameAppearsInText(input.fullName, hitText)
+  ) {
+    return false;
+  }
+
+  if (!textMentionsTargetCompany(hitText, target)) return false;
+
+  return Boolean(sanitizePersonLinkedInUrl(hit.url));
+}
+
+function buildLinkedInSearchResult(
+  input: LinkedInProfileSearchInput,
+  hit: SearchHit,
+  options: { exactMatch: boolean; minConfidence: number; allowNameOnlyMatch?: boolean }
+): LinkedInProfileSearchResult | null {
+  const scored = scoreLinkedInCandidate(input, hit);
+  if (scored) {
+    return {
+      ...scored,
+      confidenceScore: options.exactMatch
+        ? Math.max(scored.confidenceScore, 90)
+        : scored.confidenceScore,
+    };
+  }
+
+  const url = sanitizePersonLinkedInUrl(hit.url);
+  if (!url) return null;
+
+  const hitText = `${hit.title} ${hit.content}`.trim();
+  if (!nameAppearsInLinkedInHit(input, hit)) {
+    return null;
+  }
+
+  const target: CompanyAffiliationTarget = {
+    name: normalizeCompanyNameForSearch(input.companyName),
+    domain: input.companyDomain,
+  };
+
+  if (linkedInTextNamesOtherEmployer(hitText, target)) {
+    return null;
+  }
+
+  const companyMatch = textMentionsTargetCompany(hitText, target);
+  const requireCompany = input.requireCompanyMatch !== false;
+
+  if (requireCompany && !companyMatch) {
+    return null;
+  }
+
+  if (
+    options.allowNameOnlyMatch &&
+    !requireCompany &&
+    !linkedinProfileMatchesPerson(url, input.fullName, input.companyName) &&
+    !personNameAppearsInText(input.fullName, hitText)
+  ) {
+    return null;
+  }
+
+  const parsed = parseLinkedInSearchHit(hit.title, hit.content);
+  return {
+    url,
+    fullName: parsed?.fullName ?? input.fullName,
+    headline: parsed?.jobTitle ?? input.jobTitle,
+    companyMatch,
+    confidenceScore: options.exactMatch ? 92 : options.minConfidence,
+    source: "public_profile",
+    searchBackend: hit.backend,
+  };
+}
+
+/**
+ * Pick the best LinkedIn URL from ordered Google results:
+ * 1) exact name + company (+ role) match, else 2) first valid profile link.
+ */
+export function pickLinkedInFromOrderedHits(
+  input: LinkedInProfileSearchInput,
+  hits: SearchHit[]
+): LinkedInProfileSearchResult | null {
+  for (const hit of hits) {
+    if (!isExactLinkedInSearchHit(input, hit)) continue;
+    const exact = buildLinkedInSearchResult(input, hit, {
+      exactMatch: true,
+      minConfidence: 90,
+    });
+    if (exact) return exact;
+  }
+
+  const requireCompany = input.requireCompanyMatch !== false;
+  const fallbackMinConfidence = requireCompany
+    ? FIRST_RESULT_MIN_CONFIDENCE
+    : FIRST_RESULT_MIN_CONFIDENCE_WITHOUT_COMPANY;
+
+  for (const hit of hits) {
+    const first = buildLinkedInSearchResult(input, hit, {
+      exactMatch: false,
+      minConfidence: fallbackMinConfidence,
+    });
+    if (first) return first;
+  }
+
+  if (!requireCompany) {
+    for (const hit of hits) {
+      const nameMatch = buildLinkedInSearchResult(input, hit, {
+        exactMatch: false,
+        minConfidence: FIRST_RESULT_MIN_CONFIDENCE_WITHOUT_COMPANY,
+        allowNameOnlyMatch: true,
+      });
+      if (nameMatch) return nameMatch;
+    }
+  }
+
+  return null;
 }
 
 function scoreLinkedInCandidate(
@@ -227,6 +681,15 @@ function scoreLinkedInCandidate(
   if (!url) return null;
 
   const hitText = `${hit.title} ${hit.content}`.trim();
+  const target: CompanyAffiliationTarget = {
+    name: normalizeCompanyNameForSearch(input.companyName),
+    domain: input.companyDomain,
+  };
+
+  if (linkedInTextNamesOtherEmployer(hitText, target)) {
+    return null;
+  }
+
   const parsed =
     parseLinkedInProfileTitle(hit.title) ??
     (() => {
@@ -263,10 +726,6 @@ function scoreLinkedInCandidate(
     confidenceScore += 10;
   }
 
-  const target: CompanyAffiliationTarget = {
-    name: normalizeCompanyNameForSearch(input.companyName),
-    domain: input.companyDomain,
-  };
   const affiliation = verifyPersonCompanyAffiliation(
     {
       title: headline,
@@ -281,7 +740,23 @@ function scoreLinkedInCandidate(
   if (companyMatch) confidenceScore += 25;
   else if (textMentionsTargetCompany(hitText, target)) confidenceScore += 12;
 
-  if (confidenceScore < MIN_CONFIDENCE) return null;
+  const requireCompany = input.requireCompanyMatch !== false;
+  const minConfidence = requireCompany ? MIN_CONFIDENCE : MIN_CONFIDENCE_WITHOUT_COMPANY;
+
+  if (confidenceScore < minConfidence) {
+    if (
+      !requireCompany &&
+      linkedinProfileMatchesPerson(url, input.fullName, input.companyName) &&
+      (personNamesMatch(input.fullName, resolvedName) ||
+        personNameAppearsInText(input.fullName, hitText))
+    ) {
+      confidenceScore = Math.max(confidenceScore, minConfidence);
+    } else {
+      return null;
+    }
+  }
+
+  if (requireCompany && !companyMatch) return null;
 
   return {
     url,
@@ -295,53 +770,47 @@ function scoreLinkedInCandidate(
 }
 
 /**
- * Find a person's LinkedIn profile using structured Google/Bing queries.
- * Input: name + company + role → Output: profile URL, headline, company match, confidence.
+ * Find a person's LinkedIn profile via Google search (name + role + company).
+ * Returns an exact-match profile when possible, otherwise the first valid result.
  */
 export async function searchLinkedInProfile(
   input: LinkedInProfileSearchInput
 ): Promise<LinkedInProfileSearchResult | null> {
-  const queries = buildLinkedInProfileSearchQueries(input);
-  const candidates: LinkedInProfileSearchResult[] = [];
-  const seenUrls = new Set<string>();
-
-  for (const query of queries) {
-    const hits = await searchAllBackends(query);
-
-    for (const hit of hits) {
-      const candidate = scoreLinkedInCandidate(input, hit);
-      if (!candidate || seenUrls.has(candidate.url)) continue;
-      seenUrls.add(candidate.url);
-      candidates.push(candidate);
-    }
-
-    if (candidates.some((entry) => entry.confidenceScore >= HIGH_CONFIDENCE)) {
-      break;
-    }
-  }
-
-  if (candidates.length === 0) {
-    log.info("No LinkedIn profile matched search criteria", {
+  if (!isLinkedInWebSearchAvailable()) {
+    log.info("LinkedIn web search skipped — no search backend available", {
       name: input.fullName,
       company: input.companyName,
-      role: input.jobTitle,
     });
     return null;
   }
 
-  candidates.sort((left, right) => right.confidenceScore - left.confidenceScore);
-  const best = candidates[0]!;
+  const queries = buildLinkedInProfileSearchQueries(input);
 
-  log.info("LinkedIn profile discovered via web search", {
+  for (const query of queries) {
+    const hits = await searchAllBackends(query);
+    const picked = pickLinkedInFromOrderedHits(input, hits);
+
+    if (picked) {
+      log.info("LinkedIn profile discovered via web search", {
+        name: input.fullName,
+        company: input.companyName,
+        role: input.jobTitle,
+        url: picked.url,
+        headline: picked.headline,
+        companyMatch: picked.companyMatch,
+        confidenceScore: picked.confidenceScore,
+        backend: picked.searchBackend,
+        query,
+      });
+      return picked;
+    }
+  }
+
+  log.info("No LinkedIn profile matched search criteria", {
     name: input.fullName,
     company: input.companyName,
     role: input.jobTitle,
-    url: best.url,
-    headline: best.headline,
-    companyMatch: best.companyMatch,
-    confidenceScore: best.confidenceScore,
-    backend: best.searchBackend,
   });
 
-  return best;
+  return null;
 }

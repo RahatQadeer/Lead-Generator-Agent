@@ -2,6 +2,7 @@ import {
   pickPersonalContactEmail,
   sanitizeCompanyLinkedInForCompany,
   sanitizePersonLinkedInForContact,
+  sanitizePersonLinkedInUrl,
 } from "@/lib/scraping/data-quality";
 import { formatEmployeeRange } from "@/lib/scraping/firmographics";
 import { computeCompanyFitBreakdown } from "@/lib/scraping/company-fit-breakdown";
@@ -35,7 +36,7 @@ export interface CompanyPublicView {
   validationWarnings: string[];
 }
 
-/** Step 2 — people only (no email or personal LinkedIn). */
+/** Step 2 — people (LinkedIn from search; email in step 3). */
 export interface PersonPublicView {
   id: string;
   fullName: string;
@@ -44,6 +45,7 @@ export interface PersonPublicView {
   companyName: string;
   companyId: string;
   confidenceScore: number;
+  linkedinUrl: string | null;
   sourceUrl: string | null;
   discoverySource: string | null;
   titleMatched?: boolean;
@@ -158,6 +160,7 @@ export function toPersonPublicView(contact: DiscoveredContact): PersonPublicView
     companyName: contact.companyName,
     companyId: contact.companyId,
     confidenceScore: contact.confidenceScore,
+    linkedinUrl: sanitizePersonLinkedInUrl(contact.linkedinUrl),
     sourceUrl: contact.sourceUrl ?? null,
     discoverySource: contact.discoverySource ?? null,
     titleMatched: contact.titleMatched,

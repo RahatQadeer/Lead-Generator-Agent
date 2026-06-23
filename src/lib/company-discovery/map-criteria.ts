@@ -4,7 +4,7 @@ import type { SearchRecord } from "@/types/search";
 export function mapSearchToDiscoveryParams(
   search: SearchRecord,
   page = 1,
-  perPage = 25
+  perPage = 50
 ): CompanyDiscoveryParams {
   return {
     searchName: search.name,

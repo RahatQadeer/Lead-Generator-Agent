@@ -31,6 +31,8 @@ export interface LeadEnrichmentInput {
   providerContactId?: string | null;
   /** Discovery provider name (e.g. pdl, scraping). */
   dataProvider?: string | null;
+  /** LinkedIn URL/source from step 2 people discovery (when already resolved). */
+  linkedInSource?: LinkedInSource;
 }
 
 export interface EnrichedLead {

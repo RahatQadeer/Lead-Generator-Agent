@@ -8,7 +8,7 @@ import {
   sanitizePersonLinkedInUrl,
   emailMatchesPersonName,
 } from "@/lib/scraping/data-quality";
-import { personNamesMatch } from "@/lib/scraping/contact-name-match";
+import { personNamesMatch, upgradePartialPersonName } from "@/lib/scraping/contact-name-match";
 import {
   DIRECTORY_CONTACT_PATHS,
   discoverDirectoryPaths,
@@ -56,6 +56,7 @@ export interface EnrichedContactDetails {
   contactPageUrl: string | null;
   confidenceScore: number;
   emailIsGuessed?: boolean;
+  resolvedFullName?: string | null;
 }
 
 function resolveCompanyDomain(input: LeadEnrichmentInput): string | null {
@@ -147,7 +148,12 @@ function finalizeDetails(
   input: LeadEnrichmentInput,
   details: Pick<
     EnrichedContactDetails,
-    "email" | "linkedinUrl" | "emailSource" | "linkedInSource" | "contactPageUrl"
+    | "email"
+    | "linkedinUrl"
+    | "emailSource"
+    | "linkedInSource"
+    | "contactPageUrl"
+    | "resolvedFullName"
   > & { emailIsGuessed?: boolean }
 ): EnrichedContactDetails {
   let emailResult: { email: string | null; emailSource: EmailSource };
@@ -159,11 +165,19 @@ function finalizeDetails(
     emailResult = { email: null, emailSource: null };
   }
 
-  const linkedinUrl = sanitizePersonLinkedInForContact(
-    details.linkedinUrl,
+  const linkedinUrl =
+    details.linkedInSource === "public_profile"
+      ? sanitizePersonLinkedInUrl(details.linkedinUrl)
+      : sanitizePersonLinkedInForContact(
+          details.linkedinUrl,
+          input.fullName,
+          input.companyName
+        ) ?? sanitizePersonLinkedInUrl(details.linkedinUrl);
+
+  const resolvedFullName = upgradePartialPersonName(
     input.fullName,
-    input.companyName
-  ) ?? sanitizePersonLinkedInUrl(details.linkedinUrl);
+    details.resolvedFullName
+  );
 
   const contactDetailType = resolveContactDetailType({
     email: emailResult.email,
@@ -197,6 +211,8 @@ function finalizeDetails(
     contactPageUrl: details.contactPageUrl,
     confidenceScore,
     emailIsGuessed,
+    resolvedFullName:
+      resolvedFullName !== input.fullName ? resolvedFullName : details.resolvedFullName,
   };
 }
 
@@ -207,6 +223,7 @@ interface PartialContactDetails {
   linkedinUrl: string | null;
   linkedInSource: LinkedInSource;
   contactPageUrl: string | null;
+  resolvedFullName?: string | null;
 }
 
 function emailPriority(source: EmailSource, isGuessed: boolean): number {
@@ -245,7 +262,7 @@ function pickBestEmail(
 function pickBestLinkedIn(
   a: PartialContactDetails,
   b: PartialContactDetails | null
-): Pick<PartialContactDetails, "linkedinUrl" | "linkedInSource"> {
+): Pick<PartialContactDetails, "linkedinUrl" | "linkedInSource" | "resolvedFullName"> {
   const candidates = [a, b].filter(Boolean) as PartialContactDetails[];
   const ranked = candidates
     .filter((entry) => entry.linkedinUrl)
@@ -258,6 +275,7 @@ function pickBestLinkedIn(
   return {
     linkedinUrl: best?.linkedinUrl ?? null,
     linkedInSource: best?.linkedInSource ?? null,
+    resolvedFullName: best?.resolvedFullName ?? null,
   };
 }
 
@@ -408,7 +426,7 @@ async function keepOnlyVerifiedEmail(
   };
 }
 
-/** Website scrape + public search — always resolve LinkedIn for display. */
+/** Website scrape + Google LinkedIn search (name + role + company) for contact step. */
 async function enrichLinkedInFromWebScraping(
   input: LeadEnrichmentInput
 ): Promise<PartialContactDetails> {
@@ -420,8 +438,27 @@ async function enrichLinkedInFromWebScraping(
       input.fullName,
       input.companyName
     );
-  let linkedInSource: LinkedInSource = linkedinUrl ? "website" : null;
+  let linkedInSource: LinkedInSource = linkedinUrl
+    ? (input.linkedInSource ?? "website")
+    : null;
   let contactPageUrl: string | null = null;
+
+  let resolvedFullName: string | null = null;
+
+  if (!linkedinUrl) {
+    const googleLinkedIn = await discoverPersonLinkedIn(
+      input.fullName,
+      input.companyName,
+      domain,
+      input.title,
+      { requireCompanyMatch: false }
+    );
+    if (googleLinkedIn.url) {
+      linkedinUrl = sanitizePersonLinkedInUrl(googleLinkedIn.url);
+      linkedInSource = googleLinkedIn.source ?? "public_profile";
+      resolvedFullName = googleLinkedIn.resolvedFullName ?? null;
+    }
+  }
 
   if (domain) {
     const cached = await getScrapeCache<CachedContactRow[]>(contactsCacheKey(domain));
@@ -464,19 +501,6 @@ async function enrichLinkedInFromWebScraping(
     }
   }
 
-  if (!linkedinUrl) {
-    const discovered = await discoverPersonLinkedIn(
-      input.fullName,
-      input.companyName,
-      domain,
-      input.title
-    );
-    if (discovered.url) {
-      linkedinUrl = discovered.url;
-      linkedInSource = discovered.source;
-    }
-  }
-
   return {
     email: null,
     emailSource: null,
@@ -484,6 +508,7 @@ async function enrichLinkedInFromWebScraping(
     linkedinUrl,
     linkedInSource,
     contactPageUrl,
+    resolvedFullName,
   };
 }
 
