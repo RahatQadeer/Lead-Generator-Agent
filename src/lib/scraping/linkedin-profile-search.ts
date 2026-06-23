@@ -453,7 +453,7 @@ async function searchBingLinkedIn(query: string, maxResults: number): Promise<Se
 
   $("#b_results .b_algo, .b_algo").each((_, element) => {
     const title = $(element).find("h2 a, a.tilk").first().text().trim();
-    let href = $(element).find("h2 a, a.tilk").first().attr("href") ?? "";
+    const href = $(element).find("h2 a, a.tilk").first().attr("href") ?? "";
     const content = $(element).find(".b_caption p, p.b_lineclamp2").first().text().trim();
 
     if (!title || !href) return;

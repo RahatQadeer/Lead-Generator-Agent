@@ -75,7 +75,8 @@ export class OpenRouterEmailGenerationProvider implements EmailGenerationProvide
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${this.apiKey}`,
-          "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+          // "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+          "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL ?? "https://lead-generator-agent-iota.vercel.app",
           "X-Title": "LeadForge Lead Generator",
         },
         body: JSON.stringify({

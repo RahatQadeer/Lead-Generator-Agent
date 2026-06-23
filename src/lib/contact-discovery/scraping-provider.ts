@@ -121,7 +121,7 @@ function toDiscoveredContact(
     person.fullName,
     company.name
   );
-  let { email, emailIsGuessed } = pickContactEmail(
+  const { email, emailIsGuessed } = pickContactEmail(
     person.email,
     person.source,
     person.fullName
