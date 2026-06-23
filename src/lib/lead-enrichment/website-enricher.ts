@@ -3,6 +3,7 @@ import { enrichContactDetailsFromWebsite } from "@/lib/lead-enrichment/enrich-co
 import type { LeadEnrichmentProvider } from "@/lib/lead-enrichment/types";
 import { createLogger } from "@/lib/logger";
 import { isPeopleDataLabsConfigured } from "@/lib/people-data-labs/config";
+import { upgradePartialPersonName } from "@/lib/scraping/contact-name-match";
 import { mapPool } from "@/lib/scraping/parallel-pool";
 import type { EnrichedLead, LeadEnrichmentInput } from "@/types/lead";
 
@@ -44,9 +45,14 @@ export class WebsiteLeadEnrichmentProvider implements LeadEnrichmentProvider {
       const state = input.companyState;
       const country = input.companyCountry;
 
+      const displayName = upgradePartialPersonName(
+        input.fullName,
+        details.resolvedFullName
+      );
+
       return {
         id: input.id,
-        name: input.fullName,
+        name: displayName,
         role: input.title,
         company: input.companyName,
         linkedin: details.linkedinUrl,

@@ -17,7 +17,7 @@ import { parseSearchIntent } from "@/lib/search/search-intent";
 import type { CompanyDiscoveryParams } from "@/types/company";
 
 const log = createLogger("company-discovery.apify");
-const SEARCH_RESULT_MULTIPLIER = 40;
+const SEARCH_RESULT_MULTIPLIER = 100;
 
 export class ApifyCompanyDiscoveryProvider implements CompanyDiscoveryProvider {
   readonly name = "apify";

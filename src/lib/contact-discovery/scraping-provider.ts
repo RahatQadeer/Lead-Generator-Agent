@@ -19,6 +19,7 @@ import {
   isPlausiblePersonName,
   pickContactEmail,
   sanitizePersonLinkedInForContact,
+  sanitizePersonLinkedInUrl,
 } from "@/lib/scraping/data-quality";
 import { discoverDirectoryPaths } from "@/lib/scraping/directory-paths";
 import { FAST_FETCH } from "@/lib/scraping/http-client";
@@ -44,9 +45,10 @@ import {
   discoverLeadershipViaSearch,
 } from "@/lib/scraping/leadership-search";
 import { discoverLeadershipFromPressPages } from "@/lib/scraping/press-release-leaders";
+import { finalizePeopleStepContacts } from "@/lib/contact-discovery/resolve-linkedin-profiles";
 import { isScrapingToolAvailable } from "@/lib/scraping/tool-health";
-import { getSearxngBaseUrl } from "@/lib/scraping/searxng-search";
 import type { ContactDiscoveryParams, DiscoveredContact } from "@/types/contact";
+import { getSearxngBaseUrl } from "@/lib/scraping/searxng-search";
 
 const log = createLogger("contact-discovery.scraping");
 const MAX_COMPANIES_PER_RUN = 15;
@@ -155,18 +157,6 @@ function toDiscoveredContact(
   });
 
   return contact;
-}
-
-/** Step 2 returns people only — contact details are resolved in step 3. */
-function stripContactDetailsForPeopleStep(
-  contact: DiscoveredContact
-): DiscoveredContact {
-  return {
-    ...contact,
-    email: null,
-    emailIsGuessed: false,
-    linkedinUrl: null,
-  };
 }
 
 function fromCachedRow(
@@ -574,7 +564,7 @@ async function supplementCompanyLeadership(
   const marked = markTitleMatch(quality.contacts, jobTitles, titleFilter.relaxedMatch);
 
   return {
-    contacts: marked.map(stripContactDetailsForPeopleStep),
+    contacts: await finalizePeopleStepContacts(marked, company, jobTitles),
     parsedCount: contacts.length,
     filteredCount: titleFilter.filteredCount,
     rejectedCount: rejected + quality.rejectedCount,
@@ -615,7 +605,7 @@ async function scrapeCompanyContactsWithoutDomain(
   const marked = markTitleMatch(quality.contacts, jobTitles, titleFilter.relaxedMatch);
 
   return {
-    contacts: marked.map(stripContactDetailsForPeopleStep),
+    contacts: await finalizePeopleStepContacts(marked, company, jobTitles),
     parsedCount: contacts.length,
     filteredCount: titleFilter.filteredCount,
     rejectedCount: mergeRejectedCount + quality.rejectedCount,
@@ -904,7 +894,7 @@ async function scrapeCompanyContactsInner(
         relaxedMatch: titleFilter.relaxedMatch,
       });
       return {
-        contacts: marked.map(stripContactDetailsForPeopleStep),
+        contacts: await finalizePeopleStepContacts(marked, company, jobTitles),
         parsedCount: restored.length,
         filteredCount: titleFilter.filteredCount,
         rejectedCount: quality.rejectedCount,
@@ -942,7 +932,7 @@ async function scrapeCompanyContactsInner(
         relaxedMatch: fallbackFilter.relaxedMatch,
       });
       return {
-        contacts: marked.map(stripContactDetailsForPeopleStep),
+        contacts: await finalizePeopleStepContacts(marked, company, jobTitles),
         parsedCount: fallbackPool.length,
         filteredCount: fallbackFilter.filteredCount,
         rejectedCount: quality.rejectedCount,
@@ -1118,7 +1108,7 @@ async function scrapeCompanyContactsInner(
   }
 
   return {
-    contacts: marked.map(stripContactDetailsForPeopleStep),
+    contacts: await finalizePeopleStepContacts(marked, company, jobTitles),
     parsedCount: discoveredCount,
     filteredCount: titleFilter.filteredCount,
     rejectedCount,

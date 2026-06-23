@@ -1,14 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { ContactRound, MapPin, Link2, Mail } from "lucide-react";
+import { ContactRound } from "lucide-react";
 import {
   OutreachStepPanel,
 } from "@/components/ui/OutreachStepPanel";
 import { StepActionButton } from "@/components/search/StepActionButton";
 import { StepEmptyNotice, StepErrorAlert } from "@/components/search/StepFeedback";
 import { DiscoveryProgressPanel } from "@/components/search/DiscoveryProgressPanel";
-import { linkClassName, nestedCardClassName } from "@/lib/ui/styles";
+import {
+  DiscoveryItemDetailModal,
+  type DiscoveryDetailItem,
+} from "@/components/search/DiscoveryItemDetailModal";
+import { PreviewResultRow } from "@/components/search/PreviewResultRow";
 import { ENRICHMENT_STAGES } from "@/lib/ui/discovery-stages";
 import { getNoLeadsEnrichedMessage } from "@/lib/ui/user-messages";
 import type { ContactDetailsView } from "@/lib/pipeline/public-views";
@@ -18,13 +22,6 @@ import {
   isGatedStepActionDisabled,
   type OutreachStepControlProps,
 } from "@/components/search/step-control";
-
-function linkedInSourceLabel(source: ContactDetailsView["linkedInSource"]): string {
-  if (source === "website") return "From company website";
-  if (source === "pdl") return "People Data Labs";
-  if (source === "public_profile") return "Google/Bing search";
-  return "";
-}
 
 interface EnrichLeadsPreviewProps extends OutreachStepControlProps {
   searchId: string;
@@ -62,6 +59,7 @@ export function EnrichLeadsPreview({
 }: EnrichLeadsPreviewProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<EnrichLeadsResponse | null>(null);
+  const [detailItem, setDetailItem] = useState<DiscoveryDetailItem | null>(null);
   const elapsedSeconds = useElapsedSeconds(loading);
   const rotatingStage = useRotatingStage(ENRICHMENT_STAGES, loading);
 
@@ -155,6 +153,10 @@ export function EnrichLeadsPreview({
               </span>
             )}
           </div>
+          <p className="text-xs text-gray-400">
+            Confidence % reflects how complete the lead is: verified email, LinkedIn profile, role
+            fit, and company match.
+          </p>
 
           {result.leads.length === 0 ? (
             <StepEmptyNotice
@@ -165,84 +167,56 @@ export function EnrichLeadsPreview({
           ) : (
             <ul className="space-y-2">
               {result.leads.map((lead) => (
-                <li
+                <PreviewResultRow
                   key={lead.id}
-                  className={`${nestedCardClassName} px-3 py-3`}
+                  onClick={() => setDetailItem({ kind: "contact", data: lead })}
                 >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="break-words text-sm font-medium text-gray-900">
-                      {lead.fullName}
-                    </p>
-                    {lead.outreachChannel === "linkedin" && (
-                      <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700">
-                        LinkedIn lead
-                      </span>
-                    )}
-                    {lead.outreachChannel === "email" && (
-                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
-                        Email lead
-                      </span>
-                    )}
-                    <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700">
-                      {lead.confidenceScore}% confidence
-                    </span>
-                  </div>
-                  <p className="mt-0.5 break-words text-xs text-violet-700">
-                    {lead.title} · {lead.companyName}
-                  </p>
-                  <div className="mt-2 space-y-1.5 text-xs text-gray-600">
-                    {lead.email ? (
-                      <p className="inline-flex items-start gap-1.5 break-all">
-                        <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                        <span>
-                          <span className="font-medium text-gray-900">{lead.email}</span>
-                          <span className="ml-1.5 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-                            Verified
-                          </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="break-words text-sm font-medium text-gray-900">
+                        {lead.fullName}
+                      </p>
+                      {lead.outreachChannel === "linkedin" && (
+                        <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[10px] font-medium text-sky-700">
+                          LinkedIn lead
                         </span>
-                      </p>
-                    ) : (
-                      <p className="text-gray-400">No verified email found</p>
-                    )}
-                    {lead.personalLinkedIn ? (
-                      <div className="flex flex-col gap-0.5">
-                        <a
-                          href={lead.personalLinkedIn}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`${linkClassName} inline-flex items-center gap-1.5 break-all`}
-                        >
-                          <Link2 className="h-3.5 w-3.5 shrink-0 text-[#0A66C2]" />
-                          {lead.personalLinkedIn.replace(/^https?:\/\/(www\.)?/, "")}
-                        </a>
-                        {lead.linkedInSource && (
-                          <span className="pl-5 text-[10px] text-gray-500">
-                            {linkedInSourceLabel(lead.linkedInSource)}
-                            {lead.linkedInSource === "public_profile"
-                              ? " · Google/Bing search"
-                              : ""}
-                          </span>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-gray-400">No LinkedIn profile found</p>
-                    )}
-                    {lead.outreachChannel === "linkedin" && lead.personalLinkedIn && (
-                      <p className="text-sky-700">Outreach via LinkedIn</p>
-                    )}
-                    {lead.location && (
-                      <p className="inline-flex items-center gap-1 break-words text-gray-500">
-                        <MapPin className="h-3 w-3 shrink-0" />
-                        {lead.location}
-                      </p>
-                    )}
+                      )}
+                      {lead.outreachChannel === "email" && (
+                        <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                          Email lead
+                        </span>
+                      )}
+                      <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700">
+                        {lead.confidenceScore}% confidence
+                      </span>
+                    </div>
+                    <p className="mt-0.5 break-words text-xs text-violet-700">
+                      {lead.title} · {lead.companyName}
+                    </p>
+                    <div className="mt-1.5 space-y-0.5 text-xs text-gray-500">
+                      {lead.email ? (
+                        <p className="truncate">{lead.email}</p>
+                      ) : (
+                        <p className="text-gray-400">No verified email</p>
+                      )}
+                      {lead.personalLinkedIn ? (
+                        <p className="truncate text-sky-700">LinkedIn profile found</p>
+                      ) : (
+                        <p className="text-gray-400">No LinkedIn profile</p>
+                      )}
+                    </div>
                   </div>
-                </li>
+                </PreviewResultRow>
               ))}
             </ul>
           )}
         </div>
       )}
+
+      <DiscoveryItemDetailModal
+        item={detailItem}
+        onClose={() => setDetailItem(null)}
+      />
     </OutreachStepPanel>
   );
 }

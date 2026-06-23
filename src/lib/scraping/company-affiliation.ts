@@ -131,16 +131,21 @@ function extractEmployersAfterAt(text: string): string[] {
   return employers;
 }
 
+/** LinkedIn titles use `-`, `|`, `·`, and commas between name, role, and employer. */
+function splitLinkedInTitleSegments(title: string): string[] {
+  const withoutSuffix = title.replace(/\s*\|\s*LinkedIn.*$/i, "").trim();
+  return withoutSuffix
+    .split(/\s*[-–|·]\s*/)
+    .flatMap((segment) => segment.split(/\s*,\s*/))
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
 function linkedInTitleIncludesCompany(
   title: string,
   target: CompanyAffiliationTarget
 ): boolean {
-  const withoutSuffix = title.replace(/\s*\|\s*LinkedIn.*$/i, "").trim();
-  const parts = withoutSuffix
-    .split(/\s*[-–|]\s*/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-
+  const parts = splitLinkedInTitleSegments(title);
   return parts.slice(1).some((part) => textMentionsTargetCompany(part, target));
 }
 
@@ -166,6 +171,23 @@ function indicatesEmploymentAtOtherCompany(
     if (employer.length < 3) continue;
     if (!textMentionsTargetCompany(employer, target)) return true;
   }
+
+  for (const segment of splitLinkedInTitleSegments(text).slice(1)) {
+    if (segment.length < 4) continue;
+    if (textMentionsTargetCompany(segment, target)) continue;
+    // Bare role-only tokens (e.g. "CEO") — employer is usually in the next segment.
+    if (
+      segment.length <= 28 &&
+      CURRENT_ROLE_PATTERN.test(segment) &&
+      !/\b(at|@)\b/i.test(segment)
+    ) {
+      continue;
+    }
+    if (/[a-z]/i.test(segment)) {
+      return true;
+    }
+  }
+
   return false;
 }
 
@@ -173,17 +195,25 @@ function titleNamesExternalEmployer(
   title: string,
   target: CompanyAffiliationTarget
 ): boolean {
-  const parts = title
-    .split(/[,|–-]/)
-    .map((part) => part.trim())
-    .filter(Boolean);
+  const parts = splitLinkedInTitleSegments(title);
   if (parts.length <= 1) return false;
 
   return parts.slice(1).some((part) => {
     if (part.length < 4) return false;
     if (textMentionsTargetCompany(part, target)) return false;
-    return true;
+    return /[a-z]/i.test(part);
   });
+}
+
+/** True when LinkedIn headline/snippet clearly names a different current employer. */
+export function linkedInTextNamesOtherEmployer(
+  text: string,
+  target: CompanyAffiliationTarget
+): boolean {
+  const value = text.trim();
+  if (!value) return false;
+  if (titleNamesExternalEmployer(value, target)) return true;
+  return indicatesEmploymentAtOtherCompany(value, target);
 }
 
 function verifyWebsiteTeamAffiliation(
@@ -218,6 +248,9 @@ function verifyWebsiteTeamAffiliation(
     if (indicatesCurrentRoleAtTarget(combined, target)) {
       return { matches: true, reason: null };
     }
+    if (title && CURRENT_ROLE_PATTERN.test(title)) {
+      return { matches: true, reason: null };
+    }
     return { matches: false, reason: "no_current_employment" };
   }
 
@@ -243,6 +276,10 @@ function verifyLinkedInSearchAffiliation(
 
   if (!combined) {
     return { matches: false, reason: "no_affiliation_text" };
+  }
+
+  if (title && titleNamesExternalEmployer(title, target)) {
+    return { matches: false, reason: "employed_at_other_company" };
   }
 
   if (!textMentionsTargetCompany(combined, target)) {

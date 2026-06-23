@@ -5,12 +5,13 @@ import {
   isPlaceholderEmail,
   pickPersonalContactEmail,
   sanitizePersonLinkedInForContact,
+  sanitizePersonLinkedInUrl,
 } from "@/lib/scraping/data-quality";
 import type { Database, Json } from "@/types/database";
 import type { DiscoveredContact } from "@/types/contact";
 import type { EmailVerificationStatus, EmailVerificationInput } from "@/types/email-verification";
 import type { VerifiedEmail } from "@/types/email-verification";
-import type { EnrichedLead, LeadEnrichmentInput } from "@/types/lead";
+import type { EnrichedLead, LeadEnrichmentInput, LinkedInSource } from "@/types/lead";
 import type { LeadScoringInput } from "@/types/lead-scoring";
 import type { LeadScoreFactors } from "@/types/lead-scoring";
 import type { ScoredLeadResult } from "@/types/lead-scoring";
@@ -35,6 +36,31 @@ export type ContactWithCompany = ContactRow & {
   > | null;
 };
 
+function resolveDiscoveredLinkedIn(contact: DiscoveredContact): {
+  linkedinUrl: string | null;
+  linkedInSource: LinkedInSource;
+} {
+  const linkedinUrl =
+    sanitizePersonLinkedInForContact(
+      contact.linkedinUrl,
+      contact.fullName,
+      contact.companyName
+    ) ?? sanitizePersonLinkedInUrl(contact.linkedinUrl);
+
+  if (!linkedinUrl) {
+    return { linkedinUrl: null, linkedInSource: null };
+  }
+
+  const linkedInSource: LinkedInSource =
+    contact.discoverySource === "linkedin_search" ||
+    contact.discoverySource === "wikidata" ||
+    contact.discoverySource === "directory_listing"
+      ? "public_profile"
+      : "website";
+
+  return { linkedinUrl, linkedInSource };
+}
+
 export function toContactInsertCore(
   userId: string,
   searchId: string,
@@ -43,6 +69,8 @@ export function toContactInsertCore(
 ): ContactInsert | null {
   const dedupKey = getContactDedupKey(contact);
   if (!dedupKey) return null;
+
+  const { linkedinUrl } = resolveDiscoveredLinkedIn(contact);
 
   return {
     user_id: userId,
@@ -56,7 +84,7 @@ export function toContactInsertCore(
     full_name: contact.fullName?.trim() || contact.firstName?.trim() || "Unknown",
     title: contact.title?.trim() || "Team Member",
     email: null,
-    linkedin_url: null,
+    linkedin_url: linkedinUrl,
     last_seen_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -65,12 +93,14 @@ export function toContactInsertCore(
 export function toContactInsertExtended(
   contact: DiscoveredContact
 ): Partial<ContactInsert> {
+  const { linkedInSource } = resolveDiscoveredLinkedIn(contact);
+
   return {
     department: contact.department,
     confidence_score: contact.confidenceScore,
     email_is_guessed: false,
     email_source: null,
-    linkedin_source: null,
+    linkedin_source: linkedInSource,
     outreach_channel: null,
     discarded_at: null,
     enriched_at: null,
@@ -110,6 +140,7 @@ export function toLeadEnrichmentInput(
     title: contact.title?.trim() || "Team Member",
     email: contact.email,
     linkedinUrl: contact.linkedin_url,
+    linkedInSource: (contact.linkedin_source as LinkedInSource) ?? null,
     emailIsGuessed: contact.email_is_guessed ?? false,
     companyId: contact.company_id,
     companyName: company?.name ?? contact.company_name ?? "Unknown",

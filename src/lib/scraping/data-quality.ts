@@ -195,7 +195,29 @@ const NON_PERSON_NAME_PATTERNS = [
   /^(fever fm|punjabi fever|radio nasha|radio one)$/i,
   /^(linkedin|profile|unknown|team|staff|contact us|get in touch|read more)$/i,
   /^(privacy policy|terms of service|cookie policy)$/i,
+  /^(partner|sales|customer|technical|general|media|press)\s+(enquiry|inquiry|request|information)$/i,
+  /^your\b/i,
+  /^our\b.+\b(partner|solutions|services)\b/i,
+  /\b(product modernization|digital transformation|trusted partner)\b/i,
 ];
+
+/** Website hero copy and taglines — not person names. */
+export function looksLikeMarketingTagline(value: string): boolean {
+  const cleaned = value.trim();
+  if (!cleaned) return false;
+  if (/^(your|our|we are|the leading)\b/i.test(cleaned)) return true;
+  if (/\b(modernization|transformation)\b/i.test(cleaned) && /\bpartner\b/i.test(cleaned)) {
+    return true;
+  }
+
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  if (words.length < 4) return false;
+
+  const marketingWord =
+    /\b(your|product|modernization|digital|transformation|trusted|leading|innovation|solutions|services|partner|provider|empowering|delivering|technology)\b/i;
+  const hits = words.filter((word) => marketingWord.test(word)).length;
+  return hits >= 2;
+}
 
 const COMPANY_SUFFIX_TOKENS =
   /^(inc|llc|ltd|corp|company|solutions|services|team|department|gmbh|ag|sa|bv)$/i;
@@ -209,6 +231,7 @@ export function isPlausiblePersonName(value: string): boolean {
     .trim();
   if (cleaned.length < 3 || cleaned.length > 60) return false;
   if (NON_PERSON_NAME_PATTERNS.some((pattern) => pattern.test(cleaned))) return false;
+  if (looksLikeMarketingTagline(cleaned)) return false;
 
   const titleCased = cleaned
     .split(/\s+/)

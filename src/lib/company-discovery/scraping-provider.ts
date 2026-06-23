@@ -16,7 +16,7 @@ import {
 import type { CompanyDiscoveryParams } from "@/types/company";
 
 const log = createLogger("company-discovery.scraping");
-const SEARCH_RESULT_MULTIPLIER = 40;
+const SEARCH_RESULT_MULTIPLIER = 100;
 
 export class ScrapingCompanyDiscoveryProvider implements CompanyDiscoveryProvider {
   readonly name = "scraping";

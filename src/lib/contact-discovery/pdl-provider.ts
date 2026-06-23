@@ -4,6 +4,7 @@ import {
   matchesJobTitle,
   MAX_CONTACTS_PER_COMPANY,
 } from "@/lib/contact-discovery/apply-title-filter";
+import { finalizePeopleStepContacts } from "@/lib/contact-discovery/resolve-linkedin-profiles";
 import { ContactDiscoveryError } from "@/lib/contact-discovery/errors";
 import type {
   ContactDiscoveryProvider,
@@ -140,7 +141,7 @@ async function searchCompanyPeople(
   const marked = markPdlTitleMatch(titleFilter.contacts, jobTitles, titleFilter.relaxedMatch);
 
   return {
-    contacts: marked,
+    contacts: await finalizePeopleStepContacts(marked, company, jobTitles),
     parsedCount: mapped.length,
     relaxedMatch: titleFilter.relaxedMatch,
   };
