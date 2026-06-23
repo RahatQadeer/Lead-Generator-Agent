@@ -346,7 +346,7 @@ async function enrichEmailFromWebScraping(
 
   let email = stored.email;
   let emailSource: EmailSource = stored.emailSource;
-  let emailIsGuessed = false;
+  const emailIsGuessed = false;
   let contactPageUrl: string | null = null;
 
   if (domain) {
