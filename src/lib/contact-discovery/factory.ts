@@ -2,10 +2,8 @@ import { ApolloContactDiscoveryProvider } from "@/lib/contact-discovery/apollo-p
 import { ApifyContactDiscoveryProvider } from "@/lib/contact-discovery/apify-provider";
 import { ContactDiscoveryError } from "@/lib/contact-discovery/errors";
 import { MockContactDiscoveryProvider } from "@/lib/contact-discovery/mock-provider";
-import { HybridContactDiscoveryProvider } from "@/lib/contact-discovery/hybrid-contact-provider";
 import { ScrapingContactDiscoveryProvider } from "@/lib/contact-discovery/scraping-provider";
 import type { ContactDiscoveryProvider } from "@/lib/contact-discovery/types";
-import { isPeopleDataLabsConfigured } from "@/lib/people-data-labs/config";
 import { isPaidApisDisabled } from "@/lib/providers/free-stack";
 
 export type ContactProviderName =
@@ -13,17 +11,16 @@ export type ContactProviderName =
   | "scraping"
   | "companies-house"
   | "apollo"
-  | "apify"
-  | "pdl";
+  | "apify";
 
 export function getConfiguredContactProviderName(): ContactProviderName {
   const explicit = process.env.CONTACT_DISCOVERY_PROVIDER?.toLowerCase();
 
   // People/contact discovery defaults to the SCRAPER — founders and leadership
   // are scraped from the company's own site and the directory listing (YC etc.),
-  // never a paid people-data API. Paid providers (PDL / Apollo / Apify) require
-  // an explicit CONTACT_DISCOVERY_PROVIDER opt-in and are ignored when paid APIs
-  // are disabled.
+  // never a paid people-data API. The remaining paid providers (Apollo / Apify)
+  // require an explicit CONTACT_DISCOVERY_PROVIDER opt-in and are ignored when
+  // paid APIs are disabled.
   if (!explicit || explicit === "scraping" || explicit === "web") {
     return "scraping";
   }
@@ -36,13 +33,6 @@ export function getConfiguredContactProviderName(): ContactProviderName {
     return "scraping";
   }
 
-  if (
-    (explicit === "pdl" || explicit === "people-data-labs" || explicit === "peopledatalabs") &&
-    isPeopleDataLabsConfigured()
-  ) {
-    return "pdl";
-  }
-
   if (explicit === "apollo") return "apollo";
   if (explicit === "apify") return "apify";
 
@@ -52,17 +42,6 @@ export function getConfiguredContactProviderName(): ContactProviderName {
 
 export function createContactDiscoveryProvider(): ContactDiscoveryProvider {
   const providerName = getConfiguredContactProviderName();
-
-  if (providerName === "pdl") {
-    if (!isPeopleDataLabsConfigured()) {
-      throw new ContactDiscoveryError(
-        "PROVIDER_NOT_CONFIGURED",
-        "People Data Labs API key is not configured. Set PEOPLE_DATA_LABS_API_KEY in your environment.",
-        { statusCode: 500, retryable: false }
-      );
-    }
-    return new HybridContactDiscoveryProvider();
-  }
 
   if (providerName === "apollo") {
     if (isPaidApisDisabled()) {

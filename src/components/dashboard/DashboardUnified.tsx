@@ -1,15 +1,11 @@
 import { DashboardGettingStarted } from "@/components/dashboard/DashboardGettingStarted";
 import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
 import { RecentActivityFeed } from "@/components/dashboard/RecentActivityFeed";
-import { ConversionMetricsPanel } from "@/components/dashboard/ConversionMetricsPanel";
-import { EmailMetricsPanel } from "@/components/dashboard/EmailMetricsPanel";
 import { LeadMetricsPanel } from "@/components/dashboard/LeadMetricsPanel";
 import type {
   ActivityItem,
-  ConversionMetrics,
   DashboardOnboardingStep,
   DashboardStats,
-  EmailMetrics,
   LeadMetrics,
 } from "@/types/dashboard";
 
@@ -17,8 +13,6 @@ interface DashboardUnifiedProps {
   firstName: string;
   stats: DashboardStats;
   leadMetrics: LeadMetrics;
-  emailMetrics: EmailMetrics;
-  conversionMetrics: ConversionMetrics;
   activities: ActivityItem[];
   steps: DashboardOnboardingStep[];
 }
@@ -27,8 +21,6 @@ export function DashboardUnified({
   firstName,
   stats,
   leadMetrics,
-  emailMetrics,
-  conversionMetrics,
   activities,
   steps,
 }: DashboardUnifiedProps) {
@@ -48,9 +40,6 @@ export function DashboardUnified({
           <RecentActivityFeed activities={activities} />
         </aside>
       </div>
-
-      <EmailMetricsPanel metrics={emailMetrics} />
-      <ConversionMetricsPanel metrics={conversionMetrics} />
     </div>
   );
 }

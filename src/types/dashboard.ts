@@ -1,11 +1,9 @@
 export interface DashboardStats {
   searchCount: number;
   leadCount: number;
-  emailsSent: number;
-  replyCount: number;
-  conversionRate: number | null;
-  draftCount: number;
-  campaignCount: number;
+  /** Leads that have at least one resolved contact channel. */
+  contactedLeadCount: number;
+  companyCount: number;
 }
 
 export interface DashboardOnboardingStep {
@@ -114,14 +112,7 @@ export type ActivityType =
   | "search_created"
   | "lead_discovered"
   | "lead_enriched"
-  | "lead_scored"
-  | "email_generated"
-  | "email_sent"
-  | "email_replied"
-  | "campaign_completed"
-  | "follow_up_scheduled"
-  | "follow_up_cancelled"
-  | "follow_up_suggested";
+  | "lead_scored";
 
 export interface ActivityItem {
   id: string;

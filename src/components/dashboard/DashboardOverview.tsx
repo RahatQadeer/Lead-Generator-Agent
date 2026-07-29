@@ -1,12 +1,9 @@
-import { Calendar, MessageSquare, Send, TrendingUp, Users } from "lucide-react";
+import { Building2, Calendar, Search, Users, Contact } from "lucide-react";
 import {
   DashboardKpiStrip,
   type DashboardKpiItem,
 } from "@/components/dashboard/DashboardKpiStrip";
-import {
-  formatConversionRate,
-  formatStatValue,
-} from "@/lib/dashboard/format";
+import { formatStatValue } from "@/lib/dashboard/format";
 import { headingPageClassName, textSecondaryClassName } from "@/lib/ui/styles";
 import type { DashboardStats } from "@/types/dashboard";
 
@@ -29,37 +26,33 @@ export function buildDashboardKpiItems(stats: DashboardStats): DashboardKpiItem[
       accent: "violet",
     },
     {
-      icon: Send,
-      label: "Emails sent",
-      value: formatStatValue(stats.emailsSent),
+      icon: Building2,
+      label: "Companies found",
+      value: formatStatValue(stats.companyCount),
       detail:
-        stats.emailsSent > 0
-          ? `${stats.campaignCount} campaign${stats.campaignCount === 1 ? "" : "s"} launched`
-          : stats.draftCount > 0
-            ? `${stats.draftCount} draft${stats.draftCount === 1 ? "" : "s"} ready`
-            : "Generate outreach from Leads",
+        stats.companyCount > 0
+          ? "Across all searches"
+          : "Run a search to discover companies",
       accent: "sky",
     },
     {
-      icon: MessageSquare,
-      label: "Replies",
-      value: formatStatValue(stats.replyCount),
+      icon: Contact,
+      label: "With contact details",
+      value: formatStatValue(stats.contactedLeadCount),
       detail:
-        stats.replyCount > 0
-          ? "Prospects engaged"
-          : stats.emailsSent > 0
-            ? "Check Emails for responses"
-            : "Waiting on first send",
+        stats.contactedLeadCount > 0
+          ? "Email, LinkedIn or phone resolved"
+          : "Enrich leads to collect contacts",
       accent: "emerald",
     },
     {
-      icon: TrendingUp,
-      label: "Conversion",
-      value: formatConversionRate(stats.conversionRate),
+      icon: Search,
+      label: "Saved searches",
+      value: formatStatValue(stats.searchCount),
       detail:
-        stats.conversionRate !== null
-          ? "Reply rate on sent emails"
-          : "Track once campaigns are live",
+        stats.searchCount > 0
+          ? "Rerun any search to refresh results"
+          : "Create your first search",
       accent: "amber",
     },
   ];

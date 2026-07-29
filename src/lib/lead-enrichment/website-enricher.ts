@@ -1,8 +1,5 @@
 import { formatLocation } from "@/lib/lead-enrichment/format-location";
-import {
-  enrichContactDetailsFromWebsite,
-  shouldUsePdlEnrichment,
-} from "@/lib/lead-enrichment/enrich-contact-details";
+import { enrichContactDetailsFromWebsite } from "@/lib/lead-enrichment/enrich-contact-details";
 import type { LeadEnrichmentProvider } from "@/lib/lead-enrichment/types";
 import { createLogger } from "@/lib/logger";
 import { upgradePartialPersonName } from "@/lib/scraping/contact-name-match";
@@ -18,8 +15,8 @@ export class WebsiteLeadEnrichmentProvider implements LeadEnrichmentProvider {
   readonly name: string;
 
   constructor() {
-    // Scraping is the default; only labeled "pdl" when explicitly opted in.
-    this.name = shouldUsePdlEnrichment() ? "pdl" : "scraping";
+    // Contact details are resolved by scraping public web sources only.
+    this.name = "scraping";
   }
 
   async enrich(

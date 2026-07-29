@@ -1,17 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { extractEmails } from "@/lib/scraping/parse-html";
 import {
-  decodeHtmlEntities,
-  formatReplySnippetForDisplay,
-  stripQuotedReplyContent,
-} from "@/lib/reply-tracking/extract-reply-text";
-import {
   extractDomainFromUrl,
   isLikelyCompanyDomain,
 } from "@/lib/scraping/extract-domain";
 import { buildCompanySearchQuery } from "@/lib/scraping/web-search";
 import { buildWikipediaSearchQueries } from "@/lib/scraping/wikipedia-search";
-import { CSV_IMPORT_TEMPLATE, parseCsvLeads } from "@/lib/import/parse-csv";
 
 describe("company search result filter", () => {
   it("blocks directory and article-like results", async () => {
@@ -795,26 +789,6 @@ describe("wikipedia company search", () => {
   }, 30_000);
 });
 
-describe("reply snippet formatting", () => {
-  it("strips quoted thread content", () => {
-    const raw =
-      "hello rahat On Fri, 12 Jun 2026 at 13:41, Rahat Qadeer wrote: Hey Laiba";
-    expect(stripQuotedReplyContent(raw)).toBe("hello rahat");
-  });
-
-  it("decodes html entities", () => {
-    expect(decodeHtmlEntities("Rahat &lt;test@example.com&gt;")).toBe(
-      "Rahat <test@example.com>"
-    );
-  });
-
-  it("formats full snippet for display", () => {
-    expect(
-      formatReplySnippetForDisplay("Thanks! On Mon, Jan wrote: previous message")
-    ).toBe("Thanks!");
-  });
-});
-
 describe("parse-html email extraction", () => {
   it("extracts emails from html", () => {
     const emails = extractEmails(
@@ -822,15 +796,6 @@ describe("parse-html email extraction", () => {
       "acme.com"
     );
     expect(emails).toContain("ceo@acme.com");
-  });
-});
-
-describe("csv import parser", () => {
-  it("parses valid csv rows", () => {
-    const { rows, errors } = parseCsvLeads(CSV_IMPORT_TEMPLATE);
-    expect(errors).toHaveLength(0);
-    expect(rows.length).toBeGreaterThanOrEqual(2);
-    expect(rows[0].company).toBe("ButterBee");
   });
 });
 

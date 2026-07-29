@@ -33,13 +33,6 @@ const activityIcons: Record<ActivityType, LucideIcon> = {
   lead_discovered: UserPlus,
   lead_enriched: Users,
   lead_scored: Star,
-  email_generated: Sparkles,
-  email_sent: Send,
-  email_replied: MessageSquare,
-  campaign_completed: Mail,
-  follow_up_scheduled: Mail,
-  follow_up_cancelled: Ban,
-  follow_up_suggested: Sparkles,
 };
 
 export function RecentActivityFeed({ activities }: RecentActivityFeedProps) {

@@ -8,7 +8,6 @@
  */
 
 import { isApifyEnabled } from "@/lib/apify/config";
-import { getConfiguredEmailProviderName } from "@/lib/email-generation/factory";
 import { getConfiguredEmailVerificationProviderName } from "@/lib/email-verification/factory";
 import { getSearxngBaseUrl, isSearxngAvailable } from "@/lib/scraping/searxng-search";
 
@@ -68,10 +67,10 @@ export function getPipelineStackConfig(): PipelineTierStatus[] {
     },
     {
       tier: "email",
-      label: "Email generation + verification",
+      label: "Email verification",
       priority: 4,
       enabled: true,
-      detail: `${getConfiguredEmailProviderName()} generation, ${getConfiguredEmailVerificationProviderName()} verification`,
+      detail: `${getConfiguredEmailVerificationProviderName()} verification`,
     },
   ];
 }

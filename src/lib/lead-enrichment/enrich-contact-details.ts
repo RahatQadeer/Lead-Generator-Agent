@@ -1,7 +1,4 @@
 import { createLogger } from "@/lib/logger";
-import { enrichPersonFromPeopleDataLabs } from "@/lib/people-data-labs/enrich-person";
-import { isPeopleDataLabsConfigured } from "@/lib/people-data-labs/config";
-import { isPaidApisDisabled } from "@/lib/providers/free-stack";
 import {
   pickContactEmail,
   pickPersonalContactEmail,
@@ -317,47 +314,19 @@ function pickBestLinkedInFromSources(
   };
 }
 
-async function enrichEmailFromPdl(
-  input: LeadEnrichmentInput,
-  pdl: Awaited<ReturnType<typeof enrichPersonFromPeopleDataLabs>> | null
-): Promise<PartialContactDetails | null> {
-  if (!pdl?.workEmail) return null;
-
-  let email: string | null = null;
-  let emailSource: EmailSource = null;
-
-  const picked = pickPersonalContactEmail(input.fullName, pdl.workEmail);
-  if (picked.email && !picked.emailIsGuessed) {
-    email = picked.email;
-    emailSource = "found";
-  } else if (pdl.workEmail.includes("@")) {
-    const normalized = pdl.workEmail.trim().toLowerCase();
-    if (emailMatchesPersonName(normalized, input.fullName)) {
-      email = normalized;
-      emailSource = "found";
-    }
-  }
-
-  if (!email) return null;
-
-  return {
-    email,
-    emailSource,
-    emailIsGuessed: false,
-    linkedinUrl: null,
-    linkedInSource: null,
-    phone: null,
-    phoneSource: null,
-    socialProfiles: null,
-    contactPageUrl: null,
-  };
-}
-
-async function enrichLinkedInFromPdl(
-  input: LeadEnrichmentInput,
-  pdl: Awaited<ReturnType<typeof enrichPersonFromPeopleDataLabs>> | null
-): Promise<PartialContactDetails | null> {
-  const rawUrl = pdl?.linkedinUrl ?? input.linkedinUrl;
+/**
+ * Sanitize the LinkedIn URL that step-2 discovery already attached to the
+ * person, before any scraping runs.
+ *
+ * This used to also merge in a LinkedIn URL from the paid people-data provider.
+ * That provider is gone, but the discovery-supplied URL still needs the same
+ * sanitising, so this path is kept — dropping it would silently discard the
+ * LinkedIn profile for every contact whose URL came from discovery.
+ */
+function enrichLinkedInFromDiscovery(
+  input: LeadEnrichmentInput
+): PartialContactDetails | null {
+  const rawUrl = input.linkedinUrl;
   const linkedinUrl =
     sanitizePersonLinkedInUrl(rawUrl) ??
     sanitizePersonLinkedInForContact(rawUrl, input.fullName, input.companyName);
@@ -369,7 +338,7 @@ async function enrichLinkedInFromPdl(
     emailSource: null,
     emailIsGuessed: false,
     linkedinUrl,
-    linkedInSource: "pdl",
+    linkedInSource: "public_profile",
     phone: null,
     phoneSource: null,
     socialProfiles: null,
@@ -593,19 +562,6 @@ async function enrichLinkedInFromWebScraping(
   };
 }
 
-export function shouldUsePdlEnrichment(): boolean {
-  // Person contact details (email / phone / LinkedIn) are scraped from the
-  // company's own site and directory pages by default. People Data Labs is used
-  // ONLY when explicitly opted into via CONTACT_DISCOVERY_PROVIDER=pdl and paid
-  // APIs are not disabled.
-  const provider = process.env.CONTACT_DISCOVERY_PROVIDER?.toLowerCase();
-  const optedIntoPdl =
-    provider === "pdl" ||
-    provider === "people-data-labs" ||
-    provider === "peopledatalabs";
-  return optedIntoPdl && isPeopleDataLabsConfigured() && !isPaidApisDisabled();
-}
-
 const EMPTY_WEB_DETAILS: PartialContactDetails = {
   email: null,
   emailSource: null,
@@ -622,23 +578,15 @@ const EMPTY_WEB_DETAILS: PartialContactDetails = {
 export async function enrichContactDetailsFromWebsite(
   input: LeadEnrichmentInput
 ): Promise<EnrichedContactDetails> {
-  const pdl = shouldUsePdlEnrichment()
-    ? await enrichPersonFromPeopleDataLabs({
-        pdlId: input.providerContactId,
-        fullName: input.fullName,
-        companyName: input.companyName,
-        companyDomain: input.companyDomain,
-        linkedinUrl: input.linkedinUrl,
-      })
-    : null;
+  // Contact details come from public web sources only. The paid people-data
+  // provider that previously supplied a pre-scrape email candidate is gone, so
+  // email always resolves by scraping; LinkedIn still starts from whatever
+  // discovery attached to the person.
+  const apiEmail: PartialContactDetails | null = null;
+  const apiLinkedIn = enrichLinkedInFromDiscovery(input);
 
-  const [pdlEmail, pdlLinkedIn] = await Promise.all([
-    enrichEmailFromPdl(input, pdl),
-    enrichLinkedInFromPdl(input, pdl),
-  ]);
-
-  const apiEmailPick = pickBestEmailFromSources(EMPTY_WEB_DETAILS, pdlEmail);
-  const apiLinkedInPick = pickBestLinkedInFromSources(EMPTY_WEB_DETAILS, pdlLinkedIn);
+  const apiEmailPick = pickBestEmailFromSources(EMPTY_WEB_DETAILS, apiEmail);
+  const apiLinkedInPick = pickBestLinkedInFromSources(EMPTY_WEB_DETAILS, apiLinkedIn);
 
   const needsEmail = !apiEmailPick.email;
   const needsLinkedIn = !apiLinkedInPick.linkedinUrl;
@@ -665,14 +613,14 @@ export async function enrichContactDetailsFromWebsite(
     }
   }
 
-  const emailPick = pickBestEmailFromSources(webEmail, pdlEmail);
+  const emailPick = pickBestEmailFromSources(webEmail, apiEmail);
   const verifiedEmail = await keepOnlyVerifiedEmail(
     input.id,
     input.fullName,
     emailPick.email,
     emailPick.emailSource
   );
-  const linkedInPick = pickBestLinkedInFromSources(webLinkedIn, pdlLinkedIn);
+  const linkedInPick = pickBestLinkedInFromSources(webLinkedIn, apiLinkedIn);
 
   // Step 2 discovery already read the person's card, so its phone/socials are the
   // primary source here; the enrichment scrape only fills what discovery missed.

@@ -3,7 +3,7 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
-  Mail,
+  Contact,
   Rocket,
   Search,
   Users,
@@ -21,13 +21,12 @@ const stepIcons: Record<number, LucideIcon> = {
   1: Search,
   2: Search,
   3: Users,
-  4: Mail,
+  4: Contact,
 };
 
 const NEXT_ACTIONS = [
   { href: "/searches", label: "Searches", icon: Search },
   { href: "/leads", label: "Leads", icon: Users },
-  { href: "/emails", label: "Emails", icon: Mail },
 ] as const;
 
 function stepShortLabel(label: string): string {

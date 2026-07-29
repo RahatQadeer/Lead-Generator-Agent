@@ -15,8 +15,6 @@ import {
 import { LinkedInIcon } from "@/components/icons/LinkedInIcon";
 import { EmailVerificationBadge } from "@/components/leads/EmailVerificationBadge";
 import { IntentSignalsBadge } from "@/components/leads/IntentSignalsBadge";
-import { GenerateEmailButton } from "@/components/leads/GenerateEmailButton";
-import { FollowUpStoppedBadge } from "@/components/emails/FollowUpStoppedBadge";
 import { LeadScoreBadge } from "@/components/leads/LeadScoreBadge";
 import { isValidPersonLinkedInUrl } from "@/lib/scraping/data-quality";
 import { deleteAllLeads, deleteLeads } from "@/lib/leads/actions";
@@ -306,11 +304,6 @@ export function LeadsList({ leads: initialLeads }: LeadsListProps) {
                           status={lead.emailVerificationStatus}
                         />
                       )}
-                      {lead.followUpsPaused && (
-                        <FollowUpStoppedBadge
-                          reason={lead.followUpsPausedReason}
-                        />
-                      )}
                     </div>
                     <p className="mt-0.5 text-sm text-gray-600">{lead.role}</p>
                     <div className="mt-1.5">
@@ -353,13 +346,6 @@ export function LeadsList({ leads: initialLeads }: LeadsListProps) {
                     <LeadScoreBadge score={lead.leadScore} />
                   )}
                   <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                    <GenerateEmailButton
-                      contactId={lead.id}
-                      leadName={lead.name}
-                      hasEmail={Boolean(lead.email)}
-                      followUpsPaused={lead.followUpsPaused}
-                      iconOnly
-                    />
                     {isValidPersonLinkedInUrl(lead.linkedin) && (
                       <a
                         href={lead.linkedin!}

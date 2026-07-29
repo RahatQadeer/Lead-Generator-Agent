@@ -28,41 +28,6 @@ const activityStyles: Record<
     icon: "bg-amber-50 text-amber-600",
     badge: "bg-amber-50 text-amber-700",
   },
-  email_generated: {
-    accent: "border-l-sky-400",
-    icon: "bg-sky-50 text-sky-600",
-    badge: "bg-sky-50 text-sky-700",
-  },
-  email_sent: {
-    accent: "border-l-gray-300",
-    icon: "bg-gray-100 text-gray-600",
-    badge: "bg-gray-100 text-gray-600",
-  },
-  email_replied: {
-    accent: "border-l-emerald-400",
-    icon: "bg-emerald-50 text-emerald-600",
-    badge: "bg-emerald-50 text-emerald-700",
-  },
-  campaign_completed: {
-    accent: "border-l-gray-300",
-    icon: "bg-gray-100 text-gray-600",
-    badge: "bg-gray-100 text-gray-600",
-  },
-  follow_up_scheduled: {
-    accent: "border-l-amber-400",
-    icon: "bg-amber-50 text-amber-600",
-    badge: "bg-amber-50 text-amber-700",
-  },
-  follow_up_cancelled: {
-    accent: "border-l-red-300",
-    icon: "bg-red-50 text-red-500",
-    badge: "bg-red-50 text-red-600",
-  },
-  follow_up_suggested: {
-    accent: "border-l-violet-400",
-    icon: "bg-violet-50 text-violet-600",
-    badge: "bg-violet-50 text-violet-700",
-  },
 };
 
 interface ActivityFeedItemProps {

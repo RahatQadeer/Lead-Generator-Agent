@@ -6,7 +6,6 @@ import {
   LayoutDashboard,
   Search,
   Users,
-  Mail,
   Settings,
   X,
 } from "lucide-react";
@@ -21,7 +20,6 @@ const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/searches", label: "Searches", icon: Search },
   { href: "/leads", label: "Leads", icon: Users },
-  { href: "/emails", label: "Emails", icon: Mail },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

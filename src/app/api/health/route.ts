@@ -2,9 +2,7 @@ import { NextResponse } from "next/server";
 import { validateServerEnv } from "@/lib/env";
 import { getConfiguredProviderName } from "@/lib/company-discovery/factory";
 import { getConfiguredEmailVerificationProviderName } from "@/lib/email-verification/factory";
-import { getConfiguredEmailProviderName } from "@/lib/email-generation/factory";
-import { getConfiguredSendingProviderName } from "@/lib/email-sending/factory";
-import { getConfiguredReplyTrackingProvider } from "@/lib/reply-tracking/factory";
+import { getConfiguredContactProviderName } from "@/lib/contact-discovery/factory";
 import { isGooglePlacesConfigured } from "@/lib/scraping/google-places-search";
 import { isOverpassConfigured } from "@/lib/scraping/overpass-search";
 import { isOpenCorporatesConfigured } from "@/lib/scraping/opencorporates-search";
@@ -40,10 +38,8 @@ export async function GET() {
     },
     providers: {
       companyDiscovery: getConfiguredProviderName(),
+      contactDiscovery: getConfiguredContactProviderName(),
       emailVerification: getConfiguredEmailVerificationProviderName(),
-      emailGeneration: getConfiguredEmailProviderName(),
-      emailSending: getConfiguredSendingProviderName(),
-      replyTracking: getConfiguredReplyTrackingProvider(),
       directorySeeds: {
         enabled: directoryEnabled,
         businessDirectory: isBusinessDirectoryConfigured(),

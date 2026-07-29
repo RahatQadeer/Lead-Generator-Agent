@@ -1,1 +1,0 @@
-export const DEFAULT_FOLLOW_UP_DELAY_DAYS = 3;

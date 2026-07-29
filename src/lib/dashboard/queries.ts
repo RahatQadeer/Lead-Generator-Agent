@@ -1,5 +1,3 @@
-import { getCampaignSummary } from "@/lib/email-campaigns/queries";
-import { getReplySummary } from "@/lib/reply-tracking/queries";
 import { createClient } from "@/lib/supabase/server";
 import type { DashboardOnboardingStep, DashboardStats } from "@/types/dashboard";
 
@@ -8,7 +6,7 @@ export async function getDashboardStats(
 ): Promise<DashboardStats> {
   const supabase = await createClient();
 
-  const [searches, leads, replySummary, campaignSummary] = await Promise.all([
+  const [searches, leads, contacted, companies] = await Promise.all([
     supabase
       .from("searches")
       .select("id", { count: "exact", head: true })
@@ -18,23 +16,23 @@ export async function getDashboardStats(
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
       .not("enriched_at", "is", null),
-    getReplySummary(userId),
-    getCampaignSummary(userId),
+    // A lead is only actionable once at least one contact channel resolved.
+    supabase
+      .from("contacts")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .or("email.not.is.null,linkedin_url.not.is.null,phone.not.is.null"),
+    supabase
+      .from("companies")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId),
   ]);
-
-  const emailsSent = replySummary.sentCount;
-  const replyCount = replySummary.repliedCount;
-  const conversionRate =
-    emailsSent > 0 ? Math.round((replyCount / emailsSent) * 100) : null;
 
   return {
     searchCount: searches.count ?? 0,
     leadCount: leads.count ?? 0,
-    emailsSent,
-    replyCount,
-    conversionRate,
-    draftCount: campaignSummary.draftCount,
-    campaignCount: campaignSummary.campaignCount,
+    contactedLeadCount: contacted.count ?? 0,
+    companyCount: companies.count ?? 0,
   };
 }
 
@@ -56,15 +54,15 @@ export function getOnboardingSteps(
     },
     {
       step: 3,
-      label: "Find & enrich leads",
+      label: "Find decision makers",
       done: stats.leadCount > 0,
       href: "/leads",
     },
     {
       step: 4,
-      label: "Send outreach",
-      done: stats.emailsSent > 0,
-      href: "/emails",
+      label: "Collect contact details",
+      done: stats.contactedLeadCount > 0,
+      href: "/leads",
     },
   ];
 }
