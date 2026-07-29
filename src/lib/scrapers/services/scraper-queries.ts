@@ -8,6 +8,7 @@ import type {
   ScraperRunReport,
   ScraperSourceId,
 } from "@/lib/scrapers/types";
+import type { PipelineProgress } from "@/lib/pipeline/progress";
 
 export interface ScraperJobRecord {
   id: string;
@@ -46,7 +47,15 @@ function mapRow(row: Record<string, unknown>): ScraperJobRecord {
 export async function createScraperJob(input: {
   userId: string;
   searchId: string | null;
-  sources: ScraperSourceId[];
+  /**
+   * Source identifiers for this job.
+   *
+   * Widened from `ScraperSourceId[]` to `string[]`: the provider pipeline
+   * records provider ids here (`scraper:ycombinator`, `google-places`), which
+   * are a superset of the legacy scraper source ids. The column is untyped text
+   * either way, so narrowing bought nothing and forced a cast at the call site.
+   */
+  sources: readonly string[];
   options: ScraperRunOptions;
   filters?: ScraperFilters;
   bullmqJobId?: string | null;
@@ -66,7 +75,9 @@ export async function createScraperJob(input: {
     .insert({
       user_id: input.userId,
       search_id: input.searchId,
-      sources: input.sources,
+      // Copied because the column type is mutable `string[]`; the parameter is
+      // `readonly` so callers can pass a frozen list without it being mutated.
+      sources: [...input.sources],
       status: "pending",
       options: optionsPayload as unknown as Json,
       bullmq_job_id: input.bullmqJobId ?? null,
@@ -87,7 +98,13 @@ export async function updateScraperJob(
   jobId: string,
   patch: Partial<{
     status: ScraperJobStatus;
-    report: ScraperRunReport | null;
+    /**
+     * The legacy engine writes a `ScraperRunReport`; the provider pipeline
+     * writes a `PipelineProgress` snapshot. The column is jsonb and readers
+     * discriminate on shape, so the union is the honest type — narrowing to one
+     * of them forced a cast at the other's call site.
+     */
+    report: ScraperRunReport | PipelineProgress | null;
     errorLog: string[];
     startedAt: string | null;
     completedAt: string | null;

@@ -7,12 +7,12 @@ import { FieldShell, describedBy } from "@/components/search-builder/fields/Fiel
 import { SectionShell } from "@/components/search-builder/sections/SectionShell";
 import {
   SEARCH_PRESETS,
-  type SearchBuilderValues,
+  type SearchBuilderInput,
 } from "@/lib/search-builder/schema";
 
 interface Props {
-  control: Control<SearchBuilderValues>;
-  errors: FieldErrors<SearchBuilderValues>;
+  control: Control<SearchBuilderInput>;
+  errors: FieldErrors<SearchBuilderInput>;
   /** Which preset was last applied, for the active state. */
   appliedPresetId: string | null;
   onApplyPreset: (presetId: string) => void;

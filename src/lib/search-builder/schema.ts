@@ -27,6 +27,8 @@ export const FUNDING_STAGES = [
   "acquired",
 ] as const;
 
+export type FundingStageValue = (typeof FUNDING_STAGES)[number];
+
 export const CONTACT_TYPES = [
   "linkedin",
   "work_email",
@@ -58,16 +60,15 @@ export const COMPANY_SIZE_BANDS = [
 ] as const;
 
 /**
- * No field uses `.default()`.
+ * Defaults live on the schema, so a partially-populated payload (a preset, a
+ * pre-035 database row, a hand-written API call) parses into a complete value
+ * without every caller repeating them.
  *
- * A Zod default makes the field optional on the schema's INPUT type while it
- * stays required on the OUTPUT type. `useForm<SearchBuilderValues>` is typed on
- * the output, so a defaulted schema produces a `zodResolver` whose input type
- * does not match — and the mismatch cascades into every `Control<...>` prop in
- * the six sections.
- *
- * The defaults are redundant anyway: `emptySearchBuilderValues` below is a
- * complete value object and is what `useForm({ defaultValues })` receives.
+ * That makes the INPUT and OUTPUT types genuinely different — a defaulted field
+ * is optional going in and guaranteed coming out — which is modelled explicitly
+ * below as {@link SearchBuilderInput} and {@link SearchBuilderValues}. React
+ * Hook Form is parameterised with both, so the form state is the input type and
+ * `handleSubmit` hands you the output type.
  */
 export const searchBuilderSchema = z
   .object({
@@ -79,28 +80,28 @@ export const searchBuilderSchema = z
       .max(120, "Keep the name under 120 characters."),
 
     // --- company filters ---
-    countries: z.array(z.string().trim().min(1)),
-    industries: z.array(z.string().trim().min(1)),
-    companySizeMin: z.number().int().min(0).nullable(),
-    companySizeMax: z.number().int().min(0).nullable(),
-    companyType: z.enum(COMPANY_TYPES).nullable(),
-    fundingStages: z.array(z.enum(FUNDING_STAGES)),
-    recentlyFundedMonths: z.number().int().positive().max(120).nullable(),
-    keywords: z.array(z.string().trim().min(1)),
+    countries: z.array(z.string().trim().min(1)).default([]),
+    industries: z.array(z.string().trim().min(1)).default([]),
+    companySizeMin: z.number().int().min(0).nullable().default(null),
+    companySizeMax: z.number().int().min(0).nullable().default(null),
+    companyType: z.enum(COMPANY_TYPES).nullable().default(null),
+    fundingStages: z.array(z.enum(FUNDING_STAGES)).default([]),
+    recentlyFundedMonths: z.number().int().positive().max(120).nullable().default(null),
+    keywords: z.array(z.string().trim().min(1)).default([]),
 
     // --- people ---
-    roleKeys: z.array(z.string()),
+    roleKeys: z.array(z.string()).default([]),
 
     // --- contact ---
-    contactTypes: z.array(z.enum(CONTACT_TYPES)),
+    contactTypes: z.array(z.enum(CONTACT_TYPES)).default([]),
 
     // --- providers ---
     // Empty means "every enabled provider", matching the column default.
-    enabledProviders: z.array(z.string()),
+    enabledProviders: z.array(z.string()).default([]),
 
     // --- run options ---
-    limit: z.number().int().min(0).max(500),
-    enrichCompanies: z.boolean(),
+    limit: z.number().int().min(0).max(500).default(50),
+    enrichCompanies: z.boolean().default(true),
   })
   .superRefine((value, ctx) => {
     if (
@@ -146,7 +147,23 @@ export const searchBuilderSchema = z
     }
   });
 
-export type SearchBuilderValues = z.infer<typeof searchBuilderSchema>;
+/**
+ * What the FORM holds. Defaulted fields are optional here, because a caller may
+ * legitimately omit them and let the schema fill them in.
+ *
+ * This is the type React Hook Form is parameterised on, so `control`, `watch`
+ * and `setValue` all speak it.
+ */
+export type SearchBuilderInput = z.input<typeof searchBuilderSchema>;
+
+/**
+ * What VALIDATION produces. Every field is present, so downstream code —
+ * `toSearchRow`, `toPipelineRunPayload`, the API handlers — never has to
+ * re-check for undefined.
+ *
+ * `handleSubmit` hands this to its callback.
+ */
+export type SearchBuilderValues = z.output<typeof searchBuilderSchema>;
 
 export const emptySearchBuilderValues: SearchBuilderValues = {
   name: "",
@@ -164,6 +181,39 @@ export const emptySearchBuilderValues: SearchBuilderValues = {
   limit: 50,
   enrichCompanies: true,
 };
+
+/**
+ * Fill in the schema's defaults without validating.
+ *
+ * `watch()` and `getValues()` hand back the INPUT type, where every defaulted
+ * field may be undefined — but the summary panel and the save payload both need
+ * complete values, and neither should refuse to render just because the form is
+ * mid-edit and momentarily invalid.
+ *
+ * Written out field by field rather than spreading: a spread of a partial over
+ * the defaults cannot be expressed without a cast, whereas this is checked by
+ * the compiler, so adding a field to the schema and forgetting it here is a
+ * build error rather than a silent undefined at runtime.
+ */
+export function withDefaults(input: SearchBuilderInput): SearchBuilderValues {
+  return {
+    name: input.name,
+    countries: input.countries ?? emptySearchBuilderValues.countries,
+    industries: input.industries ?? emptySearchBuilderValues.industries,
+    companySizeMin: input.companySizeMin ?? emptySearchBuilderValues.companySizeMin,
+    companySizeMax: input.companySizeMax ?? emptySearchBuilderValues.companySizeMax,
+    companyType: input.companyType ?? emptySearchBuilderValues.companyType,
+    fundingStages: input.fundingStages ?? emptySearchBuilderValues.fundingStages,
+    recentlyFundedMonths:
+      input.recentlyFundedMonths ?? emptySearchBuilderValues.recentlyFundedMonths,
+    keywords: input.keywords ?? emptySearchBuilderValues.keywords,
+    roleKeys: input.roleKeys ?? emptySearchBuilderValues.roleKeys,
+    contactTypes: input.contactTypes ?? emptySearchBuilderValues.contactTypes,
+    enabledProviders: input.enabledProviders ?? emptySearchBuilderValues.enabledProviders,
+    limit: input.limit ?? emptySearchBuilderValues.limit,
+    enrichCompanies: input.enrichCompanies ?? emptySearchBuilderValues.enrichCompanies,
+  };
+}
 
 /** Ready-made starting points. Presets set filters only — never the name. */
 export interface SearchPreset {
@@ -257,6 +307,14 @@ export function toSearchRow(values: SearchBuilderValues) {
   };
 }
 
+/** Narrow an unknown string to a member of a literal tuple. */
+function isMemberOf<T extends string>(
+  allowed: readonly T[],
+  value: string
+): value is T {
+  return (allowed as readonly string[]).includes(value);
+}
+
 /** A `searches` row → form values, tolerating rows written before 035. */
 export function fromSearchRow(row: Record<string, unknown>): SearchBuilderValues {
   const arr = (value: unknown): string[] =>
@@ -285,18 +343,23 @@ export function fromSearchRow(row: Record<string, unknown>): SearchBuilderValues
           : [],
     companySizeMin: num(row.company_size_min),
     companySizeMax: num(row.company_size_max),
-    companyType: COMPANY_TYPES.includes(row.company_type as CompanyType)
-      ? (row.company_type as CompanyType)
-      : null,
-    fundingStages: arr(row.funding_stages).filter((s) =>
-      (FUNDING_STAGES as readonly string[]).includes(s)
-    ) as SearchBuilderValues["fundingStages"],
+    companyType:
+      typeof row.company_type === "string" &&
+      isMemberOf(COMPANY_TYPES, row.company_type)
+        ? row.company_type
+        : null,
+    // Type predicates rather than casts: a stored value that is no longer a
+    // valid enum member is dropped, and the compiler proves the survivors are
+    // members instead of being told to assume it.
+    fundingStages: arr(row.funding_stages).filter(
+      (stage): stage is FundingStageValue => isMemberOf(FUNDING_STAGES, stage)
+    ),
     recentlyFundedMonths: num(row.recently_funded_months),
     keywords: arr(row.keywords),
     roleKeys: arr(row.role_keys),
-    contactTypes: arr(row.contact_types).filter((t) =>
-      (CONTACT_TYPES as readonly string[]).includes(t)
-    ) as ContactType[],
+    contactTypes: arr(row.contact_types).filter((type): type is ContactType =>
+      isMemberOf(CONTACT_TYPES, type)
+    ),
     enabledProviders: arr(row.enabled_providers),
     limit: 50,
     enrichCompanies: true,

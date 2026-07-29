@@ -18,11 +18,12 @@ import {
 } from "@/lib/search-builder/labels";
 import {
   RECENTLY_FUNDED_OPTIONS,
+  type SearchBuilderInput,
   type SearchBuilderValues,
 } from "@/lib/search-builder/schema";
 
 interface Props {
-  control: Control<SearchBuilderValues>;
+  control: Control<SearchBuilderInput>;
   values: SearchBuilderValues;
   isValid: boolean;
   running: boolean;

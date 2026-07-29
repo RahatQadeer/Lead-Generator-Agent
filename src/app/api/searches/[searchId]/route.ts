@@ -95,8 +95,7 @@ export async function PATCH(
 
     const { data, error } = await supabase
       .from("searches")
-      // See ../route.ts — generated types predate migration 035.
-      .update(row as never)
+      .update(row)
       .eq("id", searchId)
       .eq("user_id", user.id)
       .select("*")

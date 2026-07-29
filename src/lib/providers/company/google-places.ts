@@ -45,8 +45,15 @@ export function createGooglePlacesCompanyProvider(): CompanyProvider {
 
     isConfigured: () => Boolean(googlePlacesApiKey()),
 
-    // eslint-disable-next-line require-yield
-    async *discover(
+    /**
+     * A plain method rather than an `async *` generator.
+     *
+     * A generator body that only throws needs an unreachable `yield` (or a lint
+     * suppression) to satisfy `require-yield`, and it defers the error until the
+     * caller starts iterating. Throwing synchronously fails fast and keeps the
+     * declared `AsyncIterable` return type — `never` is assignable to it.
+     */
+    discover(
       _criteria: CompanyCriteria,
       _ctx: ProviderContext
     ): AsyncIterable<ScrapedCompanyProfile> {

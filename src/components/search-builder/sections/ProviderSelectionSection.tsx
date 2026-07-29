@@ -15,10 +15,10 @@ import { AlertCircle, Loader2, Plug, RefreshCw } from "lucide-react";
 import { useProviders, type ProviderInfo } from "@/hooks/useProviders";
 import { SectionShell } from "@/components/search-builder/sections/SectionShell";
 import { PROVIDER_KIND_LABELS } from "@/lib/search-builder/labels";
-import type { SearchBuilderValues } from "@/lib/search-builder/schema";
+import type { SearchBuilderInput } from "@/lib/search-builder/schema";
 
 interface Props {
-  control: Control<SearchBuilderValues>;
+  control: Control<SearchBuilderInput>;
 }
 
 const KIND_ORDER = ["company", "people", "contact", "funding"] as const;
@@ -64,13 +64,19 @@ export function ProviderSelectionSection({ control }: Props) {
         <Controller
           control={control}
           name="enabledProviders"
-          render={({ field }) => (
+          render={({ field }) => {
+            // Resolved once: on the form's input type this field is optional
+            // (the schema defaults it), so every read below would otherwise need
+            // its own undefined check.
+            const selected = field.value ?? [];
+
+            return (
             <div className="space-y-5">
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                {field.value.length === 0
+                {selected.length === 0
                   ? `Using all ${enabledCount} available providers.`
-                  : `${field.value.length} of ${enabledCount} selected.`}{" "}
-                {field.value.length > 0 && (
+                  : `${selected.length} of ${enabledCount} selected.`}{" "}
+                {selected.length > 0 && (
                   <button
                     type="button"
                     onClick={() => field.onChange([])}
@@ -95,12 +101,12 @@ export function ProviderSelectionSection({ control }: Props) {
                         <ProviderRow
                           key={provider.id}
                           provider={provider}
-                          checked={field.value.includes(provider.id)}
+                          checked={selected.includes(provider.id)}
                           onToggle={() =>
                             field.onChange(
-                              field.value.includes(provider.id)
-                                ? field.value.filter((id) => id !== provider.id)
-                                : [...field.value, provider.id]
+                              selected.includes(provider.id)
+                                ? selected.filter((id) => id !== provider.id)
+                                : [...selected, provider.id]
                             )
                           }
                         />
@@ -110,7 +116,8 @@ export function ProviderSelectionSection({ control }: Props) {
                 );
               })}
             </div>
-          )}
+            );
+          }}
         />
       )}
     </SectionShell>

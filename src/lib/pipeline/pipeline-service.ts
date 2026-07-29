@@ -82,7 +82,7 @@ export async function executePipelineJob(
     if (!force && now - lastPersistedAt < PROGRESS_PERSIST_INTERVAL_MS) return;
     lastPersistedAt = now;
     try {
-      await updateScraperJob(input.jobId, { report: progress as never }, true);
+      await updateScraperJob(input.jobId, { report: progress }, true);
     } catch (error) {
       // Progress is observability, not the product — never fail a run over it.
       log.debug("Progress persist failed", { jobId: input.jobId, error: String(error) });

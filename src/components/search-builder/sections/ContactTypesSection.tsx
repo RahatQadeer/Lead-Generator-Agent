@@ -7,10 +7,10 @@ import { ChipGroup } from "@/components/search-builder/fields/ChipGroup";
 import { FieldShell } from "@/components/search-builder/fields/FieldShell";
 import { SectionShell } from "@/components/search-builder/sections/SectionShell";
 import { CONTACT_TYPE_LABELS } from "@/lib/search-builder/labels";
-import { CONTACT_TYPES, type SearchBuilderValues } from "@/lib/search-builder/schema";
+import { CONTACT_TYPES, type SearchBuilderInput } from "@/lib/search-builder/schema";
 
 interface Props {
-  control: Control<SearchBuilderValues>;
+  control: Control<SearchBuilderInput>;
 }
 
 export function ContactTypesSection({ control }: Props) {
@@ -36,7 +36,7 @@ export function ContactTypesSection({ control }: Props) {
                 value: type,
                 label: CONTACT_TYPE_LABELS[type],
               }))}
-              value={field.value}
+              value={field.value ?? []}
               onChange={field.onChange}
             />
           </FieldShell>

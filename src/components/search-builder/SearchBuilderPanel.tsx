@@ -30,6 +30,8 @@ import {
   searchBuilderSchema,
   SEARCH_PRESETS,
   toPipelineRunPayload,
+  withDefaults,
+  type SearchBuilderInput,
   type SearchBuilderValues,
 } from "@/lib/search-builder/schema";
 
@@ -50,7 +52,18 @@ export function SearchBuilderPanel({ initialSearches }: Props) {
   const run = usePipelineRun();
   const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const form = useForm<SearchBuilderValues>({
+  /**
+   * Three generics, because the schema's input and output types genuinely
+   * differ once defaults are involved:
+   *
+   *   TFieldValues       SearchBuilderInput   — what the form holds
+   *   TContext           unknown              — unused
+   *   TTransformedValues SearchBuilderValues  — what handleSubmit yields
+   *
+   * This is what lets `handleSubmit` give the callback a fully-populated value
+   * while `control` stays on the looser type the inputs actually carry.
+   */
+  const form = useForm<SearchBuilderInput, unknown, SearchBuilderValues>({
     resolver: zodResolver(searchBuilderSchema),
     defaultValues: emptySearchBuilderValues,
     // onChange, not onBlur: the Run button is gated on `formState.isValid`, and
@@ -59,8 +72,13 @@ export function SearchBuilderPanel({ initialSearches }: Props) {
     mode: "onChange",
   });
 
-  const { control, handleSubmit, reset, setValue, watch, formState } = form;
+  const { control, handleSubmit, reset, watch, formState } = form;
   const values = watch();
+
+  // The review summary needs complete values, but must keep rendering while the
+  // form is mid-edit and momentarily invalid — so fill defaults rather than
+  // validating here.
+  const summaryValues = useMemo(() => withDefaults(values), [values]);
 
   // --- persistence -----------------------------------------------------------
 
@@ -106,7 +124,9 @@ export function SearchBuilderPanel({ initialSearches }: Props) {
       void (async () => {
         const valid = await form.trigger();
         if (!valid) return;
-        await persist(form.getValues(), activeId);
+        // getValues() returns the form's INPUT type; widen it through the
+        // schema's own defaults so the saved payload is complete.
+        await persist(withDefaults(form.getValues()), activeId);
       })();
     }, AUTOSAVE_DEBOUNCE_MS);
 
@@ -170,15 +190,24 @@ export function SearchBuilderPanel({ initialSearches }: Props) {
     (presetId: string) => {
       const preset = SEARCH_PRESETS.find((p) => p.id === presetId);
       if (!preset) return;
-      for (const [key, value] of Object.entries(preset.values)) {
-        setValue(key as keyof SearchBuilderValues, value as never, {
-          shouldDirty: true,
-          shouldValidate: true,
-        });
-      }
+
+      // Reset with a merged object rather than looping setValue over
+      // Object.entries: that loop cannot be typed without erasing the key/value
+      // relationship, and it also leaves any field the preset omits carrying a
+      // value from the previous preset. Presets are complete starting points, so
+      // replacing the whole form is both safer and more predictable.
+      reset(
+        {
+          ...emptySearchBuilderValues,
+          ...preset.values,
+          // The name is the user's, never a preset's.
+          name: form.getValues("name"),
+        },
+        { keepDirty: true }
+      );
       setAppliedPreset(presetId);
     },
-    [setValue]
+    [form, reset]
   );
 
   // --- run -------------------------------------------------------------------
@@ -254,7 +283,7 @@ export function SearchBuilderPanel({ initialSearches }: Props) {
 
         <ReviewAndRunSection
           control={control}
-          values={values}
+          values={summaryValues}
           isValid={formState.isValid}
           running={running}
           onRun={() => void startRun()}

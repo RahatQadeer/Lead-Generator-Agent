@@ -13,11 +13,11 @@ import { ChipGroup } from "@/components/search-builder/fields/ChipGroup";
 import { FieldShell } from "@/components/search-builder/fields/FieldShell";
 import { SectionShell } from "@/components/search-builder/sections/SectionShell";
 import { ROLE_OPTIONS } from "@/lib/search-builder/labels";
-import type { SearchBuilderValues } from "@/lib/search-builder/schema";
+import type { SearchBuilderInput } from "@/lib/search-builder/schema";
 
 interface Props {
-  control: Control<SearchBuilderValues>;
-  errors: FieldErrors<SearchBuilderValues>;
+  control: Control<SearchBuilderInput>;
+  errors: FieldErrors<SearchBuilderInput>;
 }
 
 export function DecisionMakerSection({ control, errors }: Props) {
@@ -44,7 +44,7 @@ export function DecisionMakerSection({ control, errors }: Props) {
                 label: option.label,
                 hint: `Priority ${option.rank}`,
               }))}
-              value={field.value}
+              value={field.value ?? []}
               onChange={field.onChange}
               hasDescription
               hasError={Boolean(errors.roleKeys)}

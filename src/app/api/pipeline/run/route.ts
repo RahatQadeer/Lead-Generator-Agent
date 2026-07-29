@@ -76,7 +76,7 @@ export async function POST(request: Request) {
     searchId: input.searchId,
     // The legacy column expects source ids; store the company providers so the
     // history view stays meaningful for pipeline runs too.
-    sources: input.providerIds as never,
+    sources: input.providerIds,
     options: { maxCompanies: input.criteria.limit ?? 0 },
     filters: {},
   });

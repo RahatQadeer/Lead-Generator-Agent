@@ -15,7 +15,7 @@ import {
   COMPANY_TYPES,
   FUNDING_STAGES,
   RECENTLY_FUNDED_OPTIONS,
-  type SearchBuilderValues,
+  type SearchBuilderInput,
 } from "@/lib/search-builder/schema";
 import {
   COMPANY_TYPE_LABELS,
@@ -23,8 +23,8 @@ import {
 } from "@/lib/search-builder/labels";
 
 interface Props {
-  control: Control<SearchBuilderValues>;
-  errors: FieldErrors<SearchBuilderValues>;
+  control: Control<SearchBuilderInput>;
+  errors: FieldErrors<SearchBuilderInput>;
 }
 
 export function CompanyFiltersSection({ control, errors }: Props) {
@@ -48,7 +48,7 @@ export function CompanyFiltersSection({ control, errors }: Props) {
               <SearchableMultiSelect
                 id="countries"
                 options={COUNTRIES}
-                value={field.value}
+                value={field.value ?? []}
                 onChange={field.onChange}
                 placeholder="Search countries…"
                 hasDescription
@@ -71,7 +71,7 @@ export function CompanyFiltersSection({ control, errors }: Props) {
               <SearchableMultiSelect
                 id="industries"
                 options={INDUSTRIES}
-                value={field.value}
+                value={field.value ?? []}
                 onChange={field.onChange}
                 placeholder="Search industries…"
                 hasDescription
@@ -167,7 +167,11 @@ export function CompanyFiltersSection({ control, errors }: Props) {
                   value: String(option.value),
                   label: option.label,
                 }))}
-                value={field.value !== null ? [String(field.value)] : []}
+                // `!= null` catches undefined as well as null: on the form's
+                // input type this field is optional because the schema defaults
+                // it, and `!== null` alone would let undefined through and
+                // render the literal string "undefined" as a selected chip.
+                value={field.value != null ? [String(field.value)] : []}
                 onChange={(next) =>
                   field.onChange(next[0] ? Number.parseInt(next[0], 10) : null)
                 }
@@ -188,7 +192,7 @@ export function CompanyFiltersSection({ control, errors }: Props) {
                 value: stage,
                 label: FUNDING_STAGE_LABELS[stage],
               }))}
-              value={field.value}
+              value={field.value ?? []}
               onChange={field.onChange}
             />
           </FieldShell>
@@ -207,7 +211,7 @@ export function CompanyFiltersSection({ control, errors }: Props) {
           >
             <TagField
               id="keywords"
-              value={field.value}
+              value={field.value ?? []}
               onChange={field.onChange}
               suggestions={KEYWORD_SUGGESTIONS}
               hasDescription

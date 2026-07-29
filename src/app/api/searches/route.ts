@@ -89,10 +89,7 @@ export async function POST(request: Request) {
 
     const { data, error } = await supabase
       .from("searches")
-      // The generated Database types predate migration 035 and do not know the
-      // new filter columns; the cast is the narrowest way to say so without
-      // regenerating types the rest of the app depends on.
-      .insert(row as never)
+      .insert(row)
       .select(SELECT)
       .single();
 

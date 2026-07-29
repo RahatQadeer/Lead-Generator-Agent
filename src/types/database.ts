@@ -55,6 +55,20 @@ export interface Database {
           status: string;
           created_at: string;
           updated_at: string;
+
+          // --- migration 035: search builder filters ---
+          // The single-value `industry` / `country` columns above are retained
+          // and kept in sync; these are the multi-select replacements.
+          countries: string[];
+          industries: string[];
+          company_type: string | null;
+          funding_stages: string[];
+          recently_funded_months: number | null;
+          role_keys: string[];
+          contact_types: string[];
+          enabled_providers: string[];
+          last_run_at: string | null;
+          last_job_id: string | null;
         };
         Insert: {
           id?: string;
@@ -74,6 +88,18 @@ export interface Database {
           status?: string;
           created_at?: string;
           updated_at?: string;
+
+          // --- migration 035 ---
+          countries?: string[];
+          industries?: string[];
+          company_type?: string | null;
+          funding_stages?: string[];
+          recently_funded_months?: number | null;
+          role_keys?: string[];
+          contact_types?: string[];
+          enabled_providers?: string[];
+          last_run_at?: string | null;
+          last_job_id?: string | null;
         };
         Update: {
           id?: string;
@@ -93,6 +119,18 @@ export interface Database {
           status?: string;
           created_at?: string;
           updated_at?: string;
+
+          // --- migration 035 ---
+          countries?: string[];
+          industries?: string[];
+          company_type?: string | null;
+          funding_stages?: string[];
+          recently_funded_months?: number | null;
+          role_keys?: string[];
+          contact_types?: string[];
+          enabled_providers?: string[];
+          last_run_at?: string | null;
+          last_job_id?: string | null;
         };
         Relationships: [];
       };
