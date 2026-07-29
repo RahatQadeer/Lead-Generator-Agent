@@ -66,6 +66,15 @@ export function getSourceBackers(source: ScraperSourceId): string[] {
   return SOURCE_CATALOG[source]?.backers ?? [];
 }
 
+/**
+ * How a source is classified. Unknown ids fall back to "startup-directory":
+ * it makes no claim about a backer and keeps the source inside venture-backed
+ * discovery, which is the safe default for a newly registered directory.
+ */
+export function getSourceCategory(source: ScraperSourceId): SourceCategory {
+  return SOURCE_CATALOG[source]?.category ?? "startup-directory";
+}
+
 /** All venture-backed source ids (accelerators + vc portfolios + startup directories). */
 export function listVentureBackedSources(): ScraperSourceId[] {
   return (Object.keys(SOURCE_CATALOG) as ScraperSourceId[]).filter(

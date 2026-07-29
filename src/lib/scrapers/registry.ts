@@ -55,6 +55,18 @@ export function listRegisteredScrapers(): ScraperSourceId[] {
   return Object.keys(SCRAPER_REGISTRY) as ScraperSourceId[];
 }
 
+/**
+ * The registry as (id, constructor) pairs, for callers that need to wrap every
+ * scraper uniformly — the discovery registry adapts each one to the common
+ * `CompanyScraper` stream contract. Exported so that mapping is derived from
+ * this table rather than duplicating it.
+ */
+export const SCRAPER_REGISTRY_ENTRIES: ReadonlyArray<
+  readonly [ScraperSourceId, ScraperConstructor]
+> = Object.entries(SCRAPER_REGISTRY) as Array<
+  [ScraperSourceId, ScraperConstructor]
+>;
+
 export function isRegisteredScraper(source: string): source is ScraperSourceId {
   return source in SCRAPER_REGISTRY;
 }
