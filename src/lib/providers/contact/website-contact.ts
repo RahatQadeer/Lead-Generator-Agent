@@ -69,8 +69,11 @@ export function createWebsiteContactProvider(): ContactProvider {
 
       const details = await enrichContactDetailsFromWebsite(input);
 
-      const found =
-        details.email || details.linkedinUrl || details.phone || details.contactPageUrl;
+      // A PERSONAL channel is required. `contactPageUrl` is a company-level page
+      // — it is returned below as useful context, but on its own it is not a way
+      // to reach this individual, and counting it as one inflates "contacts
+      // found" with leads nobody can actually contact.
+      const found = details.email || details.linkedinUrl || details.phone;
       if (!found) return null;
 
       log.debug("Website contact resolution finished", {
