@@ -15,7 +15,9 @@
 import { registerScraperCompanyProviders } from "@/lib/providers/company/from-scraper";
 import { createGooglePlacesCompanyProvider } from "@/lib/providers/company/google-places";
 import { createPeopleDataLabsProvider } from "@/lib/providers/people/people-data-labs";
+import { createWebsitePeopleProvider } from "@/lib/providers/people/website-people";
 import { createGoogleSearchContactProvider } from "@/lib/providers/contact/google-search";
+import { createWebsiteContactProvider } from "@/lib/providers/contact/website-contact";
 import { registerProvider } from "@/lib/providers/registry";
 
 let bootstrapped = false;
@@ -33,11 +35,19 @@ export function bootstrapProviders(): void {
   });
 
   // --- people ---
+  // The company's own site is the primary source: free, and a name on a
+  // leadership page is stronger evidence than a third-party record.
+  registerProvider("website-people", "people", createWebsitePeopleProvider, {
+    priority: 10,
+  });
   registerProvider("people-data-labs", "people", createPeopleDataLabsProvider, {
     priority: 200,
   });
 
   // --- contact ---
+  registerProvider("website-contact", "contact", createWebsiteContactProvider, {
+    priority: 10,
+  });
   registerProvider("google-search", "contact", createGoogleSearchContactProvider, {
     priority: 50,
   });
