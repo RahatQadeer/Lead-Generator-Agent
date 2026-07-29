@@ -752,6 +752,8 @@ describe("scraping web search query", () => {
           url: "https://gehealthcare.com",
           snippet: "Global healthcare",
           domain: "gehealthcare.com",
+          country: null,
+          city: null,
           seedSource: "web",
         },
         "Pakistan"
@@ -766,6 +768,7 @@ describe("scraping web search query", () => {
           snippet: "OpenStreetMap business directory.",
           domain: "idc.net.pk",
           country: "Pakistan",
+          city: null,
           seedSource: "directory",
         },
         "Pakistan"
@@ -1347,6 +1350,7 @@ describe("healthcare company matching", () => {
         companySizeMin: 1,
         companySizeMax: 5000,
         keywords: ["healthtech", "healthcare"],
+        technologies: [],
       }
     );
     expect(validation.accepted).toBe(true);
@@ -1552,6 +1556,9 @@ describe("finalize enriched leads", () => {
       enrichedAt: new Date().toISOString(),
       confidenceScore: 50,
       linkedInSource: "public_profile" as const,
+      phone: null,
+      phoneSource: null,
+      socialProfiles: null,
       contactDetailType: null,
       contactPageUrl: null,
       intentScore: null,
@@ -1609,6 +1616,9 @@ describe("finalize enriched leads", () => {
         emailIsGuessed: false,
         emailSource: null,
         linkedInSource: null,
+        phone: null,
+        phoneSource: null,
+        socialProfiles: null,
         contactDetailType: "contact_page_only",
         contactPageUrl: "https://acme.com/contact",
         outreachChannel: null,
@@ -1658,6 +1668,9 @@ describe("finalize enriched leads", () => {
       enrichedAt: new Date().toISOString(),
       confidenceScore: 50,
       linkedInSource: "public_profile" as const,
+      phone: null,
+      phoneSource: null,
+      socialProfiles: null,
       contactPageUrl: "https://acme.com/contact",
       intentScore: null,
       intentSignals: null,
@@ -1715,6 +1728,9 @@ describe("finalize enriched leads", () => {
       enrichedAt: new Date().toISOString(),
       confidenceScore: 50,
       linkedInSource: null,
+      phone: null,
+      phoneSource: null,
+      socialProfiles: null,
       contactDetailType: null,
       contactPageUrl: null,
       intentScore: null,
@@ -2197,6 +2213,24 @@ describe("linkedin data quality", () => {
     expect(isPlausiblePersonName("Partner Enquiry")).toBe(false);
     expect(isPlausiblePersonName("Your Product Modernization Partner")).toBe(false);
     expect(isPlausiblePersonName("Our Trusted Technology Partner")).toBe(false);
+    expect(isPlausiblePersonName("Founder")).toBe(false);
+    expect(isPlausiblePersonName("FOUNDER")).toBe(false);
+    expect(isPlausiblePersonName("CEO")).toBe(false);
+    expect(isPlausiblePersonName("VP Engineering")).toBe(false);
+  });
+
+  it("does not treat LinkedIn role-only snippets as person names", async () => {
+    const { parseLinkedInSearchHit } = await import("@/lib/scraping/leadership-search");
+
+    expect(
+      parseLinkedInSearchHit("Founder - Allied - Blockchain | LinkedIn", "Founder at Allied")
+    ).toBeNull();
+    expect(
+      parseLinkedInSearchHit(
+        "James Smith - Founder - Elliptic | LinkedIn",
+        "Founder at Elliptic"
+      )?.fullName
+    ).toBe("James Smith");
   });
 
   it("parses IDC-style key management cards (h3 + span.qualification)", async () => {

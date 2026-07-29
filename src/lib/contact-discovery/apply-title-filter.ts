@@ -1,3 +1,4 @@
+import { decisionMakerScore } from "@/lib/contact-discovery/decision-maker-ladder";
 import type { DiscoveredContact } from "@/types/contact";
 import {
   enrichContactTitles,
@@ -27,6 +28,9 @@ export const DECISION_MAKER_SEARCH_ROLES = [
   "CTO",
   "Founder",
   "Co-Founder",
+  "Managing Partner",
+  "General Partner",
+  "Partner",
   "President",
   "VP Engineering",
   "Vice President Engineering",
@@ -52,6 +56,8 @@ export const EXECUTIVE_FALLBACK_TITLES = [
   "COO",
   "CTO",
   "CMO",
+  "Managing Partner",
+  "General Partner",
   "Owner",
   "Director",
   "Manager",
@@ -69,27 +75,9 @@ export function getExecutiveFallbackTitleLabel(): string {
   return "CEO, CFO, COO, Owner, Director, Manager, Founder, Co-Founder, President";
 }
 
-const DECISION_MAKER_TITLE_PRIORITY: { pattern: RegExp; score: number }[] = [
-  { pattern: /\b(co[- ]?founder|cofounder)\b/i, score: 100 },
-  { pattern: /\bfounder\b/i, score: 98 },
-  { pattern: /\bceo\b|chief executive/i, score: 96 },
-  { pattern: /\bcto\b|chief technology/i, score: 92 },
-  { pattern: /\bcfo\b|chief financial/i, score: 90 },
-  { pattern: /\bcoo\b|chief operating/i, score: 88 },
-  { pattern: /\bpresident\b/i, score: 84 },
-  { pattern: /\bvp\b|vice president/i, score: 82 },
-  { pattern: /\bowner\b/i, score: 80 },
-  { pattern: /\bmanaging director\b/i, score: 78 },
-  { pattern: /\bdirector\b/i, score: 76 },
-  { pattern: /\bhead of\b/i, score: 74 },
-  { pattern: /\bgeneral manager\b/i, score: 72 },
-];
-
 function decisionMakerPriority(title: string | null | undefined): number {
-  const normalized = title?.trim() ?? "";
-  for (const { pattern, score } of DECISION_MAKER_TITLE_PRIORITY) {
-    if (normalized && pattern.test(normalized)) return score;
-  }
+  const score = decisionMakerScore(title);
+  if (score > 0) return score;
   return isExecutiveFallbackTitle(title) ? 50 : 0;
 }
 
@@ -229,7 +217,9 @@ const EXECUTIVE_ROLE_ALIASES: Record<string, readonly string[]> = {
   ],
   "head of growth": ["head of growth", "growth lead", "director of growth"],
   "head of": ["head of"],
-  partner: ["partner"],
+  partner: ["partner", "managing partner", "general partner", "venture partner"],
+  "managing partner": ["managing partner", "managing general partner"],
+  "general partner": ["general partner", "managing general partner"],
   chairman: ["chairman", "chairperson", "chairwoman", "chair", "founding chairman"],
   chairperson: ["chairperson", "chairman", "chairwoman"],
   deputy: ["deputy ceo", "deputy"],
@@ -471,9 +461,10 @@ export function applyTitleFilter(
     selected = mergeLeaderTiers(
       enriched.map((contact) => {
         if (!isUnknownTitle(contact.title)) return contact;
-        const fromContext = inferExecutiveTitleFromText(
-          [contact.titleContext, contact.fullName, contact.sourceUrl].filter(Boolean).join(" ")
-        );
+        const haystack = [contact.titleContext, contact.sourceUrl]
+          .filter(Boolean)
+          .join(" ");
+        const fromContext = inferExecutiveTitleFromText(haystack);
         return fromContext ? { ...contact, title: fromContext } : contact;
       }),
       jobTitles

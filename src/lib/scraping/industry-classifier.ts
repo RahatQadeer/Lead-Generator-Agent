@@ -186,6 +186,13 @@ export function classifyIndustryFromText(text: string): string | null {
 
 export const MIN_INDUSTRY_MATCH_SCORE = 0.5;
 
+/**
+ * Score returned when a company was confidently classified into a *different*
+ * industry than the one searched for. Exported so callers can gate above it —
+ * a threshold set to this exact value re-admits every conflicting company.
+ */
+export const CONFLICTING_INDUSTRY_SCORE = 0.1;
+
 export interface IndustryMatchResult {
   matches: boolean;
   score: number;
@@ -268,7 +275,7 @@ export function companyMatchesIndustry(
 
     return {
       matches: false,
-      score: 0.1,
+      score: CONFLICTING_INDUSTRY_SCORE,
       detectedIndustry: detected,
       conflictingIndustry: true,
     };

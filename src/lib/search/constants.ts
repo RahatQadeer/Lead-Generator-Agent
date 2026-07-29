@@ -65,6 +65,7 @@ export const INDUSTRY_SEARCH_ALIASES: Record<string, readonly string[]> = {
 export { COUNTRIES } from "@/lib/search/countries";
 
 export const COMPANY_SIZE_PRESETS = [
+  { label: "Any size", min: null, max: null },
   { label: "1 – 10", min: 1, max: 10 },
   { label: "11 – 50", min: 11, max: 50 },
   { label: "51 – 200", min: 51, max: 200 },

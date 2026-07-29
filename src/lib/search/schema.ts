@@ -65,15 +65,6 @@ export function validateSearchCriteria(
   const companySizeMin = rawMin === "invalid" ? null : rawMin;
   const companySizeMax = rawMax === "invalid" ? null : rawMax;
 
-  if (
-    companySizeMin === null &&
-    companySizeMax === null &&
-    rawMin !== "invalid" &&
-    rawMax !== "invalid"
-  ) {
-    errors.companySize = "Company size is required.";
-  }
-
   if (companySizeMin !== null && companySizeMin < 1) {
     errors.companySize = "Minimum company size must be at least 1.";
   }

@@ -1,11 +1,13 @@
 import { createLeadEnrichmentProvider } from "@/lib/lead-enrichment/factory";
 import { isLeadEnrichmentError } from "@/lib/lead-enrichment/errors";
 import { partitionEnrichedLeads } from "@/lib/lead-enrichment/finalize-lead";
+import type { ProgressReporter } from "@/lib/sse/stream";
 import type { LeadEnrichmentInput, LeadEnrichmentResult } from "@/types/lead";
 
 export async function enrichLeadProfiles(
   inputs: LeadEnrichmentInput[],
-  searchId: string
+  searchId: string,
+  onProgress?: ProgressReporter
 ): Promise<LeadEnrichmentResult & { discardedIds: string[] }> {
   if (inputs.length === 0) {
     return {
@@ -19,7 +21,7 @@ export async function enrichLeadProfiles(
   }
 
   const provider = createLeadEnrichmentProvider();
-  const enriched = await provider.enrich(inputs);
+  const enriched = await provider.enrich(inputs, onProgress);
 
   const withSearch = enriched.map((lead) => ({ ...lead, searchId }));
   const { kept, discardedIds } = partitionEnrichedLeads(withSearch);

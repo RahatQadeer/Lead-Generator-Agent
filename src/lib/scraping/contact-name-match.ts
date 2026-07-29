@@ -48,6 +48,26 @@ export function splitPersonName(fullName: string): {
   };
 }
 
+/**
+ * Name spellings to try in search, fullest first:
+ * "Rahat Ali Qadeer" -> "Rahat Ali Qadeer", "Rahat Qadeer".
+ * Middle names and initials are often absent from a LinkedIn headline.
+ */
+export function personNameVariants(fullName: string): string[] {
+  const cleaned = fullName.trim().replace(/\s+/g, " ");
+  if (!cleaned) return [];
+
+  const variants = [cleaned];
+  const parts = cleaned.split(" ").filter(Boolean);
+
+  if (parts.length > 2) {
+    const firstLast = `${parts[0]} ${parts[parts.length - 1]}`;
+    if (firstLast.toLowerCase() !== cleaned.toLowerCase()) variants.push(firstLast);
+  }
+
+  return variants;
+}
+
 /** True when every token of the shorter name appears in order in the longer name. */
 function orderedNameTokensMatch(left: string[], right: string[]): boolean {
   if (left.length < 2 || right.length < 2) return false;

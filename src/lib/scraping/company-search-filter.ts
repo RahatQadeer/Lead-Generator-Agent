@@ -241,10 +241,22 @@ const GEOGRAPHY_TITLE_PATTERN =
 
 const WELCOME_TITLE_PATTERN = /^welcome\s+to\b/i;
 
-export function isHistoricalOrDefunctName(name: string): boolean {
+export interface HistoricalNameOptions {
+  /**
+   * Skip the person-name heuristic. VC firms are named after their founding
+   * partners ("Andreessen Horowitz", "Kleiner Perkins"), which that heuristic
+   * reads as a human rather than a firm.
+   */
+  allowPersonStyleName?: boolean;
+}
+
+export function isHistoricalOrDefunctName(
+  name: string,
+  options: HistoricalNameOptions = {}
+): boolean {
   const trimmed = name.trim();
   if (!trimmed) return true;
-  if (looksLikePersonName(trimmed)) return true;
+  if (!options.allowPersonStyleName && looksLikePersonName(trimmed)) return true;
   if (GEOGRAPHY_TITLE_PATTERN.test(trimmed)) return true;
   if (WELCOME_TITLE_PATTERN.test(trimmed)) return true;
   return HISTORICAL_TITLE_PATTERNS.some((pattern) => pattern.test(trimmed));
@@ -259,14 +271,28 @@ export function looksLikePersonName(text: string): boolean {
   return PERSON_NAME_PATTERN.test(trimmed);
 }
 
-export function isLikelyCompanySearchResult(result: WebSearchResult): boolean {
+export interface CompanySearchResultFilterOptions {
+  /** Keep VC/accelerator results — set when the search explicitly targets investors. */
+  allowInvestors?: boolean;
+}
+
+export function isLikelyCompanySearchResult(
+  result: WebSearchResult,
+  options: CompanySearchResultFilterOptions = {}
+): boolean {
   if (!result.domain) return false;
   if (isNonCommercialDomain(result.domain)) return false;
   if (isDirectoryOrAggregatorDomain(result.domain)) return false;
   if (isArticleUrl(result.url)) return false;
   if (isArticleLikeTitle(result.title)) return false;
-  if (looksLikePersonName(result.title)) return false;
-  if (isHistoricalOrDefunctName(result.title)) return false;
+  if (!options.allowInvestors && looksLikePersonName(result.title)) return false;
+  if (
+    isHistoricalOrDefunctName(result.title, {
+      allowPersonStyleName: options.allowInvestors,
+    })
+  ) {
+    return false;
+  }
   if (isNonCommercialTitle(result.title)) return false;
   if (
     isNonCommercialOrganization({
@@ -278,6 +304,7 @@ export function isLikelyCompanySearchResult(result: WebSearchResult): boolean {
     return false;
   }
   if (
+    !options.allowInvestors &&
     isInvestorOrAcceleratorOrganization({
       name: result.title,
       description: result.snippet,
@@ -335,7 +362,8 @@ export function cleanCompanyNameFromSearchTitle(title: string, domain: string): 
 }
 
 export function filterCompanySearchResults(
-  results: WebSearchResult[]
+  results: WebSearchResult[],
+  options: CompanySearchResultFilterOptions = {}
 ): WebSearchResult[] {
-  return results.filter(isLikelyCompanySearchResult);
+  return results.filter((result) => isLikelyCompanySearchResult(result, options));
 }

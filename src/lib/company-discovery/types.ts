@@ -5,6 +5,12 @@ import type {
 } from "@/types/company";
 
 import type { RejectedCompanyView } from "@/lib/company-discovery/validate-company";
+import type { ProgressReporter } from "@/lib/sse/stream";
+
+/** Optional per-search context — e.g. a progress reporter for SSE streaming. */
+export interface CompanyDiscoveryContext {
+  onProgress?: ProgressReporter;
+}
 
 export interface ProviderSearchResult {
   companies: DiscoveredCompany[];
@@ -22,5 +28,8 @@ export interface ProviderSearchResult {
 
 export interface CompanyDiscoveryProvider {
   readonly name: string;
-  search(params: CompanyDiscoveryParams): Promise<ProviderSearchResult>;
+  search(
+    params: CompanyDiscoveryParams,
+    ctx?: CompanyDiscoveryContext
+  ): Promise<ProviderSearchResult>;
 }

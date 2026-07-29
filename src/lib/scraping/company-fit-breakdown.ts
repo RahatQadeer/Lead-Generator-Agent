@@ -150,6 +150,21 @@ export function computeCompanyFitBreakdown(
 
   let overall = Math.min(100, factors.reduce((sum, f) => sum + f.score, 0));
 
+  // The industry is the user's primary intent, but only carries 28 of 100 points,
+  // while keywords/size/business-type award theirs in full whenever those filters
+  // are unset. A company in the wrong industry therefore floored around 70% and
+  // looked like a decent match. Scale the total by the industry signal instead.
+  if (filters.industry.trim() && industryRaw < 0.4) {
+    const scaled = Math.round(overall * (industryRaw < 0.15 ? 0.45 : 0.7));
+    factors.push({
+      label: "Industry mismatch",
+      score: scaled - overall,
+      max: 0,
+      reason: `Not a ${filters.industry} company`,
+    });
+    overall = scaled;
+  }
+
   const relevance = assessCompanyRelevance(company, {
     industry: filters.industry,
     keywords: filters.keywords ?? [],

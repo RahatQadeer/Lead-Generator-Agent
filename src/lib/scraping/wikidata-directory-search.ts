@@ -117,10 +117,7 @@ interface SparqlBindingRow {
   countryLabel?: SparqlBinding;
 }
 
-function mapBinding(
-  binding: SparqlBindingRow,
-  fallbackCountry: string
-): CompanyDirectorySeed | null {
+function mapBinding(binding: SparqlBindingRow): CompanyDirectorySeed | null {
   const name = binding.companyLabel?.value?.trim();
   const website = binding.website?.value?.trim();
   if (!name || !website) return null;
@@ -128,7 +125,9 @@ function mapBinding(
   const domain = extractDomainFromUrl(website);
   if (!domain) return null;
 
-  const country = binding.countryLabel?.value?.trim() || fallbackCountry || null;
+  // Only Wikidata's own countryLabel — never the searched-for country. Stamping
+  // the target here made every seed self-certify as a match for the filter.
+  const country = binding.countryLabel?.value?.trim() || null;
 
   return {
     title: name,
@@ -153,8 +152,9 @@ export async function searchWikidataDirectoryCompanies(input: {
   async function fetchSeeds(withKeywords: boolean): Promise<CompanyDirectorySeed[]> {
     const query = buildSparqlQuery({
       ...input,
+      // The widened retry relaxes the name/keyword terms but keeps the industry:
+      // dropping it too returned arbitrary businesses from any sector.
       searchName: withKeywords ? input.searchName : undefined,
-      industry: withKeywords ? input.industry : "",
       keywords: withKeywords ? input.keywords : [],
       limit: Math.min(maxResults * 2, 40),
     });
@@ -166,7 +166,7 @@ export async function searchWikidataDirectoryCompanies(input: {
     const seeds: CompanyDirectorySeed[] = [];
 
     for (const binding of bindings) {
-      const seed = mapBinding(binding, input.country);
+      const seed = mapBinding(binding);
       if (!seed?.domain || seen.has(seed.domain)) continue;
       seen.add(seed.domain);
       seeds.push(seed);

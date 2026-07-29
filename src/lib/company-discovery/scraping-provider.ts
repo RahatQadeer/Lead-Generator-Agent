@@ -3,6 +3,7 @@ import {
   requireCompanySearchQuery,
 } from "@/lib/company-discovery/discover-pipeline";
 import type {
+  CompanyDiscoveryContext,
   CompanyDiscoveryProvider,
   ProviderSearchResult,
 } from "@/lib/company-discovery/types";
@@ -21,7 +22,10 @@ const SEARCH_RESULT_MULTIPLIER = 100;
 export class ScrapingCompanyDiscoveryProvider implements CompanyDiscoveryProvider {
   readonly name = "scraping";
 
-  async search(params: CompanyDiscoveryParams): Promise<ProviderSearchResult> {
+  async search(
+    params: CompanyDiscoveryParams,
+    ctx?: CompanyDiscoveryContext
+  ): Promise<ProviderSearchResult> {
     const query = requireCompanySearchQuery(params, () =>
       buildCompanySearchQuery({
         industry: params.industry,
@@ -32,6 +36,8 @@ export class ScrapingCompanyDiscoveryProvider implements CompanyDiscoveryProvide
         companySizeMax: params.companySizeMax,
       })
     );
+
+    ctx?.onProgress?.({ phase: "Searching directories and web…" });
 
     const maxSeeds = params.perPage * SEARCH_RESULT_MULTIPLIER;
 
@@ -67,6 +73,7 @@ export class ScrapingCompanyDiscoveryProvider implements CompanyDiscoveryProvide
 
     return finalizeCompanyDiscovery(params, mergedSeeds, {
       emptyLogMessage: `No companies found from web search (${query})`,
+      onProgress: ctx?.onProgress,
     });
   }
 }

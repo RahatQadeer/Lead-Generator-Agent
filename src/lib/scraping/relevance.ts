@@ -1,22 +1,6 @@
 import type { DiscoveredContact } from "@/types/contact";
 import { matchesJobTitle } from "@/lib/contact-discovery/apply-title-filter";
-
-const TITLE_PRIORITY: { pattern: RegExp; score: number }[] = [
-  { pattern: /\b(co[- ]?founder|cofounder)\b/i, score: 100 },
-  { pattern: /\bfounder\b/i, score: 98 },
-  { pattern: /\bceo\b|chief executive/i, score: 96 },
-  { pattern: /\bcto\b|chief technology/i, score: 92 },
-  { pattern: /\bcfo\b|chief financial/i, score: 90 },
-  { pattern: /\bcoo\b|chief operating/i, score: 88 },
-  { pattern: /\bchief\b/i, score: 86 },
-  { pattern: /\bvp\b|vice president/i, score: 84 },
-  { pattern: /\bpresident\b/i, score: 82 },
-  { pattern: /\bdirector\b/i, score: 78 },
-  { pattern: /\bhead of\b/i, score: 76 },
-  { pattern: /\bmanager\b/i, score: 70 },
-  { pattern: /\blead\b/i, score: 65 },
-  { pattern: /\bpartner\b/i, score: 62 },
-];
+import { decisionMakerScore } from "@/lib/contact-discovery/decision-maker-ladder";
 
 const DEPARTMENT_RULES: { pattern: RegExp; department: string }[] = [
   { pattern: /\b(engineering|software|developer|technology|tech|it)\b/i, department: "Engineering" },
@@ -38,14 +22,11 @@ export function scoreTitleRelevance(
   jobTitles: string[]
 ): number {
   const normalized = title?.trim() ?? "";
+  // Base floor kept at 40: this score feeds the MIN_PERSON_CONFIDENCE gate, and an
+  // unranked-but-real title should not be rejected outright.
   let score = 40;
 
-  for (const { pattern, score: priority } of TITLE_PRIORITY) {
-    if (normalized && pattern.test(normalized)) {
-      score = Math.max(score, priority);
-      break;
-    }
-  }
+  score = Math.max(score, decisionMakerScore(normalized));
 
   if (normalized && jobTitles.length > 0 && matchesJobTitle(normalized, jobTitles)) {
     score = Math.min(100, score + 15);

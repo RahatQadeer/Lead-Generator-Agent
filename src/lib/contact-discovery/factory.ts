@@ -5,7 +5,6 @@ import { MockContactDiscoveryProvider } from "@/lib/contact-discovery/mock-provi
 import { HybridContactDiscoveryProvider } from "@/lib/contact-discovery/hybrid-contact-provider";
 import { ScrapingContactDiscoveryProvider } from "@/lib/contact-discovery/scraping-provider";
 import type { ContactDiscoveryProvider } from "@/lib/contact-discovery/types";
-import { getConfiguredProviderName } from "@/lib/company-discovery/factory";
 import { isPeopleDataLabsConfigured } from "@/lib/people-data-labs/config";
 import { isPaidApisDisabled } from "@/lib/providers/free-stack";
 
@@ -20,18 +19,12 @@ export type ContactProviderName =
 export function getConfiguredContactProviderName(): ContactProviderName {
   const explicit = process.env.CONTACT_DISCOVERY_PROVIDER?.toLowerCase();
 
-  if (
-    (explicit === "pdl" || explicit === "people-data-labs" || explicit === "peopledatalabs") &&
-    isPeopleDataLabsConfigured()
-  ) {
-    return "pdl";
-  }
-
-  if (!explicit && isPeopleDataLabsConfigured()) {
-    return "pdl";
-  }
-
-  if (explicit === "scraping" || explicit === "web") {
+  // People/contact discovery defaults to the SCRAPER — founders and leadership
+  // are scraped from the company's own site and the directory listing (YC etc.),
+  // never a paid people-data API. Paid providers (PDL / Apollo / Apify) require
+  // an explicit CONTACT_DISCOVERY_PROVIDER opt-in and are ignored when paid APIs
+  // are disabled.
+  if (!explicit || explicit === "scraping" || explicit === "web") {
     return "scraping";
   }
 
@@ -39,7 +32,22 @@ export function getConfiguredContactProviderName(): ContactProviderName {
     return "mock";
   }
 
-  return getConfiguredProviderName() as ContactProviderName;
+  if (isPaidApisDisabled()) {
+    return "scraping";
+  }
+
+  if (
+    (explicit === "pdl" || explicit === "people-data-labs" || explicit === "peopledatalabs") &&
+    isPeopleDataLabsConfigured()
+  ) {
+    return "pdl";
+  }
+
+  if (explicit === "apollo") return "apollo";
+  if (explicit === "apify") return "apify";
+
+  // Any other value falls back to the scraper rather than a paid API.
+  return "scraping";
 }
 
 export function createContactDiscoveryProvider(): ContactDiscoveryProvider {

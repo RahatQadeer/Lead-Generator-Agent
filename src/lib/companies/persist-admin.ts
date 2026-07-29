@@ -24,6 +24,19 @@ export async function persistDiscoveredCompaniesForUser(
   }
 }
 
+export async function getKnownCompanyDedupKeysAdmin(
+  userId: string
+): Promise<Set<string>> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("companies")
+    .select("dedup_key")
+    .eq("user_id", userId);
+
+  if (error || !data) return new Set();
+  return new Set(data.map((row) => row.dedup_key));
+}
+
 export async function detachCompaniesFromSearchAdmin(
   userId: string,
   searchId: string

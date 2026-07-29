@@ -23,7 +23,7 @@ const log = createLogger("scraping.linkedin-profile");
 
 const PROFILE_FETCH_TIMEOUT_MS = 15_000;
 const MAX_PROFILES_PER_COMPANY = 8;
-const MAX_LINKEDIN_SEARCH_QUERIES = 8;
+const MAX_LINKEDIN_SEARCH_QUERIES = 12;
 
 interface SearchHit {
   title: string;

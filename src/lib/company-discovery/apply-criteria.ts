@@ -46,14 +46,22 @@ export function rankCompaniesByFit(
 }
 
 const SOFT_FALLBACK_FIT_MIN = 12;
-const SOFT_FALLBACK_MAX = 50;
+const SOFT_FALLBACK_MAX = 300;
+const INCLUSIVE_FIT_MIN = 20;
 const SOFT_INDUSTRY_MATCH_MIN = 0.12;
-/** Minimum industry overlap to include a company rejected only for industry mismatch. */
-const RELATED_INDUSTRY_MATCH_MIN = 0.1;
+/**
+ * Minimum industry overlap to include a company rejected only for industry
+ * mismatch. Must stay strictly above CONFLICTING_INDUSTRY_SCORE: when the two
+ * were equal, "confidently the wrong industry" cleared the gate and this
+ * expansion silently re-admitted every company the validator had just rejected.
+ */
+const RELATED_INDUSTRY_MATCH_MIN = 0.35;
 
 export interface ApplyCriteriaOptions {
   /** Minimum companies to return before pagination (defaults to 30). */
   targetMinResults?: number;
+  /** Hard cap on companies returned after inclusive expansion (defaults to 500). */
+  maxResults?: number;
 }
 
 function resolveTargetMin(options?: ApplyCriteriaOptions): number {
@@ -184,44 +192,103 @@ function expandRelatedIndustry(
   return added;
 }
 
+/** Ranked companies that match geography and hard gates but missed strict industry validation. */
+function expandInclusiveFitMatches(
+  current: DiscoveredCompany[],
+  all: DiscoveredCompany[],
+  filters: CompanyCriteriaFilters,
+  limit: number
+): DiscoveredCompany[] {
+  if (limit <= 0) return [];
+
+  const seen = new Set(
+    current.map((company) => company.domain?.toLowerCase()).filter(Boolean) as string[]
+  );
+  const added: DiscoveredCompany[] = [];
+
+  for (const company of rankCompaniesByFit(all, filters)) {
+    const domain = company.domain?.toLowerCase();
+    if (!domain || seen.has(domain)) continue;
+    if (!passesHardCompanyGate(company, filters)) continue;
+    if (!matchesCountry(company, filters.country)) continue;
+    if (!passesSoftSizeGate(company, filters)) continue;
+    // Inclusive on everything except the industry the user actually asked for —
+    // without this, fit score alone let through companies with no industry
+    // overlap at all, since unset filters award their points unconditionally.
+    if (scoreIndustryMatch(company, filters.industry) < SOFT_INDUSTRY_MATCH_MIN) continue;
+    if (computeCompanyFitScore(company, filters) < INCLUSIVE_FIT_MIN) continue;
+
+    const validation = validateCompanyForDiscovery(company, filters);
+    if (validation.accepted) continue;
+
+    added.push(applyKnownBrandToCompany(company));
+    seen.add(domain);
+    if (added.length >= limit) break;
+  }
+
+  return added;
+}
+
 function supplementStrictMatches(
   strict: DiscoveredCompany[],
   all: DiscoveredCompany[],
   filters: CompanyCriteriaFilters,
-  targetMin: number
+  options: { targetMin: number; maxResults: number }
 ): { companies: DiscoveredCompany[]; relaxedMatch: boolean } {
-  if (strict.length >= targetMin) {
-    return { companies: strict, relaxedMatch: false };
-  }
+  const { targetMin, maxResults } = options;
+  let combined = [...strict];
+  let relaxedMatch = false;
 
   const seen = new Set(
-    strict.map((company) => company.domain?.toLowerCase()).filter(Boolean) as string[]
+    combined.map((company) => company.domain?.toLowerCase()).filter(Boolean) as string[]
   );
-  const extra = applySoftIndustryFallback(all, filters)
-    .filter((company) => company.domain && !seen.has(company.domain.toLowerCase()))
-    .slice(0, targetMin - strict.length);
 
-  let combined = [...strict, ...extra];
+  const room = () => Math.max(0, maxResults - combined.length);
+
+  const append = (extra: DiscoveredCompany[]) => {
+    if (extra.length === 0) return;
+    combined = [...combined, ...extra];
+    relaxedMatch = true;
+    for (const company of extra) {
+      const domain = company.domain?.toLowerCase();
+      if (domain) seen.add(domain);
+    }
+  };
+
+  if (room() > 0) {
+    append(
+      applySoftIndustryFallback(all, filters)
+        .filter((company) => company.domain && !seen.has(company.domain.toLowerCase()))
+        .slice(0, room())
+    );
+  }
+
+  if (room() > 0) {
+    append(recoverNearMatchCompanies(combined, all, filters, room()));
+  }
+
+  if (room() > 0) {
+    append(expandRelatedIndustry(combined, all, filters, room()));
+  }
+
+  if (room() > 0) {
+    append(expandInclusiveFitMatches(combined, all, filters, room()));
+  }
+
+  // Legacy minimum target — only relevant when strict results are very sparse.
   let stillNeeded = targetMin - combined.length;
-
-  if (stillNeeded > 0) {
-    const recovered = recoverNearMatchCompanies(combined, all, filters, stillNeeded);
-    combined = [...combined, ...recovered];
+  if (stillNeeded > 0 && room() > 0) {
+    append(recoverNearMatchCompanies(combined, all, filters, Math.min(stillNeeded, room())));
     stillNeeded = targetMin - combined.length;
   }
 
-  if (stillNeeded > 0) {
-    const related = expandRelatedIndustry(combined, all, filters, stillNeeded);
-    combined = [...combined, ...related];
-  }
-
   if (combined.length === strict.length) {
-    return { companies: strict, relaxedMatch: false };
+    return { companies: rankCompaniesByFit(strict, filters), relaxedMatch: false };
   }
 
   return {
-    companies: combined,
-    relaxedMatch: true,
+    companies: rankCompaniesByFit(combined, filters).slice(0, maxResults),
+    relaxedMatch,
   };
 }
 
@@ -240,6 +307,7 @@ export function applyCriteria(
   rejected: RejectedCompanyView[];
 } {
   const targetMin = resolveTargetMin(options);
+  const maxResults = Math.max(1, options?.maxResults ?? 500);
   const accepted: DiscoveredCompany[] = [];
   const rejected: RejectedCompanyView[] = [];
 
@@ -256,7 +324,10 @@ export function applyCriteria(
   const ranked = rankCompaniesByFit(accepted, filters);
 
   if (ranked.length > 0) {
-    const supplemented = supplementStrictMatches(ranked, companies, filters, targetMin);
+    const supplemented = supplementStrictMatches(ranked, companies, filters, {
+      targetMin,
+      maxResults,
+    });
     return {
       companies: supplemented.companies,
       filteredCount: rejected.length,
@@ -265,7 +336,10 @@ export function applyCriteria(
     };
   }
 
-  const soft = applySoftIndustryFallback(companies, filters).slice(0, targetMin);
+  const soft = applySoftIndustryFallback(companies, filters).slice(
+    0,
+    Math.min(targetMin, maxResults)
+  );
   if (soft.length > 0) {
     return {
       companies: soft,

@@ -7,13 +7,18 @@ import {
 } from "@/components/ui/OutreachStepPanel";
 import { StepActionButton } from "@/components/search/StepActionButton";
 import { StepEmptyNotice, StepErrorAlert } from "@/components/search/StepFeedback";
-import { DiscoveryProgressPanel } from "@/components/search/DiscoveryProgressPanel";
+import {
+  DiscoveryProgressPanel,
+  type DiscoveryProgressState,
+} from "@/components/search/DiscoveryProgressPanel";
 import {
   DiscoveryItemDetailModal,
   type DiscoveryDetailItem,
 } from "@/components/search/DiscoveryItemDetailModal";
 import { PreviewResultRow } from "@/components/search/PreviewResultRow";
+import { socialProfileLinks } from "@/lib/contacts/social-links";
 import { ENRICHMENT_STAGES } from "@/lib/ui/discovery-stages";
+import { consumeEventStream } from "@/lib/ui/sse-client";
 import { getNoLeadsEnrichedMessage } from "@/lib/ui/user-messages";
 import type { ContactDetailsView } from "@/lib/pipeline/public-views";
 import { useElapsedSeconds } from "@/hooks/useElapsedSeconds";
@@ -59,26 +64,58 @@ export function EnrichLeadsPreview({
 }: EnrichLeadsPreviewProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<EnrichLeadsResponse | null>(null);
+  const [progress, setProgress] = useState<DiscoveryProgressState | null>(null);
   const [detailItem, setDetailItem] = useState<DiscoveryDetailItem | null>(null);
   const elapsedSeconds = useElapsedSeconds(loading);
   const rotatingStage = useRotatingStage(ENRICHMENT_STAGES, loading);
 
+  function handleEnrichPayload(data: EnrichLeadsResponse) {
+    setResult(data);
+    if (data.success && (data.meta?.enrichedCount ?? data.leads?.length ?? 0) > 0) {
+      onStepComplete?.();
+    }
+  }
+
   async function runEnrichment() {
     setLoading(true);
     setResult(null);
+    setProgress({});
 
     try {
       const res = await fetch("/api/leads/enrich", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
         body: JSON.stringify({ searchId }),
       });
 
-      const data = (await res.json()) as EnrichLeadsResponse;
-      setResult(data);
-      if (data.success && (data.meta?.enrichedCount ?? data.leads?.length ?? 0) > 0) {
-        onStepComplete?.();
+      // Fallback: server replied with JSON (e.g. an auth/validation error).
+      if (!(res.headers.get("content-type") ?? "").includes("text/event-stream")) {
+        handleEnrichPayload((await res.json()) as EnrichLeadsResponse);
+        return;
       }
+
+      await consumeEventStream(res, {
+        onProgress: (event) =>
+          setProgress({
+            current: event.current,
+            total: event.total,
+            itemLabel: event.label,
+            stage: event.phase,
+          }),
+        onDone: (payload) => handleEnrichPayload(payload as EnrichLeadsResponse),
+        onError: (error) =>
+          setResult({
+            success: false,
+            error: {
+              code: "STREAM_ERROR",
+              message: error.message ?? "Enrichment failed",
+              retryable: true,
+            },
+          }),
+      });
     } catch {
       setResult({
         success: false,
@@ -90,6 +127,7 @@ export function EnrichLeadsPreview({
       });
     } finally {
       setLoading(false);
+      setProgress(null);
     }
   }
 
@@ -114,7 +152,11 @@ export function EnrichLeadsPreview({
         <DiscoveryProgressPanel
           title="Adding contact details"
           elapsedSeconds={elapsedSeconds}
-          progress={{ stage: rotatingStage }}
+          progress={{
+            ...(progress ?? {}),
+            stage: progress?.stage ?? rotatingStage,
+          }}
+          expectedSeconds={75}
         />
       )}
 
@@ -186,6 +228,16 @@ export function EnrichLeadsPreview({
                           Email lead
                         </span>
                       )}
+                      {lead.outreachChannel === "phone" && (
+                        <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                          Phone lead
+                        </span>
+                      )}
+                      {lead.outreachChannel === "social" && (
+                        <span className="rounded-full bg-fuchsia-50 px-2 py-0.5 text-[10px] font-medium text-fuchsia-700">
+                          Social lead
+                        </span>
+                      )}
                       <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700">
                         {lead.confidenceScore}% confidence
                       </span>
@@ -203,6 +255,14 @@ export function EnrichLeadsPreview({
                         <p className="truncate text-sky-700">LinkedIn profile found</p>
                       ) : (
                         <p className="text-gray-400">No LinkedIn profile</p>
+                      )}
+                      {lead.phone && <p className="truncate text-amber-700">{lead.phone}</p>}
+                      {socialProfileLinks(lead.socialProfiles).length > 0 && (
+                        <p className="truncate text-fuchsia-700">
+                          {socialProfileLinks(lead.socialProfiles)
+                            .map((profile) => profile.label)
+                            .join(" · ")}
+                        </p>
                       )}
                     </div>
                   </div>

@@ -16,6 +16,11 @@ import { normalizeWebsiteUrl } from "@/lib/scraping/extract-domain";
 import { discoverCompanyLinkedInWithSnippet } from "@/lib/scraping/linkedin-company-search";
 import { scrapeCompanyMetadataFromUrl } from "@/lib/scraping/scrape-page";
 import {
+  verifyWebsite,
+  type WebsiteStatus,
+} from "@/lib/scraping/website-verification";
+import { computeSemanticRelevance } from "@/lib/company-discovery/semantic-relevance";
+import {
   companyCacheKey,
   getScrapeCache,
   setScrapeCache,
@@ -29,6 +34,10 @@ export interface CachedCompanyProfile {
   linkedinUrl: string | null;
   technologies: string[];
   websiteUrl: string;
+  /** Liveness verdict captured at scrape time (added for verification). */
+  websiteStatus?: WebsiteStatus;
+  /** 0-100 website quality rating captured at scrape time. */
+  qualityScore?: number | null;
 }
 
 function computeCompanyConfidence(company: {
@@ -38,6 +47,8 @@ function computeCompanyConfidence(company: {
   linkedinUrl: string | null;
   websiteUrl: string | null;
   employeeCount: number | null;
+  websiteStatus?: WebsiteStatus | null;
+  qualityScore?: number | null;
 }): number {
   let score = 45;
   if (company.domain) score += 15;
@@ -46,7 +57,28 @@ function computeCompanyConfidence(company: {
   if (company.linkedinUrl) score += 10;
   if (company.employeeCount) score += 5;
   if (company.websiteUrl?.startsWith("http")) score += 5;
+  // A verified-live site with real structural pages is strong corroboration.
+  if (company.websiteStatus === "live") score += 5;
+  if ((company.qualityScore ?? 0) >= 60) score += 5;
   return Math.min(100, score);
+}
+
+/** Attach the deterministic semantic-relevance signal for the search criteria. */
+function withSemanticRelevance(
+  company: DiscoveredCompany,
+  criteria?: CompanyCriteriaFilters
+): DiscoveredCompany {
+  if (!criteria?.industry?.trim()) return company;
+  const { score } = computeSemanticRelevance(
+    { industry: criteria.industry, keywords: criteria.keywords, technologies: criteria.technologies },
+    {
+      name: company.name,
+      industry: company.industry,
+      description: company.description,
+      technologies: company.technologies,
+    }
+  );
+  return { ...company, semanticRelevance: score };
 }
 
 function withSearchCountry(
@@ -84,8 +116,11 @@ export async function enrichCompanyFromWebsite(
 ): Promise<DiscoveredCompany> {
   const seeded = applyKnownBrandToCompany(company);
   if (!seeded.domain) {
-    return withSearchCountry(
-      { ...seeded, confidenceScore: computeCompanyConfidence(seeded) },
+    return withSemanticRelevance(
+      withSearchCountry(
+        { ...seeded, confidenceScore: computeCompanyConfidence(seeded) },
+        criteria
+      ),
       criteria
     );
   }
@@ -109,19 +144,34 @@ export async function enrichCompanyFromWebsite(
       websiteUrl: cached.websiteUrl ?? seeded.websiteUrl,
       technologies:
         cached.technologies.length > 0 ? cached.technologies : seeded.technologies,
+      websiteStatus: cached.websiteStatus ?? null,
+      qualityScore: cached.qualityScore ?? null,
       confidenceScore: computeCompanyConfidence({
         ...seeded,
         description: cached.description ?? seeded.description,
         industry: cached.industry ?? seeded.industry,
         linkedinUrl: cached.linkedinUrl,
+        websiteStatus: cached.websiteStatus ?? null,
+        qualityScore: cached.qualityScore ?? null,
       }),
     };
 
-    return withSearchCountry(applyKnownBrandToCompany(fromCache), criteria);
+    return withSemanticRelevance(
+      withSearchCountry(applyKnownBrandToCompany(fromCache), criteria),
+      criteria
+    );
   }
 
   const url = normalizeWebsiteUrl(domain);
-  const { metadata } = await scrapeCompanyMetadataFromUrl(url, domain, FAST_FETCH);
+  const { metadata, html, reachable } = await scrapeCompanyMetadataFromUrl(
+    url,
+    domain,
+    FAST_FETCH
+  );
+
+  const website = verifyWebsite({ reachable, html, title: metadata?.title ?? null });
+  const websiteStatus = website.status;
+  const qualityScore = website.quality?.qualityScore ?? null;
 
   const scrapedDesc = metadata?.description?.slice(0, 400) ?? "";
   const seedDesc = seeded.description ?? "";
@@ -161,6 +211,8 @@ export async function enrichCompanyFromWebsite(
     linkedinUrl,
     technologies: technologies ?? [],
     websiteUrl: url,
+    websiteStatus,
+    qualityScore,
   };
 
   await setScrapeCache(cacheKey, "company", profile);
@@ -175,6 +227,8 @@ export async function enrichCompanyFromWebsite(
     technologies: technologies ?? seeded.technologies,
     employeeCount: firmographics.employeeCount ?? seeded.employeeCount,
     country: firmographics.country ?? seeded.country,
+    websiteStatus,
+    qualityScore,
     confidenceScore: computeCompanyConfidence({
       ...seeded,
       description,
@@ -182,10 +236,15 @@ export async function enrichCompanyFromWebsite(
       linkedinUrl,
       websiteUrl: url,
       employeeCount: firmographics.employeeCount ?? seeded.employeeCount,
+      websiteStatus,
+      qualityScore,
     }),
   };
 
-  return withSearchCountry(applyKnownBrandToCompany(enriched), criteria);
+  return withSemanticRelevance(
+    withSearchCountry(applyKnownBrandToCompany(enriched), criteria),
+    criteria
+  );
 }
 
 export type { ParsedContact };

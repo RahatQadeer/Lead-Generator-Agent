@@ -12,6 +12,9 @@ export function toContactDiscoveryTargetCompany(
     name: row.name,
     domain: row.domain,
     providerCompanyId: row.provider_company_id,
+    city: row.city,
+    state: row.state,
+    country: row.country,
   };
 }
 

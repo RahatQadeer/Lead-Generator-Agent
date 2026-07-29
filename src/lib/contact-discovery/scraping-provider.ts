@@ -22,6 +22,10 @@ import {
   sanitizePersonLinkedInUrl,
 } from "@/lib/scraping/data-quality";
 import { discoverDirectoryPaths } from "@/lib/scraping/directory-paths";
+import {
+  hasAnySocialProfile,
+  sanitizePersonPhone,
+} from "@/lib/scraping/person-contact-channels";
 import { FAST_FETCH } from "@/lib/scraping/http-client";
 import { normalizeWebsiteUrl } from "@/lib/scraping/extract-domain";
 import { mapPool } from "@/lib/scraping/parallel-pool";
@@ -47,7 +51,11 @@ import {
 import { discoverLeadershipFromPressPages } from "@/lib/scraping/press-release-leaders";
 import { finalizePeopleStepContacts } from "@/lib/contact-discovery/resolve-linkedin-profiles";
 import { isScrapingToolAvailable } from "@/lib/scraping/tool-health";
-import type { ContactDiscoveryParams, DiscoveredContact } from "@/types/contact";
+import type {
+  ContactDiscoveryParams,
+  DiscoveredContact,
+  PersonSocialProfiles,
+} from "@/types/contact";
 import { getSearxngBaseUrl } from "@/lib/scraping/searxng-search";
 
 const log = createLogger("contact-discovery.scraping");
@@ -90,6 +98,8 @@ interface CachedContactRow {
   email: string | null;
   emailIsGuessed: boolean;
   linkedinUrl: string | null;
+  phone: string | null;
+  socialProfiles: PersonSocialProfiles | null;
   confidenceScore: number;
   sourceUrl: string | null;
   discoverySource: DiscoveredContact["discoverySource"];
@@ -102,7 +112,7 @@ function resolveParsedPersonTitle(person: ParsedContact): string {
   }
 
   const inferred = inferExecutiveTitleFromText(
-    [person.title, person.affiliationText, person.fullName].filter(Boolean).join(" ")
+    [person.title, person.affiliationText].filter(Boolean).join(" ")
   );
   return inferred ?? direct;
 }
@@ -142,6 +152,10 @@ function toDiscoveredContact(
     email,
     emailIsGuessed,
     linkedinUrl,
+    phone: sanitizePersonPhone(person.phone),
+    socialProfiles: hasAnySocialProfile(person.socialProfiles)
+      ? person.socialProfiles
+      : null,
     confidenceScore: 0,
     sourceUrl: person.sourceUrl ?? null,
     discoverySource: person.extractionSource ?? "website_team",
@@ -178,6 +192,8 @@ function fromCachedRow(
     email: row.email,
     emailIsGuessed: row.emailIsGuessed,
     linkedinUrl: row.linkedinUrl,
+    phone: row.phone ?? null,
+    socialProfiles: row.socialProfiles ?? null,
     confidenceScore: row.confidenceScore,
     sourceUrl: row.sourceUrl,
     discoverySource: row.discoverySource,
@@ -196,6 +212,8 @@ function toCachedRow(contact: DiscoveredContact): CachedContactRow {
     email: contact.email,
     emailIsGuessed: contact.emailIsGuessed,
     linkedinUrl: contact.linkedinUrl,
+    phone: contact.phone ?? null,
+    socialProfiles: contact.socialProfiles ?? null,
     confidenceScore: contact.confidenceScore,
     sourceUrl: contact.sourceUrl ?? null,
     discoverySource: contact.discoverySource ?? null,

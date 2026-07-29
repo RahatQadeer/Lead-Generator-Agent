@@ -134,6 +134,9 @@ export class ApolloLeadEnrichmentProvider implements LeadEnrichmentProvider {
         emailIsGuessed: false,
         emailSource: person?.email ? "found" : null,
         linkedInSource: person?.linkedin_url ? "public_profile" : null,
+        phone: null,
+        phoneSource: null,
+        socialProfiles: null,
         contactDetailType: person?.email
           ? "public_email"
           : person?.linkedin_url

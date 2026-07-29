@@ -1,15 +1,19 @@
+import type { PersonSocialProfiles } from "@/types/contact";
 import type { EmailVerificationStatus } from "@/types/email-verification";
 import type { LeadScoreFactors } from "@/types/lead-scoring";
 
 export type EmailSource = "found" | "predicted" | null;
-export type LinkedInSource = "website" | "public_profile" | "pdl" | null;
+export type LinkedInSource = "website" | "public_profile" | "pdl" | "contactout" | null;
+export type PhoneSource = "website" | "pdl" | null;
 export type ContactDetailType =
   | "verified_email"
   | "public_email"
   | "linkedin_only"
+  | "phone_only"
+  | "social_only"
   | "contact_page_only"
   | null;
-export type OutreachChannel = "email" | "linkedin";
+export type OutreachChannel = "email" | "linkedin" | "phone" | "social";
 
 export interface LeadEnrichmentInput {
   id: string;
@@ -17,6 +21,8 @@ export interface LeadEnrichmentInput {
   title: string;
   email: string | null;
   linkedinUrl: string | null;
+  phone?: string | null;
+  socialProfiles?: PersonSocialProfiles | null;
   emailIsGuessed?: boolean;
   companyId: string;
   companyName: string;
@@ -41,6 +47,8 @@ export interface EnrichedLead {
   role: string;
   company: string;
   linkedin: string | null;
+  phone: string | null;
+  socialProfiles: PersonSocialProfiles | null;
   location: string | null;
   city: string | null;
   state: string | null;
@@ -62,6 +70,7 @@ export interface EnrichedLead {
   confidenceScore: number;
   emailSource: EmailSource;
   linkedInSource: LinkedInSource;
+  phoneSource: PhoneSource;
   contactDetailType: ContactDetailType;
   contactPageUrl: string | null;
   outreachChannel: OutreachChannel | null;

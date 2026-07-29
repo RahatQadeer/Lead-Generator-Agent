@@ -7,12 +7,16 @@ import {
 } from "@/components/ui/OutreachStepPanel";
 import { StepActionButton } from "@/components/search/StepActionButton";
 import { StepErrorAlert } from "@/components/search/StepFeedback";
+import { DiscoveryProgressPanel } from "@/components/search/DiscoveryProgressPanel";
 import { nestedCardClassName, tagDefaultClassName } from "@/lib/ui/styles";
 import { IntentSignalsBadge } from "@/components/leads/IntentSignalsBadge";
 import type { LeadScoreFactors } from "@/types/lead-scoring";
 import type { IntentSignal } from "@/types/intent-signals";
 
 import type { LeadQualityView } from "@/lib/pipeline/public-views";
+import { LEAD_SCORING_STAGES } from "@/lib/ui/discovery-stages";
+import { useElapsedSeconds } from "@/hooks/useElapsedSeconds";
+import { useRotatingStage } from "@/hooks/useRotatingStage";
 import {
   isGatedStepActionDisabled,
   type OutreachStepControlProps,
@@ -88,6 +92,8 @@ export function ScoreLeadsPreview({
 }: ScoreLeadsPreviewProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ScoreLeadsResponse | null>(null);
+  const elapsedSeconds = useElapsedSeconds(loading);
+  const rotatingStage = useRotatingStage(LEAD_SCORING_STAGES, loading);
 
   async function runScoring() {
     setLoading(true);
@@ -136,6 +142,15 @@ export function ScoreLeadsPreview({
         />
       }
     >
+      {loading && (
+        <DiscoveryProgressPanel
+          title="Ranking leads"
+          elapsedSeconds={elapsedSeconds}
+          progress={{ stage: rotatingStage }}
+          expectedSeconds={40}
+        />
+      )}
+
       {result && !result.success && result.error && (
         <StepErrorAlert error={result.error} />
       )}

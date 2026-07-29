@@ -20,7 +20,7 @@ export default async function LeadsPage() {
         <EmptyState
           icon={Users}
           title="No leads yet"
-          description="Enrich contacts from a saved search and set its status to Active to see leads here. Draft searches stay in the pipeline until you're ready."
+          description="Enrich contacts from a saved search (step 3) to see leads here. Draft and active searches both appear once contact details are added."
         />
       ) : (
         <LeadsList leads={leads} />

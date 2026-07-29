@@ -4,7 +4,10 @@ import {
   matchesIndustry,
   matchesSize,
 } from "@/lib/company-discovery/apply-criteria-helpers";
-import { passesHardRelevanceBlockers } from "@/lib/scraping/company-relevance";
+import {
+  passesHardRelevanceBlockers,
+  searchTargetsInvestors,
+} from "@/lib/scraping/company-relevance";
 import {
   classifyIndustryFromText,
   companyMatchesIndustry,
@@ -13,6 +16,7 @@ import {
 import {
   companyTypeMatchesTargetIndustry,
   detectCompanyType,
+  isInvestorCompanyType,
   isNonOperatingCompanyType,
 } from "@/lib/scraping/company-type";
 import { formatEmployeeRange } from "@/lib/scraping/firmographics";
@@ -154,8 +158,23 @@ export function validateCompanyForDiscovery(
     filters.industry.toLowerCase().includes("media") ||
     filters.industry.toLowerCase().includes("entertainment");
 
-  if (isNonOperatingCompanyType(type) && !(mediaTarget && type === "news_media")) {
+  // Investor org types are "non-operating" and normally rejected here. A search that
+  // asks for VCs/accelerators wants exactly those, so let them through.
+  const investorTarget = searchTargetsInvestors(search);
+  const investorType = isInvestorCompanyType(type);
+
+  if (
+    isNonOperatingCompanyType(type) &&
+    !(mediaTarget && type === "news_media") &&
+    !(investorTarget && investorType)
+  ) {
     reasons.push(`Company type = ${companyType}`);
+  } else if (
+    investorTarget &&
+    investorType
+  ) {
+    // Type is the point of the search — skip the industry-match check below, which
+    // has no notion of "venture capital" as an industry.
   } else if (
     filters.industry &&
     !companyTypeMatchesTargetIndustry(type, filters.industry) &&
@@ -164,7 +183,11 @@ export function validateCompanyForDiscovery(
     reasons.push(`Company type = ${companyType}`);
   }
 
-  const industryError = validateIndustryCategory(enriched, filters.industry);
+  // Sector validation does not apply to funds — see the org-type note above.
+  const industryError =
+    investorTarget && investorType
+      ? null
+      : validateIndustryCategory(enriched, filters.industry);
   if (industryError && !reasons.includes(industryError)) {
     reasons.push(industryError);
   }

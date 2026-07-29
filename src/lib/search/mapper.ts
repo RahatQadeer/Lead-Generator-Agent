@@ -45,6 +45,7 @@ export function toSearchCriteriaInput(search: SearchRecord): SearchCriteriaInput
 }
 
 export function formatCompanySize(min: number | null, max: number | null): string {
+  if (min === null && max === null) return "Any size";
   if (min !== null && max !== null) return `${min.toLocaleString()} – ${max.toLocaleString()}`;
   if (min !== null) return `${min.toLocaleString()}+`;
   if (max !== null) return `Up to ${max.toLocaleString()}`;

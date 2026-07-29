@@ -70,9 +70,10 @@ function companyText(company: {
 }
 
 export function isHistoricalCompanyProfile(
-  company: Pick<DiscoveredCompany, "name" | "domain" | "description" | "industry">
+  company: Pick<DiscoveredCompany, "name" | "domain" | "description" | "industry">,
+  options: { allowPersonStyleName?: boolean } = {}
 ): boolean {
-  if (isHistoricalOrDefunctName(company.name ?? "")) return true;
+  if (isHistoricalOrDefunctName(company.name ?? "", options)) return true;
   return HISTORICAL_ENTITY_SIGNALS.test(companyText(company));
 }
 
@@ -127,6 +128,29 @@ export function searchTargetsMediaOrEntertainment(input: {
   return /\bmedia\b|entertainment|streaming|film production|broadcast|publishing|gaming/.test(
     profile
   );
+}
+
+const INVESTOR_TARGET_PATTERN =
+  /\b(venture capital|venture capitalist|vcs?|vc firms?|vc funds?|investors?|investment firms?|investment funds?|private equity|pe firms?|angel investors?|angel networks?|accelerators?|incubators?|family office|limited partners?|fund of funds|growth equity|seed funds?|venture funds?|venture firms?)\b/i;
+
+/**
+ * Whether the user is looking for investors rather than operating companies.
+ *
+ * VCs, accelerators, and incubators are blocked by default — they pollute ordinary
+ * B2B results — so every investor block consults this first. Same escape-hatch shape
+ * as [searchTargetsMediaOrEntertainment] and the nonprofit/government branches in
+ * [allowsOrgTypeForTargetIndustry].
+ */
+export function searchTargetsInvestors(input: {
+  industry: string;
+  keywords?: string[];
+  searchName?: string | null;
+}): boolean {
+  const profile = [input.industry, input.searchName, ...(input.keywords ?? [])]
+    .filter(Boolean)
+    .join(" ");
+  if (!profile.trim()) return false;
+  return INVESTOR_TARGET_PATTERN.test(profile);
 }
 
 const KEYWORD_SYNONYMS: Record<string, readonly string[]> = {
@@ -298,6 +322,9 @@ export function allowsOrgTypeForTargetIndustry(
   if (blockReason === "media_publishing") {
     return searchTargetsMediaOrEntertainment({ industry: targetIndustry });
   }
+  if (blockReason === "investor_accelerator") {
+    return searchTargetsInvestors({ industry: targetIndustry });
+  }
 
   return false;
 }
@@ -312,7 +339,12 @@ export function passesHardRelevanceBlockers(
   company: DiscoveredCompany,
   search: CompanyRelevanceInput
 ): CompanyRelevanceResult {
-  if (isHistoricalCompanyProfile(company)) {
+  const investorTarget = searchTargetsInvestors(search);
+
+  // Funds are routinely named after their founding partners — "Andreessen Horowitz",
+  // "Kleiner Perkins". The person-name heuristic reads those as a human and rejects
+  // the firm. Genuinely defunct entities are still caught either way.
+  if (isHistoricalCompanyProfile(company, { allowPersonStyleName: investorTarget })) {
     return { relevant: false, reason: "historical_or_person" };
   }
 
@@ -323,7 +355,10 @@ export function passesHardRelevanceBlockers(
     return { relevant: false, reason: "media_publishing" };
   }
 
-  if (hasConflictingIndustry(company, search.industry)) {
+  // "Venture capital" is an org type, not a sector. The industry classifier reads a
+  // fund as Finance and calls that a conflict, so sector checks are meaningless here —
+  // isInvestorCompanyType is what actually qualifies the company instead.
+  if (!investorTarget && hasConflictingIndustry(company, search.industry)) {
     return { relevant: false, reason: "conflicting_industry" };
   }
 
@@ -340,12 +375,14 @@ export function passesHardRelevanceBlockers(
     return { relevant: false, reason: "non_commercial_org" };
   }
 
+  const investorBlock = isInvestorOrAcceleratorOrganization({
+    name: company.name ?? "",
+    description: company.description,
+    domain: company.domain,
+  });
   if (
-    isInvestorOrAcceleratorOrganization({
-      name: company.name ?? "",
-      description: company.description,
-      domain: company.domain,
-    }).blocked
+    investorBlock.blocked &&
+    !searchTargetsInvestors({ industry: search.industry, keywords: search.keywords })
   ) {
     return { relevant: false, reason: "investor_accelerator" };
   }

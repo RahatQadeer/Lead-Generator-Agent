@@ -1,5 +1,9 @@
 import type { DiscoveredContact } from "@/types/contact";
 import { isLeadershipDirectoryUrl } from "@/lib/scraping/parse-html";
+import {
+  isPlausiblePersonName,
+  looksLikeStandaloneJobTitle,
+} from "@/lib/scraping/data-quality";
 
 const UNKNOWN_TITLES = new Set([
   "team member",
@@ -98,7 +102,12 @@ export function inferExecutiveTitleFromText(text: string | null | undefined): st
 }
 
 function buildTitleHaystack(contact: DiscoveredContact): string {
-  return [contact.title, contact.titleContext, contact.fullName, contact.sourceUrl]
+  const namePart =
+    isPlausiblePersonName(contact.fullName) &&
+    !looksLikeStandaloneJobTitle(contact.fullName)
+      ? contact.fullName
+      : null;
+  return [contact.title, contact.titleContext, namePart, contact.sourceUrl]
     .filter(Boolean)
     .join(" ");
 }

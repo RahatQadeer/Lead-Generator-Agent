@@ -1,25 +1,35 @@
 import { formatLocation } from "@/lib/lead-enrichment/format-location";
-import { enrichContactDetailsFromWebsite } from "@/lib/lead-enrichment/enrich-contact-details";
+import {
+  enrichContactDetailsFromWebsite,
+  shouldUsePdlEnrichment,
+} from "@/lib/lead-enrichment/enrich-contact-details";
 import type { LeadEnrichmentProvider } from "@/lib/lead-enrichment/types";
 import { createLogger } from "@/lib/logger";
-import { isPeopleDataLabsConfigured } from "@/lib/people-data-labs/config";
 import { upgradePartialPersonName } from "@/lib/scraping/contact-name-match";
 import { mapPool } from "@/lib/scraping/parallel-pool";
+import type { ProgressReporter } from "@/lib/sse/stream";
 import type { EnrichedLead, LeadEnrichmentInput } from "@/types/lead";
 
 const log = createLogger("lead-enrichment.website");
 
-const ENRICH_CONCURRENCY = 3;
+const ENRICH_CONCURRENCY = 5;
 
 export class WebsiteLeadEnrichmentProvider implements LeadEnrichmentProvider {
   readonly name: string;
 
   constructor() {
-    this.name = isPeopleDataLabsConfigured() ? "pdl" : "scraping";
+    // Scraping is the default; only labeled "pdl" when explicitly opted in.
+    this.name = shouldUsePdlEnrichment() ? "pdl" : "scraping";
   }
 
-  async enrich(inputs: LeadEnrichmentInput[]): Promise<EnrichedLead[]> {
+  async enrich(
+    inputs: LeadEnrichmentInput[],
+    onProgress?: ProgressReporter
+  ): Promise<EnrichedLead[]> {
     const enrichedAt = new Date().toISOString();
+    const total = inputs.length;
+    let done = 0;
+    onProgress?.({ phase: "Finding contact details…", current: 0, total });
 
     return mapPool(inputs, ENRICH_CONCURRENCY, async (input) => {
       let details;
@@ -36,6 +46,9 @@ export class WebsiteLeadEnrichmentProvider implements LeadEnrichmentProvider {
           linkedinUrl: null,
           emailSource: null,
           linkedInSource: null,
+          phone: null,
+          phoneSource: null,
+          socialProfiles: null,
           contactDetailType: null,
           contactPageUrl: null,
           confidenceScore: 0,
@@ -49,6 +62,14 @@ export class WebsiteLeadEnrichmentProvider implements LeadEnrichmentProvider {
         input.fullName,
         details.resolvedFullName
       );
+
+      done += 1;
+      onProgress?.({
+        phase: "Finding contact details…",
+        current: done,
+        total,
+        label: input.fullName,
+      });
 
       return {
         id: input.id,
@@ -64,6 +85,9 @@ export class WebsiteLeadEnrichmentProvider implements LeadEnrichmentProvider {
         emailIsGuessed: details.emailIsGuessed ?? false,
         emailSource: details.emailSource,
         linkedInSource: details.linkedInSource,
+        phone: details.phone,
+        phoneSource: details.phoneSource,
+        socialProfiles: details.socialProfiles,
         contactDetailType: details.contactDetailType,
         contactPageUrl: details.contactPageUrl,
         confidenceScore: details.confidenceScore,

@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import { filterCompanySearchResults } from "@/lib/scraping/company-search-filter";
+import { searchTargetsInvestors } from "@/lib/scraping/company-relevance";
 import { createLogger } from "@/lib/logger";
 import { extractDomainFromUrl } from "@/lib/scraping/extract-domain";
 import { fetchPage } from "@/lib/scraping/http-client";
@@ -83,7 +84,9 @@ export function buildCompanySearchQuery(input: {
   const parts: string[] = [];
 
   if (healthSearch && industry.toLowerCase().includes("health")) {
-    parts.push(smbSearch ? "healthcare technology startup" : "healthcare technology company");
+    // Not "healthcare technology company" — that phrasing surfaced IT vendors
+    // selling into healthcare rather than healthcare companies themselves.
+    parts.push(smbSearch ? "healthcare startup" : "healthcare company");
   } else if (saasSearch) {
     parts.push("B2B SaaS software company");
   } else if (techSearch && industry) {
@@ -114,8 +117,12 @@ export function buildWikipediaSearchQuery(input: {
   return buildWikipediaSearchQueries(input)[0] ?? "";
 }
 
-function dedupeWebResults(results: WebSearchResult[], maxResults: number): WebSearchResult[] {
-  const filtered = filterCompanySearchResults(results);
+function dedupeWebResults(
+  results: WebSearchResult[],
+  maxResults: number,
+  options: { allowInvestors?: boolean } = {}
+): WebSearchResult[] {
+  const filtered = filterCompanySearchResults(results, options);
   const seen = new Set<string>();
   const unique: WebSearchResult[] = [];
 
@@ -131,7 +138,8 @@ function dedupeWebResults(results: WebSearchResult[], maxResults: number): WebSe
 
 async function searchDuckDuckGoCompanies(
   query: string,
-  maxResults: number
+  maxResults: number,
+  options: { allowInvestors?: boolean } = {}
 ): Promise<WebSearchResult[]> {
   if (!isScrapingToolAvailable("duckduckgo")) return [];
 
@@ -156,7 +164,7 @@ async function searchDuckDuckGoCompanies(
     return [];
   }
 
-  const results = dedupeWebResults(parseDuckDuckGoResults(page.html), maxResults);
+  const results = dedupeWebResults(parseDuckDuckGoResults(page.html), maxResults, options);
   if (results.length > 0) {
     recordScrapingToolSuccess("duckduckgo");
   } else {
@@ -180,6 +188,13 @@ export async function searchWebCompanies(
   const industry = options.industry ?? "";
   const country = options.country ?? "";
   const keywords = options.keywords ?? [];
+  // VC/accelerator results are filtered out by default; keep them only when the
+  // search is actually looking for investors.
+  const allowInvestors = searchTargetsInvestors({
+    industry,
+    keywords,
+    searchName: options.searchName,
+  });
 
   const intent = parseSearchIntent({
     searchName: options.searchName ?? query,
@@ -211,7 +226,9 @@ export async function searchWebCompanies(
           )
         )
       : [];
-  const searxngResults = dedupeWebResults(searxngBatches.flat(), maxResults * 3);
+  const searxngResults = dedupeWebResults(searxngBatches.flat(), maxResults * 3, {
+    allowInvestors,
+  });
 
   // Wikipedia supplements SearXNG with list-style company pages
   const wikiResults = isScrapingToolAvailable("wikipedia")
@@ -221,7 +238,9 @@ export async function searchWebCompanies(
       )
     : [];
 
-  const merged = dedupeWebResults([...searxngResults, ...wikiResults], maxResults);
+  const merged = dedupeWebResults([...searxngResults, ...wikiResults], maxResults, {
+    allowInvestors,
+  });
   if (merged.length > 0) {
     if (wikiResults.length > 0) recordScrapingToolSuccess("wikipedia");
     log.info("Web search completed", {
@@ -260,9 +279,11 @@ export async function searchWebCompanies(
   ].filter((q, i, arr) => q.trim() && arr.indexOf(q) === i);
 
   const ddgBatches = await Promise.all(
-    ddgQueries.map((variant) => searchDuckDuckGoCompanies(variant, maxResults))
+    ddgQueries.map((variant) =>
+      searchDuckDuckGoCompanies(variant, maxResults, { allowInvestors })
+    )
   );
-  const ddgResults = dedupeWebResults(ddgBatches.flat(), maxResults);
+  const ddgResults = dedupeWebResults(ddgBatches.flat(), maxResults, { allowInvestors });
   if (ddgResults.length > 0) {
     log.info("Web search completed", {
       query,

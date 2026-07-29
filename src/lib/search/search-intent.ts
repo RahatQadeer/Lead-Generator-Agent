@@ -60,7 +60,9 @@ const MODEL_SEARCH_PHRASES: Record<BusinessModel, string[]> = {
 const INDUSTRY_PHRASES: Record<string, string> = {
   technology: "software technology company",
   saas: "B2B SaaS company",
-  healthcare: "healthcare technology company",
+  // "healthcare technology company" pulled in IT/software vendors that merely
+  // serve healthcare. The industry filter means healthcare companies.
+  healthcare: "healthcare company",
   "media & entertainment": "media entertainment company",
   "financial services": "fintech company",
   logistics: "logistics technology company",
@@ -100,9 +102,17 @@ export function parseSearchIntent(input: {
   const businessModels = detectBusinessModels(combined);
   const primaryModel = businessModels[0] ?? "general";
 
+  // "general" is the no-model-detected fallback, and its phrases are tech ones.
+  // Applying them to an explicit industry describes the wrong business entirely
+  // (a Healthcare search would seed itself with "technology"/"software").
+  const genericModel = primaryModel === "general" && Boolean(input.industry.trim());
+  const modelPhrases = genericModel
+    ? [industryPhrase(input.industry)]
+    : MODEL_SEARCH_PHRASES[primaryModel];
+
   const semanticTerms = [
     ...input.keywords,
-    ...MODEL_SEARCH_PHRASES[primaryModel].flatMap((p) => p.split(" ")),
+    ...modelPhrases.flatMap((p) => p.split(" ")),
     input.industry,
   ]
     .map((t) => t.trim().toLowerCase())
@@ -139,11 +149,12 @@ export function parseSearchIntent(input: {
     queryVariants.push(usefulName);
   }
 
-  for (const phrase of MODEL_SEARCH_PHRASES[primaryModel].slice(0, 1)) {
-    if (country) {
-      queryVariants.push(`${phrase} ${country}`);
-    } else {
-      queryVariants.push(phrase);
+  // Skipped when the model is the generic fallback and an industry is set: the
+  // industry phrase below already covers it, and emitting "technology company
+  // <country>" here searched for tech firms with no industry constraint at all.
+  if (!genericModel) {
+    for (const phrase of MODEL_SEARCH_PHRASES[primaryModel].slice(0, 1)) {
+      queryVariants.push(country ? `${phrase} ${country}` : phrase);
     }
   }
 
@@ -157,22 +168,22 @@ export function parseSearchIntent(input: {
     queryVariants.push(country ? `${kw} company ${country}` : `${kw} company`);
   }
 
+  // Healthcare-native expansions only. The previous "health IT" / "healthcare IT
+  // services" / "healthtech software company" variants recruited generic software
+  // houses and IT consultancies whose only tie to healthcare was a target market.
   if (healthIndustry && country) {
     queryVariants.push(
-      smbSearch
-        ? `healthcare startup ${country}`
-        : `healthcare technology company ${country}`,
+      smbSearch ? `healthcare startup ${country}` : `healthcare company ${country}`,
+      `healthcare provider ${country}`,
+      `hospital health system ${country}`,
+      `medical device company ${country}`,
       `digital health company ${country}`,
-      `health IT company ${country}`,
-      `health information technology ${country}`,
-      `medical technology company ${country}`,
-      `healthcare IT services ${country}`
+      `biotech pharmaceutical company ${country}`
     );
-    if (smbSearch) {
-      queryVariants.push(`healthcare software SMB ${country}`, `small healthtech ${country}`);
-    }
-    if (engineeringLeadSearch || usefulName || smbSearch) {
-      queryVariants.push(`healthtech software company ${country}`);
+    if (engineeringLeadSearch) {
+      // A CTO/VP-Eng target implies the company builds software in-house — still
+      // a healthcare company, not a vendor selling IT into healthcare.
+      queryVariants.push(`digital health startup ${country}`);
     }
   }
 

@@ -12,8 +12,13 @@ search:
     - html
     - json
 
-# Tier 🥇 — Search scraping engines (SearXNG aggregates Brave, DDG, Wikipedia)
+# Tier 🥇 — Search scraping engines (SearXNG aggregates Bing, Brave, DDG, Wikipedia)
+# Brave and DuckDuckGo rate-limit hard under discovery load ("Suspended: too many
+# requests" / timeouts), and Google answers with a CAPTCHA. Bing must stay enabled or a
+# throttled instance returns zero results for every query.
 engines:
+  - name: bing
+    disabled: false
   - name: brave
     disabled: false
   - name: duckduckgo

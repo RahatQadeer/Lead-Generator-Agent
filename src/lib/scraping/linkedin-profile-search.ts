@@ -8,6 +8,7 @@ import {
 } from "@/lib/scraping/company-affiliation";
 import {
   personNameAppearsInText,
+  personNameVariants,
   personNamesMatch,
 } from "@/lib/scraping/contact-name-match";
 import {
@@ -18,7 +19,10 @@ import { fetchPage } from "@/lib/scraping/http-client";
 import { parseLinkedInSearchHit, searchWeb } from "@/lib/scraping/leadership-search";
 import { parseLinkedInProfileTitle } from "@/lib/scraping/linkedin-profile-scraper";
 import { getSearxngBaseUrl } from "@/lib/scraping/searxng-search";
-import { normalizeCompanyNameForSearch } from "@/lib/search/search-name-utils";
+import {
+  companySearchVariants,
+  normalizeCompanyNameForSearch,
+} from "@/lib/search/search-name-utils";
 import {
   isScrapingToolAvailable,
   recordScrapingToolFailure,
@@ -33,6 +37,8 @@ const MIN_CONFIDENCE = 45;
 const MIN_CONFIDENCE_WITHOUT_COMPANY = 30;
 const FIRST_RESULT_MIN_CONFIDENCE = 28;
 const FIRST_RESULT_MIN_CONFIDENCE_WITHOUT_COMPANY = 22;
+/** Ceiling on web searches per contact across all layers — each query hits live backends. */
+const MAX_SEARCH_QUERIES = 36;
 
 /** Whether any backend can run LinkedIn profile web search (Google via SearXNG, Bing, or DuckDuckGo). */
 export function isLinkedInWebSearchAvailable(): boolean {
@@ -45,6 +51,9 @@ export interface LinkedInProfileSearchInput {
   jobTitle: string;
   companyName: string;
   companyDomain?: string | null;
+  companyCity?: string | null;
+  companyState?: string | null;
+  companyCountry?: string | null;
   /**
    * When true (default), reject profiles that do not mention the target company.
    * Set false only for website-verified contacts where name match is enough.
@@ -60,6 +69,8 @@ export interface LinkedInProfileSearchResult {
   confidenceScore: number;
   source: LinkedInSource;
   searchBackend: "searxng" | "bing" | "duckduckgo";
+  /** Which search layer produced the hit, e.g. `company:Right Tail`. */
+  searchLayer?: string;
 }
 
 interface SearchHit {
@@ -163,6 +174,16 @@ export function buildPrimaryLinkedInGoogleQuery(
   return `site:linkedin.com/in ${name} ${company}`;
 }
 
+function uniqueLocationParts(input: LinkedInProfileSearchInput): string[] {
+  return [
+    ...new Set(
+      [input.companyCity, input.companyState, input.companyCountry]
+        .map((value) => value?.trim())
+        .filter(Boolean) as string[]
+    ),
+  ];
+}
+
 /** Google/Bing structured queries — natural search first, then site:linkedin.com/in variants. */
 export function buildLinkedInProfileSearchQueries(
   input: LinkedInProfileSearchInput
@@ -202,7 +223,99 @@ export function buildLinkedInProfileSearchQueries(
     role ? `${name} ${role} ${company} linkedin` : `${name} ${company} linkedin`,
   ].filter(Boolean) as string[];
 
+  const locations = uniqueLocationParts(input);
+  const plainCompany = normalizeCompanyNameForSearch(input.companyName);
+
+  for (const location of locations.slice(0, 2)) {
+    const loc = quoteToken(location);
+    queries.push(`${plainName} ${plainCompany} ${location} linkedin`);
+    queries.push(`site:linkedin.com/in ${name} ${loc}`);
+    if (role) {
+      queries.push(`${plainName} ${role} ${plainCompany} ${location} linkedin`);
+    }
+  }
+
+  if (locations.length >= 2) {
+    const combined = locations.slice(0, 2).join(" ");
+    queries.push(`${plainName} ${plainCompany} ${combined} linkedin`);
+    queries.push(`site:linkedin.com/in ${name} ${quoteToken(combined)}`);
+  }
+
   return [...new Set(queries)];
+}
+
+/** Compact query set for a fallback layer: one natural and one site: query per spelling. */
+function buildLayerQueries(fullName: string, jobTitle: string, companyName: string): string[] {
+  const name = quoteToken(fullName);
+  const company = quoteToken(companyName);
+  const role = primaryRoleToken(jobTitle);
+
+  const queries = [
+    role ? `${fullName} ${role} ${companyName} linkedin` : null,
+    `${fullName} ${companyName} linkedin`,
+    role ? `site:linkedin.com/in ${name} ${quoteToken(role)} ${company}` : null,
+    `site:linkedin.com/in ${name} ${company}`,
+  ].filter(Boolean) as string[];
+
+  return [...new Set(queries)];
+}
+
+export interface LinkedInSearchLayer {
+  /** Layer label for logs, e.g. `company:Right Tail`. */
+  label: string;
+  queries: string[];
+}
+
+/**
+ * Ordered search layers, closest to the stored names first:
+ * 1. `primary` — the name, role, and company exactly as stored,
+ * 2. `company:*` — alternate company spellings ("RightTail" → "Right Tail" → "righttail"),
+ * 3. `name:*` — shortened person name ("Rahat Ali Qadeer" → "Rahat Qadeer") against the
+ *    two closest company spellings.
+ * Layers only widen the query. A hit still has to clear the same name and company checks,
+ * so a looser query cannot attach a looser profile.
+ */
+export function buildLinkedInSearchLayers(
+  input: LinkedInProfileSearchInput
+): LinkedInSearchLayer[] {
+  const companies = companySearchVariants(input.companyName, input.companyDomain);
+  const names = personNameVariants(input.fullName);
+
+  const layers: LinkedInSearchLayer[] = [
+    { label: "primary", queries: buildLinkedInProfileSearchQueries(input) },
+  ];
+
+  for (const company of companies.slice(1)) {
+    layers.push({
+      label: `company:${company}`,
+      queries: buildLayerQueries(input.fullName, input.jobTitle, company),
+    });
+  }
+
+  for (const name of names.slice(1)) {
+    for (const company of companies.slice(0, 2)) {
+      layers.push({
+        label: `name:${name} company:${company}`,
+        queries: buildLayerQueries(name, input.jobTitle, company),
+      });
+    }
+  }
+
+  const seen = new Set<string>();
+  const deduped: LinkedInSearchLayer[] = [];
+
+  for (const layer of layers) {
+    const queries: string[] = [];
+    for (const query of layer.queries) {
+      const key = query.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      queries.push(query);
+    }
+    if (queries.length > 0) deduped.push({ ...layer, queries });
+  }
+
+  return deduped;
 }
 
 function titlesRoughlyMatch(expected: string, found: string): boolean {
@@ -608,12 +721,10 @@ function buildLinkedInSearchResult(
     return null;
   }
 
-  if (
-    options.allowNameOnlyMatch &&
-    !requireCompany &&
-    !linkedinProfileMatchesPerson(url, input.fullName, input.companyName) &&
-    !personNameAppearsInText(input.fullName, hitText)
-  ) {
+  // Identity guard: without a confirmed company match in the result, the profile
+  // slug itself must contain the person's name. Snippet/title text alone can list
+  // many people and is not proof that this /in/ URL belongs to the target person.
+  if (!companyMatch && !linkedinProfileMatchesPerson(url, input.fullName, input.companyName)) {
     return null;
   }
 
@@ -758,6 +869,12 @@ function scoreLinkedInCandidate(
 
   if (requireCompany && !companyMatch) return null;
 
+  // Identity guard: a profile that is neither company-confirmed nor name-matched in
+  // its slug is not safe to attach — name-in-text scoring alone yields wrong people.
+  if (!companyMatch && !linkedinProfileMatchesPerson(url, input.fullName, input.companyName)) {
+    return null;
+  }
+
   return {
     url,
     fullName: resolvedName,
@@ -784,32 +901,52 @@ export async function searchLinkedInProfile(
     return null;
   }
 
-  const queries = buildLinkedInProfileSearchQueries(input);
+  const layers = buildLinkedInSearchLayers(input);
+  const totalQueries = layers.reduce((sum, layer) => sum + layer.queries.length, 0);
+  let queriesTried = 0;
 
-  for (const query of queries) {
-    const hits = await searchAllBackends(query);
-    const picked = pickLinkedInFromOrderedHits(input, hits);
+  for (const layer of layers) {
+    for (const query of layer.queries) {
+      if (queriesTried >= MAX_SEARCH_QUERIES) {
+        log.info("LinkedIn search query budget exhausted — later layers skipped", {
+          name: input.fullName,
+          company: input.companyName,
+          queriesTried,
+          queriesSkipped: totalQueries - queriesTried,
+        });
+        break;
+      }
 
-    if (picked) {
-      log.info("LinkedIn profile discovered via web search", {
-        name: input.fullName,
-        company: input.companyName,
-        role: input.jobTitle,
-        url: picked.url,
-        headline: picked.headline,
-        companyMatch: picked.companyMatch,
-        confidenceScore: picked.confidenceScore,
-        backend: picked.searchBackend,
-        query,
-      });
-      return picked;
+      queriesTried += 1;
+      const hits = await searchAllBackends(query);
+      const picked = pickLinkedInFromOrderedHits(input, hits);
+
+      if (picked) {
+        log.info("LinkedIn profile discovered via web search", {
+          name: input.fullName,
+          company: input.companyName,
+          role: input.jobTitle,
+          url: picked.url,
+          headline: picked.headline,
+          companyMatch: picked.companyMatch,
+          confidenceScore: picked.confidenceScore,
+          backend: picked.searchBackend,
+          layer: layer.label,
+          query,
+        });
+        return { ...picked, searchLayer: layer.label };
+      }
     }
+
+    if (queriesTried >= MAX_SEARCH_QUERIES) break;
   }
 
   log.info("No LinkedIn profile matched search criteria", {
     name: input.fullName,
     company: input.companyName,
     role: input.jobTitle,
+    layers: layers.map((layer) => layer.label),
+    queriesTried,
   });
 
   return null;

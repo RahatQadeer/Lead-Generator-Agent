@@ -1,6 +1,7 @@
 import { finalizeCompanyDiscovery, requireCompanySearchQuery } from "@/lib/company-discovery/discover-pipeline";
 import { CompanyDiscoveryError } from "@/lib/company-discovery/errors";
 import type {
+  CompanyDiscoveryContext,
   CompanyDiscoveryProvider,
   ProviderSearchResult,
 } from "@/lib/company-discovery/types";
@@ -22,7 +23,10 @@ const SEARCH_RESULT_MULTIPLIER = 100;
 export class ApifyCompanyDiscoveryProvider implements CompanyDiscoveryProvider {
   readonly name = "apify";
 
-  async search(params: CompanyDiscoveryParams): Promise<ProviderSearchResult> {
+  async search(
+    params: CompanyDiscoveryParams,
+    ctx?: CompanyDiscoveryContext
+  ): Promise<ProviderSearchResult> {
     if (!isApifyEnabled()) {
       throw new CompanyDiscoveryError(
         "PROVIDER_NOT_CONFIGURED",
@@ -39,6 +43,8 @@ export class ApifyCompanyDiscoveryProvider implements CompanyDiscoveryProvider {
         technologies: params.technologies,
       })
     );
+
+    ctx?.onProgress?.({ phase: "Searching Google Maps and web…" });
 
     const maxSeeds = params.perPage * SEARCH_RESULT_MULTIPLIER;
 
@@ -97,6 +103,7 @@ export class ApifyCompanyDiscoveryProvider implements CompanyDiscoveryProvider {
     return finalizeCompanyDiscovery(params, mergedSeeds, {
       idPrefix: "apify",
       emptyLogMessage: `No companies found from Apify + directories (${query})`,
+      onProgress: ctx?.onProgress,
     });
   }
 }

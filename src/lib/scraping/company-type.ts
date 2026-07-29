@@ -1,3 +1,4 @@
+import { searchTargetsInvestors } from "@/lib/scraping/company-relevance";
 import type { DiscoveredCompany } from "@/types/company";
 
 export type CompanyType =
@@ -162,6 +163,18 @@ export function isNonOperatingCompanyType(type: CompanyType): boolean {
   return NON_OPERATING_TYPES.has(type);
 }
 
+const INVESTOR_TYPES = new Set<CompanyType>(["vc", "accelerator", "investment_firm"]);
+
+/** VC funds, accelerators, and investment firms — the targets of an investor search. */
+export function isInvestorCompanyType(type: CompanyType): boolean {
+  return INVESTOR_TYPES.has(type);
+}
+
+/** Investor category for output ("Venture capital" / "Accelerator" / "Investment firm"). */
+export function investorCategoryLabel(type: CompanyType): string | null {
+  return isInvestorCompanyType(type) ? COMPANY_TYPE_LABELS[type] : null;
+}
+
 /** Map search industry to company types that may proceed to people discovery. */
 export function allowedTypesForIndustry(targetIndustry: string): Set<CompanyType> | null {
   const industry = targetIndustry.trim().toLowerCase();
@@ -200,6 +213,10 @@ export function allowedTypesForIndustry(targetIndustry: string): Set<CompanyType
     return new Set(["operating_company", "service_provider"]);
   }
 
+  if (searchTargetsInvestors({ industry })) {
+    return new Set(["vc", "accelerator", "investment_firm"]);
+  }
+
   return new Set([
     "ecommerce",
     "marketplace",
@@ -219,6 +236,11 @@ export function companyTypeMatchesTargetIndustry(
 
   if (isNonOperatingCompanyType(type)) {
     if (mediaTarget && type === "news_media") return true;
+    // An investor search is *looking for* these types — the same escape hatch
+    // news_media already gets for media searches.
+    if (isInvestorCompanyType(type) && searchTargetsInvestors({ industry: targetIndustry })) {
+      return true;
+    }
     return false;
   }
 

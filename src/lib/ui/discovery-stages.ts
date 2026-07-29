@@ -18,3 +18,16 @@ export const ENRICHMENT_STAGES = [
   "Looking up email addresses and LinkedIn…",
   "Verifying email deliverability…",
 ] as const;
+
+export const EMAIL_VERIFICATION_STAGES = [
+  "Checking email syntax…",
+  "Resolving domain MX records…",
+  "Verifying mailbox deliverability…",
+] as const;
+
+export const LEAD_SCORING_STAGES = [
+  "Scoring industry and role fit…",
+  "Weighing company size and location…",
+  "Detecting intent signals…",
+  "Ranking leads by quality…",
+] as const;

@@ -16,7 +16,7 @@ import { parseSearchIntent } from "@/lib/search/search-intent";
 const log = createLogger("scraping.google-places");
 const SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
 const FIELD_MASK =
-  "places.displayName,places.formattedAddress,places.websiteUri,places.types,places.primaryType,places.businessStatus,places.nationalPhoneNumber,places.internationalPhoneNumber,nextPageToken";
+  "places.displayName,places.formattedAddress,places.addressComponents,places.websiteUri,places.types,places.primaryType,places.businessStatus,places.nationalPhoneNumber,places.internationalPhoneNumber,nextPageToken";
 
 /** Types we don't want as B2B company leads (unless the search targets that category). */
 const EXCLUDED_PLACE_TYPES = new Set([
@@ -81,9 +81,16 @@ export interface GooglePlacesSearchInput {
   companySizeMax?: number | null;
 }
 
+interface GooglePlaceAddressComponent {
+  longText?: string;
+  shortText?: string;
+  types?: string[];
+}
+
 interface GooglePlace {
   displayName?: { text?: string };
   formattedAddress?: string;
+  addressComponents?: GooglePlaceAddressComponent[];
   websiteUri?: string;
   types?: string[];
   primaryType?: string;
@@ -214,9 +221,25 @@ function isExcludedPlace(
   });
 }
 
+/**
+ * The place's real country, from the `country` address component: `shortText` is
+ * the ISO code ("PK"), `longText` the display name ("Pakistan"). Never fall back
+ * to the searched-for country — Places `regionCode` only biases ranking, so a
+ * text search for the US genuinely does return Pakistani and Chinese businesses.
+ */
+function countryFromPlace(place: GooglePlace): { iso: string | null; name: string | null } {
+  const component = place.addressComponents?.find((entry) =>
+    entry.types?.includes("country")
+  );
+  return {
+    iso: component?.shortText?.trim().toLowerCase() || null,
+    name: component?.longText?.trim() || component?.shortText?.trim() || null,
+  };
+}
+
 function mapPlaceToSeed(
   place: GooglePlace,
-  fallbackCountry: string,
+  targetCountry: string,
   options?: { allowHealthcare?: boolean }
 ): CompanyDirectorySeed | null {
   const name = place.displayName?.text?.trim();
@@ -228,6 +251,12 @@ function mapPlaceToSeed(
 
   const domain = extractDomainFromUrl(website);
   if (!domain) return null;
+
+  // Drop places Google located outside the searched country rather than passing
+  // them downstream mislabelled. Compared as ISO codes so aliases can't disagree.
+  const placeCountry = countryFromPlace(place);
+  const targetIso = countryToIsoCode(targetCountry.trim())?.toLowerCase() ?? null;
+  if (targetIso && placeCountry.iso && placeCountry.iso !== targetIso) return null;
 
   const address = place.formattedAddress ?? "";
   const city = parseCityFromAddress(address);
@@ -253,7 +282,7 @@ function mapPlaceToSeed(
     snippet: snippetParts.join(" "),
     domain,
     source: "google-places",
-    country: fallbackCountry.trim() || null,
+    country: placeCountry.name,
     city,
     phone,
     industryHint: typeHint || null,

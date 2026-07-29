@@ -17,9 +17,14 @@ export interface LinkedInDiscoveryResult {
   searchBackend?: LinkedInProfileSearchResult["searchBackend"];
 }
 
-export type { LinkedInProfileSearchInput, LinkedInProfileSearchResult } from "@/lib/scraping/linkedin-profile-search";
+export type {
+  LinkedInProfileSearchInput,
+  LinkedInProfileSearchResult,
+  LinkedInSearchLayer,
+} from "@/lib/scraping/linkedin-profile-search";
 export {
   buildLinkedInProfileSearchQueries,
+  buildLinkedInSearchLayers,
   buildNameAndRoleLinkedInQuery,
   buildNaturalLinkedInSearchQuery,
   buildPrimaryLinkedInGoogleQuery,
@@ -34,20 +39,45 @@ export {
 /**
  * Discover a person's LinkedIn via structured Google/Bing profile search.
  */
+export interface DiscoverPersonLinkedInOptions {
+  requireCompanyMatch?: boolean;
+  companyCity?: string | null;
+  companyState?: string | null;
+  companyCountry?: string | null;
+}
+
 export async function discoverPersonLinkedIn(
   fullName: string,
   companyName: string,
   companyDomain?: string | null,
   jobTitle?: string | null,
-  options?: { requireCompanyMatch?: boolean }
+  options?: DiscoverPersonLinkedInOptions
 ): Promise<LinkedInDiscoveryResult> {
-  const result = await searchLinkedInProfile({
+  const baseInput = {
     fullName,
     jobTitle: jobTitle?.trim() || "Team Member",
     companyName,
     companyDomain,
-    requireCompanyMatch: options?.requireCompanyMatch,
-  });
+    companyCity: options?.companyCity,
+    companyState: options?.companyState,
+    companyCountry: options?.companyCountry,
+  };
+
+  let result: LinkedInProfileSearchResult | null = null;
+
+  if (options?.requireCompanyMatch !== false) {
+    result = await searchLinkedInProfile({
+      ...baseInput,
+      requireCompanyMatch: true,
+    });
+  }
+
+  if (!result) {
+    result = await searchLinkedInProfile({
+      ...baseInput,
+      requireCompanyMatch: false,
+    });
+  }
 
   if (!result) {
     return { url: null, source: null };

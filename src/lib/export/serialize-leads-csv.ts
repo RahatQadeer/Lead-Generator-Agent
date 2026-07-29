@@ -15,6 +15,10 @@ export interface CsvExportRow {
   emailStatus: string;
   contactType: string;
   linkedin: string;
+  phone: string;
+  twitter: string;
+  facebook: string;
+  instagram: string;
   leadScore: string;
   overallScore: string;
   qualityCategory: string;
@@ -47,6 +51,10 @@ export function serializeLeadsToCsv(leads: EnrichedLead[]): string {
     "emailStatus",
     "contactType",
     "linkedin",
+    "phone",
+    "twitter",
+    "facebook",
+    "instagram",
     "leadScore",
     "overallScore",
     "qualityCategory",
@@ -71,6 +79,10 @@ export function serializeLeadsToCsv(leads: EnrichedLead[]): string {
       emailStatus: displayStatus ? emailDisplayLabel(displayStatus) : "",
       contactType: lead.contactDetailType ?? "",
       linkedin: lead.linkedin ?? "",
+      phone: lead.phone ?? "",
+      twitter: lead.socialProfiles?.twitter ?? "",
+      facebook: lead.socialProfiles?.facebook ?? "",
+      instagram: lead.socialProfiles?.instagram ?? "",
       leadScore: lead.leadScore != null ? String(lead.leadScore) : "",
       overallScore: "",
       qualityCategory: "",
@@ -98,6 +110,10 @@ export const CSV_EXPORT_HEADERS = [
   "email_status",
   "contact_type",
   "linkedin",
+  "phone",
+  "twitter",
+  "facebook",
+  "instagram",
   "lead_score",
   "confidence_score",
 ].join(",");

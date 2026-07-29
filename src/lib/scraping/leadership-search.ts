@@ -4,7 +4,7 @@ import { createLogger } from "@/lib/logger";
 import {
   verifyPersonCompanyAffiliation,
 } from "@/lib/scraping/company-affiliation";
-import { isPlausiblePersonName } from "@/lib/scraping/data-quality";
+import { isPlausiblePersonName, looksLikeStandaloneJobTitle } from "@/lib/scraping/data-quality";
 import { fetchPage } from "@/lib/scraping/http-client";
 import type { ParsedContact } from "@/lib/scraping/parse-html";
 import { parseContactsFromHtml, isLeadershipDirectoryUrl } from "@/lib/scraping/parse-html";
@@ -50,6 +50,12 @@ function looksLikePersonName(value: string): boolean {
   return isPlausiblePersonName(value);
 }
 
+/** LinkedIn titles rarely identify someone by a single token — avoids "Founder - Allied". */
+function linkedInSnippetLooksLikePersonName(value: string): boolean {
+  if (!looksLikePersonName(value) || looksLikeStandaloneJobTitle(value)) return false;
+  return value.trim().split(/\s+/).filter(Boolean).length >= 2;
+}
+
 function pickSearchRoles(jobTitles: string[]): string[] {
   const normalized = jobTitles.map((title) => title.toLowerCase());
   const picked: string[] = [];
@@ -78,11 +84,20 @@ export function parseLinkedInSearchHit(
 
   if (parts.length === 0) return null;
 
-  const fullName = parts[0];
-  if (!looksLikePersonName(fullName)) return null;
+  const fullName =
+    parts.find((part) => linkedInSnippetLooksLikePersonName(part)) ?? null;
+  if (!fullName) return null;
 
   const jobTitle =
-    parts.find((part, index) => index > 0 && part.length > 2) ??
+    parts.find(
+      (part, index) =>
+        part !== fullName &&
+        index > 0 &&
+        (looksLikeStandaloneJobTitle(part) ||
+          /\b(CEO|CTO|CFO|COO|Founder|Co-Founder|President|Director|Managing Director|Owner|Manager|VP|Vice President|Chief [A-Za-z]+ Officer)\b/i.test(
+            part
+          ))
+    ) ??
     content.match(
       /\b(CEO|CTO|CFO|COO|Founder|Co-Founder|President|Director|Managing Director|Owner|Manager|VP|Vice President|Chief [A-Za-z]+ Officer)\b/i
     )?.[0] ??

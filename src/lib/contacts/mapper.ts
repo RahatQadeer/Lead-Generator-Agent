@@ -4,11 +4,16 @@ import {
   isGenericCompanyEmail,
   isPlaceholderEmail,
   pickPersonalContactEmail,
+  sanitizeLinkedInForLead,
   sanitizePersonLinkedInForContact,
   sanitizePersonLinkedInUrl,
 } from "@/lib/scraping/data-quality";
+import {
+  hasAnySocialProfile,
+  sanitizePersonPhone,
+} from "@/lib/scraping/person-contact-channels";
 import type { Database, Json } from "@/types/database";
-import type { DiscoveredContact } from "@/types/contact";
+import type { DiscoveredContact, PersonSocialProfiles } from "@/types/contact";
 import type { EmailVerificationStatus, EmailVerificationInput } from "@/types/email-verification";
 import type { VerifiedEmail } from "@/types/email-verification";
 import type { EnrichedLead, LeadEnrichmentInput, LinkedInSource } from "@/types/lead";
@@ -95,12 +100,21 @@ export function toContactInsertExtended(
 ): Partial<ContactInsert> {
   const { linkedInSource } = resolveDiscoveredLinkedIn(contact);
 
+  const phone = sanitizePersonPhone(contact.phone);
+
   return {
     department: contact.department,
     confidence_score: contact.confidenceScore,
     email_is_guessed: false,
     email_source: null,
     linkedin_source: linkedInSource,
+    // Channels scraped from the person's own card during discovery. Persisted now so
+    // enrichment does not have to re-fetch the page to recover them.
+    phone,
+    phone_source: phone ? "website" : null,
+    social_profiles: hasAnySocialProfile(contact.socialProfiles)
+      ? (contact.socialProfiles as unknown as Json)
+      : null,
     outreach_channel: null,
     discarded_at: null,
     enriched_at: null,
@@ -141,6 +155,8 @@ export function toLeadEnrichmentInput(
     email: contact.email,
     linkedinUrl: contact.linkedin_url,
     linkedInSource: (contact.linkedin_source as LinkedInSource) ?? null,
+    phone: contact.phone,
+    socialProfiles: (contact.social_profiles as PersonSocialProfiles | null) ?? null,
     emailIsGuessed: contact.email_is_guessed ?? false,
     companyId: contact.company_id,
     companyName: company?.name ?? contact.company_name ?? "Unknown",
@@ -199,10 +215,11 @@ export function toEnrichedLeadUpdateCore(
     full_name: lead.name,
     title: lead.role,
     company_name: lead.company,
-    linkedin_url: sanitizePersonLinkedInForContact(
+    linkedin_url: sanitizeLinkedInForLead(
       lead.linkedin,
       lead.name,
-      lead.company
+      lead.company,
+      lead.linkedInSource
     ),
     email: resolveEnrichedEmailForSave(lead),
     city: lead.city,
@@ -226,6 +243,9 @@ export function toEnrichedLeadUpdateExtended(
           ? "predicted"
           : null,
     linkedin_source: lead.linkedInSource,
+    phone: lead.phone,
+    phone_source: lead.phoneSource,
+    social_profiles: lead.socialProfiles as unknown as Json,
     confidence_score: lead.confidenceScore,
     outreach_channel: lead.outreachChannel,
     discarded_at: null,
@@ -253,6 +273,8 @@ export function toEnrichedLead(contact: ContactRow): EnrichedLead | null {
     role: contact.title,
     company: contact.company_name ?? "Unknown",
     linkedin: contact.linkedin_url,
+    phone: contact.phone,
+    socialProfiles: (contact.social_profiles as PersonSocialProfiles | null) ?? null,
     city: contact.city,
     state: contact.state,
     country: contact.country,
@@ -274,6 +296,7 @@ export function toEnrichedLead(contact: ContactRow): EnrichedLead | null {
     confidenceScore: contact.confidence_score ?? 0,
     emailSource: (contact.email_source as EnrichedLead["emailSource"]) ?? null,
     linkedInSource: (contact.linkedin_source as EnrichedLead["linkedInSource"]) ?? null,
+    phoneSource: (contact.phone_source as EnrichedLead["phoneSource"]) ?? null,
     contactDetailType:
       (contact.contact_detail_type as EnrichedLead["contactDetailType"]) ?? null,
     contactPageUrl: contact.contact_page_url ?? null,

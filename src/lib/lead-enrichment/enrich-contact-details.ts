@@ -1,14 +1,21 @@
 import { createLogger } from "@/lib/logger";
 import { enrichPersonFromPeopleDataLabs } from "@/lib/people-data-labs/enrich-person";
 import { isPeopleDataLabsConfigured } from "@/lib/people-data-labs/config";
+import { isPaidApisDisabled } from "@/lib/providers/free-stack";
 import {
   pickContactEmail,
   pickPersonalContactEmail,
+  sanitizeLinkedInForLead,
   sanitizePersonLinkedInForContact,
   sanitizePersonLinkedInUrl,
   emailMatchesPersonName,
 } from "@/lib/scraping/data-quality";
 import { personNamesMatch, upgradePartialPersonName } from "@/lib/scraping/contact-name-match";
+import {
+  hasAnySocialProfile,
+  mergeSocialProfiles,
+  sanitizePersonPhone,
+} from "@/lib/scraping/person-contact-channels";
 import {
   DIRECTORY_CONTACT_PATHS,
   discoverDirectoryPaths,
@@ -26,11 +33,13 @@ import { computeLeadConfidence } from "@/lib/lead-scoring/lead-confidence";
 import { scoreTitleRelevance } from "@/lib/scraping/relevance";
 import { verifySingleEmail } from "@/lib/email-verification/verify";
 import { isEmailSafeToDisplay } from "@/lib/email-verification/display-status";
+import type { PersonSocialProfiles } from "@/types/contact";
 import type {
   ContactDetailType,
   EmailSource,
   LeadEnrichmentInput,
   LinkedInSource,
+  PhoneSource,
 } from "@/types/lead";
 
 const log = createLogger("lead-enrichment.contact-details");
@@ -45,11 +54,16 @@ interface CachedContactRow {
   email: string | null;
   emailIsGuessed: boolean;
   linkedinUrl: string | null;
+  phone?: string | null;
+  socialProfiles?: PersonSocialProfiles | null;
 }
 
 export interface EnrichedContactDetails {
   email: string | null;
   linkedinUrl: string | null;
+  phone: string | null;
+  phoneSource: PhoneSource;
+  socialProfiles: PersonSocialProfiles | null;
   emailSource: EmailSource;
   linkedInSource: LinkedInSource;
   contactDetailType: ContactDetailType;
@@ -70,10 +84,14 @@ function resolveContactDetailType(input: {
   email: string | null;
   emailSource: EmailSource;
   linkedinUrl: string | null;
+  phone: string | null;
+  socialProfiles: PersonSocialProfiles | null;
   contactPageUrl: string | null;
 }): ContactDetailType {
   if (input.email && input.emailSource === "found") return null;
   if (input.linkedinUrl) return "linkedin_only";
+  if (input.phone) return "phone_only";
+  if (hasAnySocialProfile(input.socialProfiles)) return "social_only";
   if (input.contactPageUrl) return "contact_page_only";
   return null;
 }
@@ -131,7 +149,10 @@ function detailsFromCacheRow(
   row: CachedContactRow,
   fullName: string,
   companyName: string
-): Pick<EnrichedContactDetails, "email" | "linkedinUrl" | "emailSource" | "linkedInSource"> {
+): Pick<
+  EnrichedContactDetails,
+  "email" | "linkedinUrl" | "emailSource" | "linkedInSource" | "phone" | "socialProfiles"
+> {
   const emailResult = emailFoundOnWebsite(fullName, row.email, row.emailIsGuessed);
   const linkedinUrl =
     sanitizePersonLinkedInUrl(row.linkedinUrl) ??
@@ -141,6 +162,8 @@ function detailsFromCacheRow(
     emailSource: emailResult.emailSource,
     linkedinUrl,
     linkedInSource: linkedinUrl ? "website" : null,
+    phone: sanitizePersonPhone(row.phone),
+    socialProfiles: row.socialProfiles ?? null,
   };
 }
 
@@ -154,7 +177,12 @@ function finalizeDetails(
     | "linkedInSource"
     | "contactPageUrl"
     | "resolvedFullName"
-  > & { emailIsGuessed?: boolean }
+  > & {
+    emailIsGuessed?: boolean;
+    phone?: string | null;
+    phoneSource?: PhoneSource;
+    socialProfiles?: PersonSocialProfiles | null;
+  }
 ): EnrichedContactDetails {
   let emailResult: { email: string | null; emailSource: EmailSource };
   const emailIsGuessed = Boolean(details.emailIsGuessed);
@@ -165,24 +193,27 @@ function finalizeDetails(
     emailResult = { email: null, emailSource: null };
   }
 
-  const linkedinUrl =
-    details.linkedInSource === "public_profile"
-      ? sanitizePersonLinkedInUrl(details.linkedinUrl)
-      : sanitizePersonLinkedInForContact(
-          details.linkedinUrl,
-          input.fullName,
-          input.companyName
-        ) ?? sanitizePersonLinkedInUrl(details.linkedinUrl);
+  const linkedinUrl = sanitizeLinkedInForLead(
+    details.linkedinUrl,
+    input.fullName,
+    input.companyName,
+    details.linkedInSource
+  );
 
   const resolvedFullName = upgradePartialPersonName(
     input.fullName,
     details.resolvedFullName
   );
 
+  const phone = sanitizePersonPhone(details.phone);
+  const socialProfiles = details.socialProfiles ?? null;
+
   const contactDetailType = resolveContactDetailType({
     email: emailResult.email,
     emailSource: emailResult.emailSource,
     linkedinUrl,
+    phone,
+    socialProfiles,
     contactPageUrl: details.contactPageUrl,
   });
 
@@ -207,6 +238,9 @@ function finalizeDetails(
     emailSource: emailResult.emailSource,
     linkedinUrl,
     linkedInSource: linkedinUrl ? details.linkedInSource : null,
+    phone,
+    phoneSource: phone ? (details.phoneSource ?? "website") : null,
+    socialProfiles,
     contactDetailType,
     contactPageUrl: details.contactPageUrl,
     confidenceScore,
@@ -222,6 +256,9 @@ interface PartialContactDetails {
   emailIsGuessed: boolean;
   linkedinUrl: string | null;
   linkedInSource: LinkedInSource;
+  phone: string | null;
+  phoneSource: PhoneSource;
+  socialProfiles: PersonSocialProfiles | null;
   contactPageUrl: string | null;
   resolvedFullName?: string | null;
 }
@@ -234,15 +271,16 @@ function emailPriority(source: EmailSource, isGuessed: boolean): number {
 function linkedInPriority(source: LinkedInSource): number {
   if (source === "website") return 3;
   if (source === "pdl") return 2;
+  if (source === "contactout") return 2;
   if (source === "public_profile") return 1;
   return 0;
 }
 
-function pickBestEmail(
-  a: PartialContactDetails,
-  b: PartialContactDetails | null
+function pickBestEmailFromSources(
+  web: PartialContactDetails,
+  pdl: PartialContactDetails | null
 ): Pick<PartialContactDetails, "email" | "emailSource" | "emailIsGuessed"> {
-  const candidates = [a, b].filter(Boolean) as PartialContactDetails[];
+  const candidates = [web, pdl].filter(Boolean) as PartialContactDetails[];
   const ranked = candidates
     .filter((entry) => entry.email && entry.emailSource === "found" && !entry.emailIsGuessed)
     .sort(
@@ -259,11 +297,11 @@ function pickBestEmail(
   };
 }
 
-function pickBestLinkedIn(
-  a: PartialContactDetails,
-  b: PartialContactDetails | null
+function pickBestLinkedInFromSources(
+  web: PartialContactDetails,
+  pdl: PartialContactDetails | null
 ): Pick<PartialContactDetails, "linkedinUrl" | "linkedInSource" | "resolvedFullName"> {
-  const candidates = [a, b].filter(Boolean) as PartialContactDetails[];
+  const candidates = [web, pdl].filter(Boolean) as PartialContactDetails[];
   const ranked = candidates
     .filter((entry) => entry.linkedinUrl)
     .sort(
@@ -308,6 +346,9 @@ async function enrichEmailFromPdl(
     emailIsGuessed: false,
     linkedinUrl: null,
     linkedInSource: null,
+    phone: null,
+    phoneSource: null,
+    socialProfiles: null,
     contactPageUrl: null,
   };
 }
@@ -329,6 +370,9 @@ async function enrichLinkedInFromPdl(
     emailIsGuessed: false,
     linkedinUrl,
     linkedInSource: "pdl",
+    phone: null,
+    phoneSource: null,
+    socialProfiles: null,
     contactPageUrl: null,
   };
 }
@@ -348,6 +392,8 @@ async function enrichEmailFromWebScraping(
   let emailSource: EmailSource = stored.emailSource;
   const emailIsGuessed = false;
   let contactPageUrl: string | null = null;
+  let phone: string | null = null;
+  let socialProfiles: PersonSocialProfiles | null = null;
 
   if (domain) {
     const cached = await getScrapeCache<CachedContactRow[]>(contactsCacheKey(domain));
@@ -358,6 +404,8 @@ async function enrichEmailFromWebScraping(
         email = fromCache.email;
         emailSource = fromCache.emailSource;
       }
+      phone = fromCache.phone;
+      socialProfiles = fromCache.socialProfiles;
     }
   }
 
@@ -378,6 +426,11 @@ async function enrichEmailFromWebScraping(
       const match = parsed.find((person) => personNamesMatch(person.fullName, input.fullName));
       if (!match) return;
 
+      // Harvest whatever channels this page happens to carry for the person. No extra
+      // fetch is spent on them — this scrape is already paid for by the email lookup.
+      phone = phone ?? sanitizePersonPhone(match.phone);
+      socialProfiles = mergeSocialProfiles(socialProfiles, match.socialProfiles);
+
       const found = emailFromScrapedContact(input.fullName, match.email, match.source);
       if (found.email) {
         email = found.email;
@@ -392,6 +445,9 @@ async function enrichEmailFromWebScraping(
     emailIsGuessed: false,
     linkedinUrl: null,
     linkedInSource: null,
+    phone,
+    phoneSource: phone ? "website" : null,
+    socialProfiles,
     contactPageUrl,
   };
 }
@@ -445,18 +501,40 @@ async function enrichLinkedInFromWebScraping(
 
   let resolvedFullName: string | null = null;
 
-  if (!linkedinUrl) {
+  const linkedInNeedsSearch =
+    !linkedinUrl ||
+    !sanitizePersonLinkedInForContact(
+      linkedinUrl,
+      input.fullName,
+      input.companyName
+    );
+
+  if (linkedInNeedsSearch) {
     const googleLinkedIn = await discoverPersonLinkedIn(
       input.fullName,
       input.companyName,
       domain,
       input.title,
-      { requireCompanyMatch: false }
+      {
+        companyCity: input.companyCity,
+        companyState: input.companyState,
+        companyCountry: input.companyCountry,
+      }
     );
+    // Identity guard: a web-searched profile is only kept when its /in/ slug matches
+    // the person — never on snippet text alone — to avoid attaching a same-name
+    // stranger. Consistent with the final lead-level gate (sanitizeLinkedInForLead).
     if (googleLinkedIn.url) {
-      linkedinUrl = sanitizePersonLinkedInUrl(googleLinkedIn.url);
-      linkedInSource = googleLinkedIn.source ?? "public_profile";
-      resolvedFullName = googleLinkedIn.resolvedFullName ?? null;
+      const sanitized = sanitizePersonLinkedInForContact(
+        googleLinkedIn.url,
+        input.fullName,
+        input.companyName
+      );
+      if (sanitized) {
+        linkedinUrl = sanitized;
+        linkedInSource = googleLinkedIn.source ?? "public_profile";
+        resolvedFullName = googleLinkedIn.resolvedFullName ?? null;
+      }
     }
   }
 
@@ -507,57 +585,121 @@ async function enrichLinkedInFromWebScraping(
     emailIsGuessed: false,
     linkedinUrl,
     linkedInSource,
+    phone: null,
+    phoneSource: null,
+    socialProfiles: null,
     contactPageUrl,
     resolvedFullName,
   };
 }
 
-/**
- * Resolve contact details: verified real emails from website/PDL, plus LinkedIn profile.
- */
+export function shouldUsePdlEnrichment(): boolean {
+  // Person contact details (email / phone / LinkedIn) are scraped from the
+  // company's own site and directory pages by default. People Data Labs is used
+  // ONLY when explicitly opted into via CONTACT_DISCOVERY_PROVIDER=pdl and paid
+  // APIs are not disabled.
+  const provider = process.env.CONTACT_DISCOVERY_PROVIDER?.toLowerCase();
+  const optedIntoPdl =
+    provider === "pdl" ||
+    provider === "people-data-labs" ||
+    provider === "peopledatalabs";
+  return optedIntoPdl && isPeopleDataLabsConfigured() && !isPaidApisDisabled();
+}
+
+const EMPTY_WEB_DETAILS: PartialContactDetails = {
+  email: null,
+  emailSource: null,
+  emailIsGuessed: false,
+  linkedinUrl: null,
+  linkedInSource: null,
+  phone: null,
+  phoneSource: null,
+  socialProfiles: null,
+  contactPageUrl: null,
+};
+
+/** Resolve contact details: verified emails from website/PDL, plus LinkedIn profile. */
 export async function enrichContactDetailsFromWebsite(
   input: LeadEnrichmentInput
 ): Promise<EnrichedContactDetails> {
-  const pdl =
-    isPeopleDataLabsConfigured()
-      ? await enrichPersonFromPeopleDataLabs({
-          pdlId: input.providerContactId,
-          fullName: input.fullName,
-          companyName: input.companyName,
-          companyDomain: input.companyDomain,
-          linkedinUrl: input.linkedinUrl,
-        })
-      : null;
+  const pdl = shouldUsePdlEnrichment()
+    ? await enrichPersonFromPeopleDataLabs({
+        pdlId: input.providerContactId,
+        fullName: input.fullName,
+        companyName: input.companyName,
+        companyDomain: input.companyDomain,
+        linkedinUrl: input.linkedinUrl,
+      })
+    : null;
 
-  const [pdlEmail, webEmail, pdlLinkedIn, webLinkedIn] = await Promise.all([
+  const [pdlEmail, pdlLinkedIn] = await Promise.all([
     enrichEmailFromPdl(input, pdl),
-    enrichEmailFromWebScraping(input),
     enrichLinkedInFromPdl(input, pdl),
-    enrichLinkedInFromWebScraping(input),
   ]);
 
-  const emailPick = pickBestEmail(webEmail, pdlEmail);
+  const apiEmailPick = pickBestEmailFromSources(EMPTY_WEB_DETAILS, pdlEmail);
+  const apiLinkedInPick = pickBestLinkedInFromSources(EMPTY_WEB_DETAILS, pdlLinkedIn);
+
+  const needsEmail = !apiEmailPick.email;
+  const needsLinkedIn = !apiLinkedInPick.linkedinUrl;
+
+  let webEmail = EMPTY_WEB_DETAILS;
+  let webLinkedIn = EMPTY_WEB_DETAILS;
+
+  if (needsEmail && needsLinkedIn) {
+    [webEmail, webLinkedIn] = await Promise.all([
+      enrichEmailFromWebScraping(input),
+      enrichLinkedInFromWebScraping(input),
+    ]);
+  } else if (needsEmail) {
+    webEmail = await enrichEmailFromWebScraping(input);
+  } else if (needsLinkedIn) {
+    webLinkedIn = await enrichLinkedInFromWebScraping(input);
+  } else {
+    const domain = resolveCompanyDomain(input);
+    if (domain) {
+      webLinkedIn = {
+        ...EMPTY_WEB_DETAILS,
+        contactPageUrl: await resolveContactPageUrl(domain),
+      };
+    }
+  }
+
+  const emailPick = pickBestEmailFromSources(webEmail, pdlEmail);
   const verifiedEmail = await keepOnlyVerifiedEmail(
     input.id,
     input.fullName,
     emailPick.email,
     emailPick.emailSource
   );
-  const linkedInPick = pickBestLinkedIn(webLinkedIn, pdlLinkedIn);
+  const linkedInPick = pickBestLinkedInFromSources(webLinkedIn, pdlLinkedIn);
+
+  // Step 2 discovery already read the person's card, so its phone/socials are the
+  // primary source here; the enrichment scrape only fills what discovery missed.
+  const phone = sanitizePersonPhone(input.phone) ?? webEmail.phone ?? webLinkedIn.phone;
+  const socialProfiles = mergeSocialProfiles(
+    input.socialProfiles,
+    mergeSocialProfiles(webEmail.socialProfiles, webLinkedIn.socialProfiles)
+  );
 
   const result = finalizeDetails(input, {
     email: verifiedEmail.email,
     emailSource: verifiedEmail.emailSource,
     emailIsGuessed: false,
     ...linkedInPick,
+    phone,
+    phoneSource: phone ? (input.phone ? "website" : (webEmail.phoneSource ?? "website")) : null,
+    socialProfiles: hasAnySocialProfile(socialProfiles) ? socialProfiles : null,
     contactPageUrl: webEmail.contactPageUrl ?? webLinkedIn.contactPageUrl,
   });
 
-  if (result.email || result.linkedinUrl || result.contactPageUrl) {
+  if (result.email || result.linkedinUrl || result.phone || result.contactPageUrl) {
     log.info("Contact details enriched", {
       name: input.fullName,
       hasEmail: Boolean(result.email),
       hasLinkedIn: Boolean(result.linkedinUrl),
+      hasPhone: Boolean(result.phone),
+      hasSocial: hasAnySocialProfile(result.socialProfiles),
       emailSource: result.emailSource,
       linkedInSource: result.linkedInSource,
     });

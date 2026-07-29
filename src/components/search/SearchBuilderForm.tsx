@@ -101,8 +101,8 @@ export function SearchBuilderForm({
     });
   }
 
-  function applySizePreset(min: number, max: number | null) {
-    updateField("companySizeMin", String(min));
+  function applySizePreset(min: number | null, max: number | null) {
+    updateField("companySizeMin", min !== null ? String(min) : "");
     updateField("companySizeMax", max !== null ? String(max) : "");
   }
 
@@ -245,14 +245,16 @@ export function SearchBuilderForm({
               label="Company size"
               htmlFor="companySizeMin"
               error={errors.companySize}
-              required
+              optional
             >
               <div className="mb-3 flex flex-wrap gap-2">
                 {COMPANY_SIZE_PRESETS.map((preset) => {
                   const isActive =
-                    form.companySizeMin === String(preset.min) &&
-                    form.companySizeMax ===
-                      (preset.max !== null ? String(preset.max) : "");
+                    preset.min === null
+                      ? !form.companySizeMin.trim() && !form.companySizeMax.trim()
+                      : form.companySizeMin === String(preset.min) &&
+                        form.companySizeMax ===
+                          (preset.max !== null ? String(preset.max) : "");
 
                   return (
                     <button

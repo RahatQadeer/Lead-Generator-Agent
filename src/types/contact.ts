@@ -3,7 +3,15 @@ export interface ContactDiscoveryTargetCompany {
   name: string;
   domain: string | null;
   providerCompanyId: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
 }
+
+export type SocialNetwork = "twitter" | "facebook" | "instagram";
+
+/** Personal social profiles, name-matched to the individual (never company accounts). */
+export type PersonSocialProfiles = Record<SocialNetwork, string | null>;
 
 export interface DiscoveredContact {
   id: string;
@@ -18,6 +26,9 @@ export interface DiscoveredContact {
   email: string | null;
   emailIsGuessed: boolean;
   linkedinUrl: string | null;
+  /** Direct number tied to this person, never the company switchboard. */
+  phone?: string | null;
+  socialProfiles?: PersonSocialProfiles | null;
   confidenceScore: number;
   sourceUrl?: string | null;
   discoverySource?: "website_team" | "linkedin_search" | "wikidata" | "directory_listing" | "domain_search" | null;

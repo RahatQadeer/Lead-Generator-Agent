@@ -158,6 +158,39 @@ export async function countDiscardedContactsBySearchId(
   return count;
 }
 
+/** Allow step 3 to retry after a prior run discarded contacts with no details. */
+export async function restoreDiscardedContactsForSearch(
+  userId: string,
+  searchId: string
+): Promise<number> {
+  const supabase = await createClient();
+  const restoredAt = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from("contacts")
+    .update({
+      discarded_at: null,
+      outreach_channel: null,
+      enriched_at: null,
+      email: null,
+      linkedin_url: null,
+      email_source: null,
+      linkedin_source: null,
+      updated_at: restoredAt,
+    })
+    .eq("user_id", userId)
+    .eq("search_id", searchId)
+    .not("discarded_at", "is", null)
+    .select("id");
+
+  if (error) {
+    console.error("Failed to restore discarded contacts:", error.message);
+    return 0;
+  }
+
+  return data?.length ?? 0;
+}
+
 /** Remove contacts from a search when re-running people discovery (page 1 refresh). */
 export async function detachContactsFromSearch(
   userId: string,
@@ -256,7 +289,7 @@ export async function getEnrichedLeadsByUserId(
     .from("searches")
     .select("id")
     .eq("user_id", userId)
-    .in("status", ["active", "completed"]);
+    .in("status", ["draft", "active", "completed"]);
 
   if (searchError || !publishedSearches?.length) return [];
 

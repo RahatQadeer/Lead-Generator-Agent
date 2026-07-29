@@ -8,6 +8,11 @@ import { formatEmployeeRange } from "@/lib/scraping/firmographics";
 import { computeCompanyFitBreakdown } from "@/lib/scraping/company-fit-breakdown";
 import type { CompanyCriteriaFilters } from "@/lib/company-discovery/apply-criteria";
 import { validateCompanyForDiscovery } from "@/lib/company-discovery/validate-company";
+import type {
+  CompanySource,
+  CompanyValidationStatus,
+} from "@/lib/company-discovery/company-verification";
+import type { WebsiteStatus } from "@/lib/scraping/website-verification";
 import type { LeadQualityCategory } from "@/lib/lead-scoring/lead-quality-score";
 import type { ContactWithCompany } from "@/lib/contacts/mapper";
 import type { ScoredLeadResult } from "@/types/lead-scoring";
@@ -34,6 +39,27 @@ export interface CompanyPublicView {
   fitScore: number;
   scoreReasons: string[];
   validationWarnings: string[];
+  /** Verification verdict: verified / needs_verification / rejected. */
+  validationStatus: CompanyValidationStatus | null;
+  /** Reasons a company is not fully verified (cross-verification, semantic, …). */
+  validationReasons: string[];
+  /** Trusted sources that corroborate the company (>=2 = cross-verified). */
+  sources: CompanySource[];
+  /** Website liveness verdict. */
+  websiteStatus: WebsiteStatus | null;
+  /** 0-100 deterministic semantic match to the search query. */
+  semanticRelevance: number | null;
+  /** Publicly-listed leadership found via directory scrapers (founders/CEO/CTO/…). */
+  decisionMakers?: CompanyDecisionMakerView[];
+  /** Known backers/investors (e.g. the VC firm/accelerator whose portfolio it came from). */
+  investors?: string[];
+}
+
+/** A publicly-listed leader surfaced on a company card (no private data). */
+export interface CompanyDecisionMakerView {
+  fullName: string;
+  title: string | null;
+  linkedinUrl: string | null;
 }
 
 /** Step 2 — people (LinkedIn from search; email in step 3). */
@@ -62,9 +88,11 @@ export interface ContactDetailsView {
   emailIsGuessed: boolean;
   personalLinkedIn: string | null;
   linkedInSource: LinkedInSource;
+  phone: string | null;
+  socialProfiles: import("@/types/contact").PersonSocialProfiles | null;
   contactDetailType: import("@/types/lead").ContactDetailType;
   contactPageUrl: string | null;
-  outreachChannel: "email" | "linkedin" | null;
+  outreachChannel: import("@/types/lead").OutreachChannel | null;
   confidenceScore: number;
   location: string | null;
 }
@@ -148,6 +176,21 @@ export function toCompanyPublicView(
     fitScore,
     scoreReasons,
     validationWarnings: validation?.warnings ?? [],
+    validationStatus: company.validationStatus ?? null,
+    validationReasons: company.validationReasons ?? [],
+    sources: company.sources ?? [],
+    websiteStatus: company.websiteStatus ?? null,
+    semanticRelevance: company.semanticRelevance ?? null,
+    decisionMakers: company.founders?.length
+      ? company.founders.map((founder) => ({
+          fullName: founder.name,
+          title: founder.title ?? null,
+          linkedinUrl: sanitizePersonLinkedInUrl(founder.linkedinUrl ?? null),
+        }))
+      : undefined,
+    investors: company.directoryProfile?.investors?.length
+      ? company.directoryProfile.investors
+      : undefined,
   };
 }
 
@@ -190,6 +233,8 @@ export function toContactDetailsView(lead: EnrichedLead): ContactDetailsView {
       lead.company
     ),
     linkedInSource: lead.linkedInSource ?? null,
+    phone: lead.phone ?? null,
+    socialProfiles: lead.socialProfiles ?? null,
     contactDetailType: lead.contactDetailType ?? null,
     contactPageUrl: lead.contactPageUrl ?? null,
     outreachChannel: lead.outreachChannel ?? null,

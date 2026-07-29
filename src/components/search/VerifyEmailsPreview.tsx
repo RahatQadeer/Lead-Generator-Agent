@@ -7,9 +7,13 @@ import {
 } from "@/components/ui/OutreachStepPanel";
 import { StepActionButton } from "@/components/search/StepActionButton";
 import { StepErrorAlert } from "@/components/search/StepFeedback";
+import { DiscoveryProgressPanel } from "@/components/search/DiscoveryProgressPanel";
 import { previewResultItemClassName } from "@/lib/ui/styles";
 import { EmailVerificationBadge } from "@/components/leads/EmailVerificationBadge";
 import type { EmailVerificationView } from "@/lib/pipeline/public-views";
+import { EMAIL_VERIFICATION_STAGES } from "@/lib/ui/discovery-stages";
+import { useElapsedSeconds } from "@/hooks/useElapsedSeconds";
+import { useRotatingStage } from "@/hooks/useRotatingStage";
 import {
   isGatedStepActionDisabled,
   type OutreachStepControlProps,
@@ -45,6 +49,8 @@ export function VerifyEmailsPreview({
 }: VerifyEmailsPreviewProps) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<VerifyEmailsResponse | null>(null);
+  const elapsedSeconds = useElapsedSeconds(loading);
+  const rotatingStage = useRotatingStage(EMAIL_VERIFICATION_STAGES, loading);
 
   async function runVerification() {
     setLoading(true);
@@ -93,6 +99,15 @@ export function VerifyEmailsPreview({
         />
       }
     >
+      {loading && (
+        <DiscoveryProgressPanel
+          title="Verifying emails"
+          elapsedSeconds={elapsedSeconds}
+          progress={{ stage: rotatingStage }}
+          expectedSeconds={45}
+        />
+      )}
+
       {result && !result.success && result.error && (
         <StepErrorAlert
           error={result.error}

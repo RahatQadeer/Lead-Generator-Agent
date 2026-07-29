@@ -134,7 +134,14 @@ export async function scrapeCompanyMetadataFromUrl(
   url: string,
   domain: string,
   options: FetchPageOptions = {}
-): Promise<{ metadata: ParsedCompanyMetadata | null; source: ScrapeSource | null }> {
+): Promise<{
+  metadata: ParsedCompanyMetadata | null;
+  source: ScrapeSource | null;
+  /** Raw HTML of the retrieved page (for liveness/quality verification). */
+  html: string | null;
+  /** True when any page (HTTP or rendered) was actually retrieved. */
+  reachable: boolean;
+}> {
   const httpResult = await fetchPage(url, options);
   let metadata = httpResult
     ? parseCompanyMetadata(httpResult.html, domain)
@@ -155,8 +162,15 @@ export async function scrapeCompanyMetadataFromUrl(
     options
   );
 
-  if (!page) return { metadata, source: httpResult ? "http" : null };
+  if (!page) {
+    return {
+      metadata,
+      source: httpResult ? "http" : null,
+      html: httpResult?.html ?? null,
+      reachable: Boolean(httpResult),
+    };
+  }
 
   metadata = parseCompanyMetadata(page.html, domain);
-  return { metadata, source: page.source };
+  return { metadata, source: page.source, html: page.html, reachable: true };
 }

@@ -1,13 +1,22 @@
 "use client";
 
-import { ExternalLink, Link2, Mail, MapPin } from "lucide-react";
+import { ExternalLink, Link2, Mail, MapPin, Phone } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { socialProfileLinks } from "@/lib/contacts/social-links";
 import { linkClassName } from "@/lib/ui/styles";
 import type {
   CompanyPublicView,
   ContactDetailsView,
   PersonPublicView,
 } from "@/lib/pipeline/public-views";
+import type { OutreachChannel } from "@/types/lead";
+
+const OUTREACH_CHANNEL_LABELS: Record<OutreachChannel, string> = {
+  email: "Email",
+  linkedin: "LinkedIn",
+  phone: "Phone",
+  social: "Social",
+};
 
 export type DiscoveryDetailItem =
   | { kind: "company"; data: CompanyPublicView }
@@ -28,6 +37,7 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 function linkedInSourceLabel(source: ContactDetailsView["linkedInSource"]): string {
   if (source === "website") return "From company website";
   if (source === "pdl") return "People Data Labs";
+  if (source === "contactout") return "ContactOut";
   if (source === "public_profile") return "Google/SearXNG search";
   return "";
 }
@@ -59,6 +69,57 @@ function CompanyDetails({ company }: { company: CompanyPublicView }) {
       <DetailRow label="Employees" value={company.employeeRange} />
       <DetailRow label="Fit score" value={`${company.fitScore}%`} />
       <DetailRow label="Data confidence" value={`${company.confidenceScore}%`} />
+      {company.validationStatus && (
+        <DetailRow
+          label="Validation"
+          value={
+            <div className="space-y-1">
+              <span
+                className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                  company.validationStatus === "verified"
+                    ? "bg-emerald-50 text-emerald-700"
+                    : company.validationStatus === "needs_verification"
+                      ? "bg-amber-50 text-amber-800"
+                      : "bg-rose-50 text-rose-700"
+                }`}
+              >
+                {company.validationStatus === "verified"
+                  ? "✓ Verified"
+                  : company.validationStatus === "needs_verification"
+                    ? "Needs verification"
+                    : "Rejected"}
+              </span>
+              {company.validationReasons.length > 0 && (
+                <ul className="list-disc space-y-0.5 pl-4 text-xs text-gray-600">
+                  {company.validationReasons.map((reason) => (
+                    <li key={reason}>{reason}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          }
+        />
+      )}
+      {typeof company.semanticRelevance === "number" && (
+        <DetailRow label="Semantic match" value={`${company.semanticRelevance}%`} />
+      )}
+      {company.sources.length > 0 && (
+        <DetailRow
+          label="Sources used"
+          value={
+            <div className="flex flex-wrap gap-1.5">
+              {company.sources.map((source) => (
+                <span
+                  key={source.kind}
+                  className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-700"
+                >
+                  {source.label}
+                </span>
+              ))}
+            </div>
+          }
+        />
+      )}
       {company.description && (
         <DetailRow label="About" value={<p className="whitespace-pre-wrap">{company.description}</p>} />
       )}
@@ -182,7 +243,7 @@ function ContactDetails({ lead }: { lead: ContactDetailsView }) {
       {lead.outreachChannel && (
         <DetailRow
           label="Outreach channel"
-          value={lead.outreachChannel === "linkedin" ? "LinkedIn" : "Email"}
+          value={OUTREACH_CHANNEL_LABELS[lead.outreachChannel]}
         />
       )}
       <DetailRow
@@ -224,6 +285,43 @@ function ContactDetails({ lead }: { lead: ContactDetailsView }) {
           )
         }
       />
+      <DetailRow
+        label="Phone"
+        value={
+          lead.phone ? (
+            <a
+              href={`tel:${lead.phone}`}
+              className={`${linkClassName} inline-flex items-center gap-1 break-all`}
+            >
+              <Phone className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+              {lead.phone}
+            </a>
+          ) : (
+            <span className="text-gray-400">No direct number found</span>
+          )
+        }
+      />
+      {socialProfileLinks(lead.socialProfiles).length > 0 && (
+        <DetailRow
+          label="Social profiles"
+          value={
+            <div className="space-y-1">
+              {socialProfileLinks(lead.socialProfiles).map((profile) => (
+                <a
+                  key={profile.network}
+                  href={profile.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`${linkClassName} flex items-center gap-1 break-all`}
+                >
+                  <Link2 className="h-3.5 w-3.5 shrink-0 text-fuchsia-600" />
+                  {profile.label}: {profile.url.replace(/^https?:\/\/(www\.)?/, "")}
+                </a>
+              ))}
+            </div>
+          }
+        />
+      )}
       {lead.contactPageUrl && (
         <DetailRow
           label="Contact page"

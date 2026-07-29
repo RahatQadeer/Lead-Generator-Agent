@@ -1,3 +1,5 @@
+import { looksLikeStandaloneJobTitle } from "@/lib/scraping/data-quality";
+
 export type AffiliationSource =
   | "website_team"
   | "linkedin_search"
@@ -191,6 +193,20 @@ function indicatesEmploymentAtOtherCompany(
   return false;
 }
 
+/**
+ * A segment that is itself a job title, not an employer name.
+ *
+ * Titles are split on `-`, `|`, and `·` because LinkedIn packs "Name - Role - Company"
+ * into one string. Company websites use the same separators between two *roles*
+ * ("President | Chief Executive Officer"), so without this check the second role reads
+ * as an employer and the person looks like they work somewhere else.
+ */
+function segmentIsRoleOnly(segment: string): boolean {
+  if (looksLikeStandaloneJobTitle(segment)) return true;
+  if (/\b(at|@)\b/i.test(segment)) return false;
+  return segment.length <= 40 && CURRENT_ROLE_PATTERN.test(segment);
+}
+
 function titleNamesExternalEmployer(
   title: string,
   target: CompanyAffiliationTarget
@@ -201,6 +217,7 @@ function titleNamesExternalEmployer(
   return parts.slice(1).some((part) => {
     if (part.length < 4) return false;
     if (textMentionsTargetCompany(part, target)) return false;
+    if (segmentIsRoleOnly(part)) return false;
     return /[a-z]/i.test(part);
   });
 }

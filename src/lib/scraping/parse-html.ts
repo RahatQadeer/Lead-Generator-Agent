@@ -2,13 +2,21 @@ import * as cheerio from "cheerio";
 import type { AnyNode } from "domhandler";
 import {
   isPlausiblePersonName,
+  looksLikeStandaloneJobTitle,
   pickBestPersonalEmail,
   sanitizePersonLinkedInUrl,
 } from "@/lib/scraping/data-quality";
 import {
+  emptySocialProfiles,
+  extractPersonContactChannels,
+  sanitizePersonPhone,
+  sanitizePersonSocialUrl,
+} from "@/lib/scraping/person-contact-channels";
+import {
   isLeadershipPressUrl,
   parseLeadershipFromPressHtml,
 } from "@/lib/scraping/press-release-leaders";
+import type { PersonSocialProfiles, SocialNetwork } from "@/types/contact";
 
 const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 const PHONE_REGEX =
@@ -68,6 +76,12 @@ export interface ParsedContact {
   title: string;
   email: string | null;
   linkedinUrl: string | null;
+  /**
+   * Direct number for this person — never a page-level/company number.
+   * Absent from sources that carry no contact channels (wikidata, press releases).
+   */
+  phone?: string | null;
+  socialProfiles?: PersonSocialProfiles | null;
   source: "page" | "pattern";
   sourceUrl?: string | null;
   affiliationText?: string | null;
@@ -230,10 +244,18 @@ export function parseContactsFromHtml(
     linkedinUrl: string | null;
     source: "page" | "pattern";
     affiliationText?: string | null;
+    /** This person's own card/row. Phone and socials are read only from here. */
+    block?: cheerio.Cheerio<AnyNode>;
+    phone?: string | null;
+    socialProfiles?: PersonSocialProfiles;
   }) {
     const key = `${input.fullName.toLowerCase()}|${input.title.toLowerCase()}`;
     if (seen.has(key)) return;
     seen.add(key);
+
+    const channels = input.block
+      ? extractPersonContactChannels(input.block, input.fullName)
+      : null;
 
     const { firstName, lastName } = splitName(input.fullName);
     contacts.push({
@@ -243,6 +265,9 @@ export function parseContactsFromHtml(
       title: input.title,
       email: input.email,
       linkedinUrl: sanitizePersonLinkedInUrl(input.linkedinUrl),
+      phone: input.phone ?? channels?.phone ?? null,
+      socialProfiles:
+        input.socialProfiles ?? channels?.socialProfiles ?? emptySocialProfiles(),
       source: input.source,
       sourceUrl: sourceUrl ?? null,
       affiliationText: input.affiliationText ?? null,
@@ -261,10 +286,23 @@ export function parseContactsFromHtml(
       .filter(Boolean);
 
     const name =
-      lines.find(looksLikePersonName) ??
-      contextEl.find("h2, h3, h4, h5, strong, .name, [class*='name']").first().text().trim();
+      lines.find(
+        (line) => looksLikePersonName(line) && !looksLikeStandaloneJobTitle(line)
+      ) ??
+      (() => {
+        const heading = contextEl
+          .find("h2, h3, h4, h5, strong, .name, [class*='name']")
+          .first()
+          .text()
+          .trim();
+        return heading &&
+          looksLikePersonName(heading) &&
+          !looksLikeStandaloneJobTitle(heading)
+          ? heading
+          : "";
+      })();
 
-    if (!name || !looksLikePersonName(name)) return;
+    if (!name) return;
 
     const title = inferTitleFromLines(lines, name, leadershipPage);
 
@@ -287,6 +325,7 @@ export function parseContactsFromHtml(
       linkedinUrl: linkedin,
       source,
       affiliationText: contextText.slice(0, 500),
+      block: contextEl,
     });
   }
 
@@ -320,11 +359,32 @@ export function parseContactsFromHtml(
               : null
         );
 
+        // A JSON-LD Person node is explicitly about one individual, so `telephone` and
+        // `sameAs` are already person-scoped — the strongest evidence on any page.
+        const sameAs = Array.isArray(record.sameAs)
+          ? (record.sameAs as unknown[]).map(String)
+          : typeof record.sameAs === "string"
+            ? [record.sameAs]
+            : [];
+
+        const socialProfiles = emptySocialProfiles();
+        for (const network of ["twitter", "facebook", "instagram"] as SocialNetwork[]) {
+          for (const url of sameAs) {
+            const sanitized = sanitizePersonSocialUrl(url, network, fullName);
+            if (sanitized) {
+              socialProfiles[network] = sanitized;
+              break;
+            }
+          }
+        }
+
         addContact({
           fullName,
           title: looksLikeTitle(title) ? title : "Team Member",
           email,
           linkedinUrl: linkedin,
+          phone: sanitizePersonPhone(record.telephone ? String(record.telephone) : null),
+          socialProfiles,
           source: "page",
           affiliationText: `${fullName} ${title}`,
         });
@@ -380,6 +440,7 @@ export function parseContactsFromHtml(
       linkedinUrl: linkedin,
       source: "page",
       affiliationText: `${name} ${title} ${card.text()}`.slice(0, 500),
+      block: card,
     });
   });
 
@@ -401,6 +462,7 @@ export function parseContactsFromHtml(
           linkedinUrl: context.find("a[href*='linkedin.com/in']").first().attr("href") ?? null,
           source: "page",
           affiliationText: context.text().slice(0, 500),
+          block: context,
         });
       }
     }
@@ -447,6 +509,7 @@ export function parseContactsFromHtml(
         linkedinUrl: linkedin,
         source: "page",
         affiliationText: `${name} ${siblingTitle} ${block.text()}`.slice(0, 500),
+        block,
       });
     });
   }
@@ -512,6 +575,7 @@ export function parseContactsFromHtml(
       linkedinUrl: linkedin,
       source: "page",
       affiliationText: row.text().slice(0, 500),
+      block: row,
     });
   });
 
@@ -544,6 +608,7 @@ export function parseContactsFromHtml(
         linkedinUrl: linkedin,
         source: "page",
         affiliationText: `${name} ${title} ${dd.text()}`.slice(0, 500),
+        block: dd,
       });
     });
   });
@@ -589,6 +654,7 @@ export function parseContactsFromHtml(
       linkedinUrl: linkedin,
       source: "page",
       affiliationText: `${name} ${role} ${block.text()}`.slice(0, 500),
+      block,
     });
   });
 
@@ -614,6 +680,7 @@ export function parseContactsFromHtml(
       linkedinUrl: linkedin,
       source: "page",
       affiliationText: block.text().slice(0, 500),
+      block,
     });
   });
 

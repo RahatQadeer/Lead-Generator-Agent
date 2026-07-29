@@ -8,6 +8,7 @@ import {
   Loader2,
   Mail,
   MapPin,
+  Phone,
   Search,
   Trash2,
 } from "lucide-react";
@@ -25,8 +26,31 @@ import {
   btnSmSecondaryClassName,
   cardClassName,
 } from "@/lib/ui/styles";
+import { socialProfileLinks } from "@/lib/contacts/social-links";
 import { serializeLeadsToCsv } from "@/lib/export/serialize-leads-csv";
 import type { EnrichedLead } from "@/types/lead";
+
+type LeadChannelFilter = "all" | "email" | "linkedin" | "phone" | "social";
+
+function leadMatchesChannelFilter(
+  lead: EnrichedLead,
+  channelFilter: LeadChannelFilter
+): boolean {
+  if (channelFilter === "all") return true;
+  if (channelFilter === "email") {
+    return lead.outreachChannel === "email" || Boolean(lead.email);
+  }
+  if (channelFilter === "phone") {
+    return lead.outreachChannel === "phone" || Boolean(lead.phone);
+  }
+  if (channelFilter === "social") {
+    return lead.outreachChannel === "social" || socialProfileLinks(lead.socialProfiles).length > 0;
+  }
+  return (
+    lead.outreachChannel === "linkedin" ||
+    Boolean(isValidPersonLinkedInUrl(lead.linkedin))
+  );
+}
 
 interface LeadsListProps {
   leads: EnrichedLead[];
@@ -67,6 +91,7 @@ export function LeadsList({ leads: initialLeads }: LeadsListProps) {
   const router = useRouter();
   const [leads, setLeads] = useState(initialLeads);
   const [query, setQuery] = useState("");
+  const [channelFilter, setChannelFilter] = useState<LeadChannelFilter>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
 
@@ -75,9 +100,10 @@ export function LeadsList({ leads: initialLeads }: LeadsListProps) {
   }, [initialLeads]);
 
   const filtered = useMemo(() => {
+    const byChannel = leads.filter((lead) => leadMatchesChannelFilter(lead, channelFilter));
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return leads;
-    return leads.filter(
+    if (!normalized) return byChannel;
+    return byChannel.filter(
       (lead) =>
         lead.name.toLowerCase().includes(normalized) ||
         lead.role.toLowerCase().includes(normalized) ||
@@ -85,7 +111,7 @@ export function LeadsList({ leads: initialLeads }: LeadsListProps) {
         lead.email?.toLowerCase().includes(normalized) ||
         lead.location?.toLowerCase().includes(normalized)
     );
-  }, [leads, query]);
+  }, [leads, query, channelFilter]);
 
   const allFilteredSelected =
     filtered.length > 0 && filtered.every((lead) => selected.has(lead.id));
@@ -152,22 +178,41 @@ export function LeadsList({ leads: initialLeads }: LeadsListProps) {
     });
   }
 
-  const hasFilter = query.trim().length > 0;
+  const hasFilter = query.trim().length > 0 || channelFilter !== "all";
 
   return (
     <div className={`${cardClassName} overflow-hidden`}>
       <div className="flex flex-col gap-3 border-b border-gray-100 px-5 py-4 sm:px-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative min-w-0 flex-1 sm:max-w-md">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search leads…"
-              className={`${inputClassName} pl-10`}
-              aria-label="Search leads"
-            />
+          <div className="flex min-w-0 flex-1 flex-col gap-2 sm:max-w-2xl sm:flex-row sm:items-center">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search leads…"
+                className={`${inputClassName} pl-10`}
+                aria-label="Search leads"
+              />
+            </div>
+            <label className="flex shrink-0 items-center gap-1.5 text-xs text-gray-600">
+              <span className="font-medium">Outreach</span>
+              <select
+                value={channelFilter}
+                onChange={(e) =>
+                  setChannelFilter(e.target.value as LeadChannelFilter)
+                }
+                className={`${inputClassName} min-w-[9rem] py-2 text-xs`}
+                aria-label="Filter by outreach channel"
+              >
+                <option value="all">All leads</option>
+                <option value="email">Email only</option>
+                <option value="linkedin">LinkedIn only</option>
+                <option value="phone">Phone only</option>
+                <option value="social">Social only</option>
+              </select>
+            </label>
           </div>
           <p className="text-xs text-gray-500">
             <span className="font-semibold tabular-nums text-gray-900">
@@ -292,6 +337,14 @@ export function LeadsList({ leads: initialLeads }: LeadsListProps) {
                         <span className="break-all">{lead.email}</span>
                       </p>
                     ) : null}
+                    {lead.phone ? (
+                      <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-gray-700">
+                        <Phone className="h-3.5 w-3.5 shrink-0 text-gray-400" />
+                        <a href={`tel:${lead.phone}`} className="break-all hover:underline">
+                          {lead.phone}
+                        </a>
+                      </p>
+                    ) : null}
                   </div>
                 </div>
 
@@ -319,6 +372,21 @@ export function LeadsList({ leads: initialLeads }: LeadsListProps) {
                         <LinkedInIcon className="h-4 w-4" />
                       </a>
                     )}
+                    {socialProfileLinks(lead.socialProfiles).map((profile) => (
+                      <a
+                        key={profile.network}
+                        href={profile.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={btnIconSmSecondaryClassName}
+                        aria-label={`Open ${profile.label} profile`}
+                        title={profile.label}
+                      >
+                        <span className="text-[10px] font-semibold">
+                          {profile.label.slice(0, 2)}
+                        </span>
+                      </a>
+                    ))}
                   </div>
                 </div>
               </div>

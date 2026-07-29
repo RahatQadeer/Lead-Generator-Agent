@@ -22,6 +22,7 @@ import {
   DiscoveryResultsToolbar,
 } from "@/components/search/DiscoveryResultsToolbar";
 import { COMPANY_DISCOVERY_STAGES } from "@/lib/ui/discovery-stages";
+import { consumeEventStream } from "@/lib/ui/sse-client";
 import {
   DISCOVERY_DISPLAY_BATCH,
   filterCompanies,
@@ -176,27 +177,61 @@ export function DiscoverPreview({
     }
   }
 
+  function handleDiscoveryPayload(data: DiscoverResponse) {
+    if (!data.success) {
+      setResult(data);
+      return;
+    }
+    applyPageResponse(data, 1, true, []);
+    if ((data.companies?.length ?? 0) > 0) {
+      onStepComplete?.();
+    }
+  }
+
   async function runDiscovery() {
     setLoading(true);
     setResult(null);
     setCompanies([]);
     setLoadedPage(0);
     setHasMore(false);
-    setProgress({ foundCount: 0 });
+    setProgress({});
 
     try {
-      const data = await fetchDiscoveryPage(1);
+      const res = await fetch("/api/companies/discover", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
+        body: JSON.stringify({ searchId, page: 1, perPage: PER_PAGE }),
+      });
 
-      if (!data.success) {
-        setResult(data);
+      // Fallback: server replied with JSON (e.g. an auth/validation error) rather
+      // than a stream — handle it as a one-shot response.
+      if (!(res.headers.get("content-type") ?? "").includes("text/event-stream")) {
+        handleDiscoveryPayload((await res.json()) as DiscoverResponse);
         return;
       }
 
-      applyPageResponse(data, 1, true, []);
-
-      if ((data.companies?.length ?? 0) > 0) {
-        onStepComplete?.();
-      }
+      await consumeEventStream(res, {
+        onProgress: (event) =>
+          setProgress({
+            current: event.current,
+            total: event.total,
+            itemLabel: event.label,
+            stage: event.phase,
+          }),
+        onDone: (payload) => handleDiscoveryPayload(payload as DiscoverResponse),
+        onError: (error) =>
+          setResult({
+            success: false,
+            error: {
+              code: "STREAM_ERROR",
+              message: error.message ?? "Discovery failed",
+              retryable: true,
+            },
+          }),
+      });
     } catch {
       setResult({
         success: false,
@@ -268,8 +303,9 @@ export function DiscoverPreview({
 
   const activeProgress: DiscoveryProgressState = {
     ...(progress ?? {}),
-    stage: rotatingStage,
-    foundCount: progress?.foundCount ?? companies.length,
+    // Prefer the live server phase ("Validating company websites…"); fall back to the
+    // rotating copy before the first event arrives.
+    stage: progress?.stage ?? rotatingStage,
   };
 
   function handleFindCompaniesClick() {
@@ -320,6 +356,7 @@ export function DiscoverPreview({
           title="Finding companies"
           elapsedSeconds={elapsedSeconds}
           progress={activeProgress}
+          expectedSeconds={90}
         />
       )}
 
@@ -394,6 +431,19 @@ export function DiscoverPreview({
                           <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600">
                             {company.confidenceScore}% data
                           </span>
+                          {company.validationStatus === "verified" && (
+                            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+                              ✓ Verified
+                            </span>
+                          )}
+                          {company.validationStatus === "needs_verification" && (
+                            <span
+                              className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700"
+                              title={company.validationReasons.join(" · ")}
+                            >
+                              Needs verification
+                            </span>
+                          )}
                         </div>
                         <p className="break-words text-xs text-gray-500">
                           {company.website ?? company.domain ?? "—"}

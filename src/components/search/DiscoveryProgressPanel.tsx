@@ -16,17 +16,39 @@ interface DiscoveryProgressPanelProps {
   title: string;
   elapsedSeconds: number;
   progress: DiscoveryProgressState;
+  /**
+   * Typical duration for steps that run as a single request and cannot report
+   * per-item counts. Used to show a time-based estimated percent + remaining time.
+   * Ignored when `current`/`total` are available (those drive a real percent).
+   */
+  expectedSeconds?: number;
 }
 
 export function DiscoveryProgressPanel({
   title,
   elapsedSeconds,
   progress,
+  expectedSeconds,
 }: DiscoveryProgressPanelProps) {
   const { current, total, foundCount, stage, itemLabel } = progress;
-  const percent =
+
+  const realPercent =
     current != null && total != null && total > 0
       ? Math.min(100, Math.round((current / total) * 100))
+      : undefined;
+
+  // Time-based estimate for opaque single-request steps: eases toward 95% and only
+  // hits 100% when the request resolves (the panel unmounts). Honest "~" estimate.
+  const estimatedPercent =
+    realPercent == null && expectedSeconds && expectedSeconds > 0
+      ? Math.min(95, Math.round((elapsedSeconds / expectedSeconds) * 100))
+      : undefined;
+
+  const percent = realPercent ?? estimatedPercent;
+  const isEstimate = realPercent == null && estimatedPercent != null;
+  const remainingSeconds =
+    isEstimate && expectedSeconds
+      ? Math.max(0, expectedSeconds - elapsedSeconds)
       : undefined;
 
   return (
@@ -62,7 +84,17 @@ export function DiscoveryProgressPanel({
         </p>
       )}
 
-      {foundCount != null && current == null && (
+      {isEstimate && (
+        <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
+          ~{percent}% complete
+          {remainingSeconds != null
+            ? ` · ~${formatElapsed(remainingSeconds)} remaining`
+            : ""}
+          {foundCount ? ` · ${foundCount} found so far` : ""}
+        </p>
+      )}
+
+      {foundCount != null && current == null && !isEstimate && (
         <p className="mt-1 text-xs text-[var(--color-ink-muted)]">
           {foundCount} found so far
         </p>

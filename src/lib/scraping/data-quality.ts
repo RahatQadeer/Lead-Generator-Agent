@@ -86,7 +86,8 @@ export function isPlaceholderEmail(email: string): boolean {
   return PLACEHOLDER_EMAIL_PATTERNS.some((pattern) => pattern.test(normalized));
 }
 
-function nameParts(fullName: string): { first: string; last: string } {
+/** First and last name tokens, lowercased and stripped to letters. */
+export function personNameParts(fullName: string): { first: string; last: string } {
   const parts = fullName
     .toLowerCase()
     .split(/\s+/)
@@ -104,7 +105,7 @@ export function emailMatchesPersonName(email: string, fullName: string): boolean
   const local = email.split("@")[0]?.toLowerCase().replace(/[._+-]/g, "") ?? "";
   if (!local || local.length < 2) return false;
 
-  const { first, last } = nameParts(fullName);
+  const { first, last } = personNameParts(fullName);
   if (!first) return false;
 
   const variants = new Set<string>([
@@ -222,6 +223,29 @@ export function looksLikeMarketingTagline(value: string): boolean {
 const COMPANY_SUFFIX_TOKENS =
   /^(inc|llc|ltd|corp|company|solutions|services|team|department|gmbh|ag|sa|bv)$/i;
 
+/** Job titles scraped from headings or LinkedIn snippets — not person names. */
+export function looksLikeStandaloneJobTitle(value: string): boolean {
+  const normalized = value.trim().replace(/\s+/g, " ");
+  if (!normalized) return false;
+
+  if (
+    /^(?:(?:co[-\s]?)?founder|cfo|coo|cto|ceo|cmo|cpo|chro|president|chair(?:man|person|woman)?|owner|partner|principal|advisor|consultant|director|manager|lead|head|vp|svp|evp)(?:\s+(?:of|and|&)\s+[\w][\w\s&.-]{0,48})?$/i.test(
+      normalized
+    )
+  ) {
+    return true;
+  }
+
+  if (/^(?:senior |executive )?vice president\b/i.test(normalized)) return true;
+  if (/^vp\s+\w/i.test(normalized)) return true;
+  if (/^head of\b/i.test(normalized)) return true;
+  if (/^chief\b/i.test(normalized) && /\bofficer\b/i.test(normalized)) return true;
+  if (/^managing director$/i.test(normalized)) return true;
+  if (/^general manager$/i.test(normalized)) return true;
+
+  return false;
+}
+
 /** Reject page headings and junk parsed as person names. */
 export function isPlausiblePersonName(value: string): boolean {
   const cleaned = value
@@ -230,6 +254,7 @@ export function isPlausiblePersonName(value: string): boolean {
     .replace(/^(?:prof(?:essor)?\.?|dr\.?|mr\.?|mrs\.?|ms\.?|miss)\s+/gi, "")
     .trim();
   if (cleaned.length < 3 || cleaned.length > 60) return false;
+  if (looksLikeStandaloneJobTitle(cleaned)) return false;
   if (NON_PERSON_NAME_PATTERNS.some((pattern) => pattern.test(cleaned))) return false;
   if (looksLikeMarketingTagline(cleaned)) return false;
 
@@ -317,7 +342,7 @@ export function linkedinProfileMatchesPerson(
     return false;
   }
 
-  const { first, last } = nameParts(fullName);
+  const { first, last } = personNameParts(fullName);
   if (!first) return false;
 
   const slugNorm = slug.replace(/-/g, "");
@@ -353,6 +378,28 @@ export function sanitizePersonLinkedInForContact(
   if (!sanitized) return null;
   if (!linkedinProfileMatchesPerson(sanitized, fullName, companyName)) return null;
   return sanitized;
+}
+
+/**
+ * Final identity gate for a lead's LinkedIn URL.
+ *
+ * Person-keyed APIs (e.g. PDL) resolve the profile by the individual, so
+ * they are trusted as-is. Everything else — website scrapes and public web search
+ * (`public_profile`) — must have the person's name in the profile slug; otherwise a
+ * same-name stranger's profile can slip through. No raw fallback: if the slug does
+ * not match the person, the URL is dropped rather than attached unverified.
+ */
+export function sanitizeLinkedInForLead(
+  url: string | null | undefined,
+  fullName: string,
+  companyName?: string,
+  source?: string | null
+): string | null {
+  if (source === "contactout" || source === "pdl") {
+    return sanitizePersonLinkedInUrl(url);
+  }
+
+  return sanitizePersonLinkedInForContact(url, fullName, companyName);
 }
 
 /** Keep a LinkedIn URL when search results already confirm the person's name. */

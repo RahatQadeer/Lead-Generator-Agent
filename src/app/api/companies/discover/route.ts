@@ -4,6 +4,7 @@ import {
   getKnownCompanyDedupKeys,
   upsertDiscoveredCompanies,
 } from "@/lib/companies/queries";
+import { persistDecisionMakers } from "@/lib/companies/persist-decision-makers";
 import {
   discoverCompanies,
   toDiscoveryErrorResponse,
@@ -13,6 +14,11 @@ import { mapSearchToDiscoveryParams } from "@/lib/company-discovery/map-criteria
 import { toCompanyPublicView } from "@/lib/pipeline/public-views";
 import { enqueueCompanyDiscovery } from "@/lib/queue/company-discovery-queue";
 import { isQueueEnabled } from "@/lib/queue/connection";
+import {
+  createSseResponse,
+  wantsEventStream,
+  type ProgressReporter,
+} from "@/lib/sse/stream";
 import { createClient } from "@/lib/supabase/server";
 import { getSearchById } from "@/lib/search/queries";
 
@@ -105,19 +111,6 @@ export async function POST(request: Request) {
       });
     }
 
-    const result = await discoverCompanies(params, { knownDedupKeys });
-
-    if (page === 1 && result.companies.length > 0) {
-      await detachCompaniesFromSearch(user.id, search.id);
-    }
-
-    await upsertDiscoveredCompanies(
-      user.id,
-      search.id,
-      result.provider,
-      result.companies
-    );
-
     const criteriaFilters = {
       industry: params.industry,
       country: params.country,
@@ -127,30 +120,74 @@ export async function POST(request: Request) {
       keywords: params.keywords,
     };
 
-    return NextResponse.json({
-      success: true,
-      provider: result.provider,
-      companies: result.companies.map((company) =>
-        toCompanyPublicView(company, criteriaFilters)
-      ),
-      rejected: result.rejected ?? [],
-      pagination: result.pagination,
-      meta: {
-        filteredCount: result.filteredCount,
-        excludedCount: result.excludedCount,
-        duplicateCount: result.duplicateCount,
-        batchDuplicateCount: result.batchDuplicateCount,
-        knownDuplicateCount: result.knownDuplicateCount,
-        seedCount: result.seedCount,
-        enrichedCount: result.enrichedCount,
-        relaxedMatch: result.relaxedMatch,
-        rejectedCount: result.rejected?.length ?? 0,
-        rejected: result.rejected ?? [],
-        attempts: result.attempts,
+    // Runs discovery, persists results, and returns the same payload for both the
+    // JSON and SSE paths. `onProgress` is only wired in the streaming branch.
+    const runDiscovery = async (onProgress?: ProgressReporter) => {
+      const result = await discoverCompanies(params, {
+        knownDedupKeys,
+        onProgress,
+        userId: user.id,
         searchId: search.id,
-        searchName: search.name,
-      },
-    });
+      });
+
+      if (page === 1 && result.companies.length > 0) {
+        await detachCompaniesFromSearch(user.id, search.id);
+      }
+
+      await upsertDiscoveredCompanies(
+        user.id,
+        search.id,
+        result.provider,
+        result.companies
+      );
+
+      // Save publicly-listed founders (from directory scrapers) as decision-maker
+      // contacts tied to this search. Runs after companies exist so ids resolve.
+      const { savedCount: decisionMakerCount } = await persistDecisionMakers(
+        user.id,
+        search.id,
+        result.companies
+      );
+
+      return {
+        success: true as const,
+        provider: result.provider,
+        companies: result.companies.map((company) =>
+          toCompanyPublicView(company, criteriaFilters)
+        ),
+        rejected: result.rejected ?? [],
+        pagination: result.pagination,
+        meta: {
+          decisionMakerCount,
+          filteredCount: result.filteredCount,
+          excludedCount: result.excludedCount,
+          duplicateCount: result.duplicateCount,
+          batchDuplicateCount: result.batchDuplicateCount,
+          knownDuplicateCount: result.knownDuplicateCount,
+          seedCount: result.seedCount,
+          enrichedCount: result.enrichedCount,
+          relaxedMatch: result.relaxedMatch,
+          rejectedCount: result.rejected?.length ?? 0,
+          rejected: result.rejected ?? [],
+          attempts: result.attempts,
+          searchId: search.id,
+          searchName: search.name,
+        },
+      };
+    };
+
+    if (wantsEventStream(request)) {
+      return createSseResponse(async (emit) => {
+        try {
+          const payload = await runDiscovery((event) => emit("progress", event));
+          emit("done", payload);
+        } catch (error) {
+          emit("done", toDiscoveryErrorResponse(error));
+        }
+      });
+    }
+
+    return NextResponse.json(await runDiscovery());
   } catch (error) {
     const response = toDiscoveryErrorResponse(error);
     const status = error instanceof CompanyDiscoveryError ? error.statusCode : 500;
