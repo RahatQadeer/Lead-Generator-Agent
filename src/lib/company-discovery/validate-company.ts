@@ -21,6 +21,7 @@ import {
 } from "@/lib/scraping/company-type";
 import { formatEmployeeRange } from "@/lib/scraping/firmographics";
 import { applyKnownBrandToCompany, resolveKnownBrand } from "@/lib/scraping/known-brands";
+import { profileMatchesYcIndustryFacet, profileMatchesYcRegionFacet } from "@/lib/scrapers/sources/yc-algolia-facets";
 import type { DiscoveredCompany } from "@/types/company";
 
 export interface CompanyValidationResult {
@@ -46,6 +47,16 @@ function validateIndustryCategory(
   targetIndustry: string
 ): string | null {
   if (!targetIndustry.trim()) return null;
+
+  if (
+    company.id.startsWith("ycombinator:") &&
+    profileMatchesYcIndustryFacet(
+      [company.industry, ...(company.technologies ?? [])],
+      targetIndustry
+    )
+  ) {
+    return null;
+  }
 
   const text = buildCompanyIndustryText(company);
   const detected = classifyIndustryFromText(text);
@@ -193,7 +204,15 @@ export function validateCompanyForDiscovery(
   }
 
   if (filters.country.trim() && !matchesCountry(enriched, filters.country)) {
-    reasons.push(`Country mismatch (required: ${filters.country})`);
+    const ycRegionMatch =
+      enriched.id.startsWith("ycombinator:") &&
+      profileMatchesYcRegionFacet(
+        [enriched.country, enriched.city, enriched.state, ...(enriched.technologies ?? [])],
+        filters.country
+      );
+    if (!ycRegionMatch) {
+      reasons.push(`Country mismatch (required: ${filters.country})`);
+    }
   }
 
   const sizeCheck = validateSize(

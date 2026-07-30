@@ -1,3 +1,4 @@
+import { parseDirectoryProfile } from "@/lib/contact-discovery/yc-founders-discovery";
 import type { ContactDiscoveryParams, ContactDiscoveryTargetCompany } from "@/types/contact";
 import type { SearchRecord } from "@/types/search";
 import type { Database } from "@/types/database";
@@ -15,6 +16,7 @@ export function toContactDiscoveryTargetCompany(
     city: row.city,
     state: row.state,
     country: row.country,
+    directoryProfile: parseDirectoryProfile(row.directory_profile),
   };
 }
 

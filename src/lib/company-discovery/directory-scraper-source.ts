@@ -2,11 +2,13 @@ import { scraperEngine } from "@/lib/scrapers/engine/scraper-engine";
 import { ScraperFactory } from "@/lib/scrapers/scraper-factory";
 import { isVentureBackedSource } from "@/lib/scrapers/source-catalog";
 import { isRestrictedSource } from "@/lib/scrapers/source-policy";
+import { isYcScraperEnabled } from "@/lib/company-discovery/yc-scraper-config";
 import {
   buildDirectoryProfile,
   toDiscoveredCompany,
 } from "@/lib/scrapers/utils/to-discovered-company";
-import type { ScraperFilters, ScraperSourceId } from "@/lib/scrapers/types";
+import type { ScraperSourceId } from "@/lib/scrapers/types";
+import { mapParamsToScraperFilters } from "@/lib/company-discovery/map-scraper-filters";
 import { createLogger } from "@/lib/logger";
 import type { ProgressReporter } from "@/lib/sse/stream";
 import type { CompanyDiscoveryParams, DiscoveredCompany } from "@/types/company";
@@ -23,7 +25,10 @@ const log = createLogger("company-discovery.directory-scraper");
  */
 function defaultVentureBackedSources(): ScraperSourceId[] {
   return ScraperFactory.listSources().filter(
-    (source) => isVentureBackedSource(source) && !isRestrictedSource(source)
+    (source) =>
+      isVentureBackedSource(source) &&
+      !isRestrictedSource(source) &&
+      !(isYcScraperEnabled() && source === "ycombinator")
   );
 }
 
@@ -52,6 +57,9 @@ export function getDirectoryScraperSources(): ScraperSourceId[] {
     .filter(Boolean)
     .filter((value): value is ScraperSourceId => ScraperFactory.isValidSource(value))
     .filter((source) => {
+      if (isYcScraperEnabled() && source === "ycombinator") {
+        return false;
+      }
       if (!isVentureBackedSource(source)) {
         log.warn("Ignoring non-venture-backed source in DIRECTORY_SCRAPER_SOURCES", {
           source,
@@ -66,24 +74,6 @@ export function getDirectoryScraperSources(): ScraperSourceId[] {
 function maxCompanies(): number {
   const raw = Number(process.env.DIRECTORY_SCRAPER_MAX);
   return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : DEFAULT_MAX_COMPANIES;
-}
-
-/** Translate a company search into scraper filters (industry, location, size, keywords). */
-export function mapParamsToScraperFilters(
-  params: CompanyDiscoveryParams
-): ScraperFilters {
-  const keywords = [
-    ...(params.keywords ?? []),
-    ...(params.technologies ?? []),
-  ].filter(Boolean);
-
-  return {
-    industry: params.industry?.trim() || null,
-    location: params.country?.trim() || null,
-    companySizeMin: params.companySizeMin,
-    companySizeMax: params.companySizeMax,
-    keywords,
-  };
 }
 
 /**

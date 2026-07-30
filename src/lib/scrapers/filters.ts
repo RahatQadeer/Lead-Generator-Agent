@@ -1,4 +1,6 @@
 import type { FundingStage } from "@/lib/scraping/funding-stage";
+import { companyMatchesIndustry } from "@/lib/scraping/industry-classifier";
+import { profileMatchesYcIndustryFacet, profileMatchesYcRegionFacet } from "@/lib/scrapers/sources/yc-algolia-facets";
 import type { ScrapedCompanyProfile } from "@/lib/scrapers/types";
 
 /**
@@ -33,8 +35,12 @@ export interface ScraperFilters {
 /** Filters after trimming/lowercasing, with array-of-tokens shapes ready to match against. */
 export interface NormalizedScraperFilters {
   industry: string[];
+  /** Original industry phrase before tokenization (for semantic matching). */
+  industryPhrase: string | null;
   category: string[];
   location: string[];
+  /** Original location/country phrase before tokenization. */
+  locationPhrase: string | null;
   fundingStages: FundingStage[];
   companySizeMin: number | null;
   companySizeMax: number | null;
@@ -73,6 +79,8 @@ export function normalizeScraperFilters(
   const industry = toTokens(filters?.industry);
   const category = toTokens(filters?.category);
   const location = toTokens(filters?.location);
+  const industryPhrase = filters?.industry?.trim() || null;
+  const locationPhrase = filters?.location?.trim() || null;
 
   const companySizeMin =
     typeof filters?.companySizeMin === "number" && filters.companySizeMin > 0
@@ -94,8 +102,10 @@ export function normalizeScraperFilters(
 
   return {
     industry,
+    industryPhrase,
     category,
     location,
+    locationPhrase,
     fundingStages,
     companySizeMin,
     companySizeMax,
@@ -111,6 +121,28 @@ function textMatchesAny(haystack: string, needles: string[]): boolean {
   return needles.some((needle) => lower.includes(needle));
 }
 
+/** Expand location filter tokens so "United States" also matches YC's "USA" country codes. */
+function expandLocationNeedles(needles: string[]): string[] {
+  const expanded = new Set(needles);
+  const joined = needles.join(" ");
+
+  if (
+    needles.includes("united") && needles.includes("states") ||
+    joined.includes("united states")
+  ) {
+    expanded.add("usa");
+    expanded.add("u.s");
+    expanded.add("america");
+  }
+  if (needles.includes("united") && needles.includes("kingdom")) {
+    expanded.add("uk");
+    expanded.add("britain");
+    expanded.add("england");
+  }
+
+  return [...expanded];
+}
+
 function profileSearchText(profile: ScrapedCompanyProfile): string {
   return [
     profile.name,
@@ -124,7 +156,9 @@ function profileSearchText(profile: ScrapedCompanyProfile): string {
 }
 
 function profileLocationText(profile: ScrapedCompanyProfile): string {
-  return [profile.country, profile.city, profile.state].filter(Boolean).join(" ");
+  return [profile.country, profile.city, profile.state, ...(profile.tags ?? [])]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /**
@@ -146,13 +180,43 @@ export function matchesFilters(
   const reasons: string[] = [];
   const searchText = profileSearchText(profile);
 
-  // Industry — enforce only when the filter is set and the profile has industry text.
-  if (filters.industry.length > 0) {
-    const industryText = [profile.industry, profile.category, ...profile.tags]
+  // Industry — use the semantic classifier so incidental words like "education"
+  // in a B2B partner-training blurb do not match an Education search.
+  if (filters.industryPhrase) {
+    const industryText = [
+      profile.industry,
+      profile.category,
+      ...profile.tags,
+      profile.description,
+    ]
       .filter(Boolean)
       .join(" ");
-    if (industryText && !textMatchesAny(industryText, filters.industry)) {
-      reasons.push(`Industry does not match ${filters.industry.join("/")}`);
+    if (!industryText.trim()) {
+      reasons.push(`Industry unknown; required ${filters.industryPhrase}`);
+    } else {
+      const ycFacetMatch =
+        profile.source === "ycombinator" &&
+        profileMatchesYcIndustryFacet(
+          [profile.industry, profile.category, ...profile.tags],
+          filters.industryPhrase
+        );
+      const match = ycFacetMatch
+        ? { matches: true }
+        : companyMatchesIndustry(
+            {
+              name: profile.name,
+              domain: profile.domain,
+              industry: [profile.industry, profile.category, ...profile.tags]
+                .filter(Boolean)
+                .join(" / "),
+              description: profile.description,
+              websiteUrl: profile.websiteUrl,
+            },
+            filters.industryPhrase
+          );
+      if (!match.matches) {
+        reasons.push(`Industry does not match ${filters.industryPhrase}`);
+      }
     }
   }
 
@@ -166,11 +230,23 @@ export function matchesFilters(
     }
   }
 
-  // Location — lenient: unknown location passes.
+  // Location — reject when the filter is set but the listing has no location.
   if (filters.location.length > 0) {
     const locationText = profileLocationText(profile);
-    if (locationText && !textMatchesAny(locationText, filters.location)) {
-      reasons.push(`Location does not match ${filters.location.join("/")}`);
+    const locationNeedles = expandLocationNeedles(filters.location);
+    const ycRegionMatch =
+      profile.source === "ycombinator" &&
+      filters.locationPhrase &&
+      profileMatchesYcRegionFacet(
+        [profile.country, profile.city, profile.state, ...(profile.tags ?? [])],
+        filters.locationPhrase
+      );
+    if (!ycRegionMatch) {
+      if (!locationText.trim()) {
+        reasons.push(`Location unknown; required ${filters.location.join("/")}`);
+      } else if (!textMatchesAny(locationText, locationNeedles)) {
+        reasons.push(`Location does not match ${filters.location.join("/")}`);
+      }
     }
   }
 

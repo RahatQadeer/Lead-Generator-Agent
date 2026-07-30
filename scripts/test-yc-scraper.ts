@@ -57,6 +57,11 @@ async function main() {
         fundingStage: profile.fundingStage,
         linkedin: profile.socialLinks.linkedin,
         description: profile.description?.slice(0, 90),
+        founders: profile.founders?.map((f) => ({
+          name: f.name,
+          title: f.title,
+          linkedin: f.linkedinUrl,
+        })),
       },
       null,
       2

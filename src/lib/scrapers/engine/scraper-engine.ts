@@ -158,13 +158,32 @@ export class ScraperEngine {
     if (!options.enrichFromWebsite) return profiles;
 
     const limit = pLimit(options.concurrency);
+    let done = 0;
+    const total = profiles.length;
+
+    if (total > 0) {
+      ctx.onProgress?.({
+        phase: "Enriching company websites…",
+        current: 0,
+        total,
+      });
+    }
+
     return Promise.all(
       profiles.map((profile) =>
         limit(async () => {
           if (ctx.signal.aborted) return profile;
-          return enrichProfileFromWebsite(profile, {
+          const enriched = await enrichProfileFromWebsite(profile, {
             respectRobots: options.respectRobots,
           });
+          done += 1;
+          ctx.onProgress?.({
+            phase: "Enriching company websites…",
+            current: done,
+            total,
+            label: profile.name,
+          });
+          return enriched;
         })
       )
     );

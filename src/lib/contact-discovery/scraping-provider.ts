@@ -50,6 +50,7 @@ import {
 } from "@/lib/scraping/leadership-search";
 import { discoverLeadershipFromPressPages } from "@/lib/scraping/press-release-leaders";
 import { finalizePeopleStepContacts } from "@/lib/contact-discovery/resolve-linkedin-profiles";
+import { discoverYcContactsForCompany } from "@/lib/contact-discovery/yc-founders-discovery";
 import { isScrapingToolAvailable } from "@/lib/scraping/tool-health";
 import type {
   ContactDiscoveryParams,
@@ -590,16 +591,71 @@ async function supplementCompanyLeadership(
   };
 }
 
+async function finalizeCompanyScrapeResult(
+  contacts: DiscoveredContact[],
+  company: ContactDiscoveryParams["companies"][number],
+  jobTitles: string[],
+  parsedCount: number,
+  filteredCount: number,
+  rejectedCount: number,
+  relaxedMatch: boolean
+): Promise<CompanyScrapeResult> {
+  const titleFilter = applyTitleFilterWithConfidence(contacts, jobTitles);
+  const quality = applyPostTitleQualityGate(titleFilter.contacts, {
+    relaxedMatch: titleFilter.relaxedMatch,
+  });
+  const marked = markTitleMatch(quality.contacts, jobTitles, titleFilter.relaxedMatch);
+  return {
+    contacts: await finalizePeopleStepContacts(marked, company, jobTitles),
+    parsedCount,
+    filteredCount: filteredCount + titleFilter.filteredCount,
+    rejectedCount: rejectedCount + quality.rejectedCount,
+    relaxedMatch: relaxedMatch || titleFilter.relaxedMatch,
+  };
+}
+
+function mergeYcSeedContacts(
+  contacts: DiscoveredContact[],
+  seen: Set<string>,
+  yc: Awaited<ReturnType<typeof discoverYcContactsForCompany>>
+): void {
+  const toSeed = yc.contacts.length > 0 ? yc.contacts : yc.founderPool;
+  const additions: DiscoveredContact[] = [];
+  for (const contact of toSeed) {
+    const key = `${contact.fullName.toLowerCase()}|${contact.title.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    additions.push(contact);
+  }
+  contacts.unshift(...additions);
+}
+
 async function scrapeCompanyContactsWithoutDomain(
   company: ContactDiscoveryParams["companies"][number],
-  jobTitles: string[]
+  jobTitles: string[],
+  prefetchedYc?: Awaited<ReturnType<typeof discoverYcContactsForCompany>>
 ): Promise<CompanyScrapeResult> {
+  const yc = prefetchedYc ?? (await discoverYcContactsForCompany(company, jobTitles));
+  if (yc.skipOtherSources) {
+    return finalizeCompanyScrapeResult(
+      yc.contacts,
+      company,
+      jobTitles,
+      yc.parsedCount,
+      yc.filteredCount,
+      yc.rejectedCount,
+      yc.relaxedMatch
+    );
+  }
+
   const contacts: DiscoveredContact[] = [];
-  const seen = new Set<string>();
-  let mergeRejectedCount = 0;
+  const seen = new Set<string>(yc.seenKeys);
+  let mergeRejectedCount = yc.rejectedCount;
+  mergeYcSeedContacts(contacts, seen, yc);
 
   log.info("People discovery without website domain — using directory and web search", {
     company: company.name,
+    ycFounders: yc.founderPool.length,
   });
 
   mergeRejectedCount += await runFallbackDiscovery(company, "", jobTitles, contacts, seen, {
@@ -881,8 +937,25 @@ async function scrapeCompanyContactsInner(
   company: ContactDiscoveryParams["companies"][number],
   jobTitles: string[]
 ): Promise<CompanyScrapeResult> {
+  const yc = await discoverYcContactsForCompany(company, jobTitles);
+  if (yc.skipOtherSources) {
+    log.info("Using Y Combinator founders — skipping website scrape", {
+      company: company.name,
+      count: yc.contacts.length,
+    });
+    return finalizeCompanyScrapeResult(
+      yc.contacts,
+      company,
+      jobTitles,
+      yc.parsedCount,
+      yc.filteredCount,
+      yc.rejectedCount,
+      yc.relaxedMatch
+    );
+  }
+
   if (!company.domain) {
-    return scrapeCompanyContactsWithoutDomain(company, jobTitles);
+    return scrapeCompanyContactsWithoutDomain(company, jobTitles, yc);
   }
 
   const domain = company.domain.replace(/^www\./, "");
@@ -893,12 +966,19 @@ async function scrapeCompanyContactsInner(
     const restored = cached.map((row, index) =>
       fromCachedRow(row, company, domain, index)
     );
-    const titleFilter = applyTitleFilterWithConfidence(restored, jobTitles);
+    const pool = [...restored];
+    const poolSeen = new Set(
+      restored.map(
+        (contact) => `${contact.fullName.toLowerCase()}|${contact.title.toLowerCase()}`
+      )
+    );
+    mergeYcSeedContacts(pool, poolSeen, yc);
+    const titleFilter = applyTitleFilterWithConfidence(pool, jobTitles);
 
     const shouldRefreshCache =
-      restored.length < 5 ||
+      pool.length < 5 ||
       (titleFilter.contacts.length < MAX_CONTACTS_PER_COMPANY &&
-        countLeadershipContacts(restored, jobTitles) > titleFilter.contacts.length);
+        countLeadershipContacts(pool, jobTitles) > titleFilter.contacts.length);
 
     if (titleFilter.contacts.length > 0 && !shouldRefreshCache) {
       const quality = applyPostTitleQualityGate(titleFilter.contacts, {
@@ -907,13 +987,14 @@ async function scrapeCompanyContactsInner(
       const marked = markTitleMatch(quality.contacts, jobTitles, titleFilter.relaxedMatch);
       log.info("Using cached contacts", {
         domain,
-        pool: restored.length,
+        pool: pool.length,
         count: marked.length,
         relaxedMatch: titleFilter.relaxedMatch,
+        ycFounders: yc.founderPool.length,
       });
       return {
         contacts: await finalizePeopleStepContacts(marked, company, jobTitles),
-        parsedCount: restored.length,
+        parsedCount: pool.length,
         filteredCount: titleFilter.filteredCount,
         rejectedCount: quality.rejectedCount,
         relaxedMatch: titleFilter.relaxedMatch,
@@ -923,15 +1004,13 @@ async function scrapeCompanyContactsInner(
     if (titleFilter.contacts.length > 0 && shouldRefreshCache) {
       log.info("Cache incomplete for leadership coverage, re-scraping", {
         domain,
-        cached: restored.length,
+        cached: pool.length,
         selected: titleFilter.contacts.length,
       });
     }
 
-    const fallbackPool = [...restored];
-    const fallbackSeen = new Set(
-      restored.map((contact) => `${contact.fullName.toLowerCase()}|${contact.title.toLowerCase()}`)
-    );
+    const fallbackPool = [...pool];
+    const fallbackSeen = new Set(poolSeen);
     await runFallbackDiscovery(company, domain, jobTitles, fallbackPool, fallbackSeen, {
       broadDecisionMakerSearch: true,
     });
@@ -963,9 +1042,11 @@ async function scrapeCompanyContactsInner(
 
   const paths = buildPhasedPeoplePaths(await discoverDirectoryPaths(domain), domain);
   const contacts: DiscoveredContact[] = [];
-  const seen = new Set<string>();
-  let rawParsedCount = 0;
-  let mergeRejectedCount = 0;
+  const seen = new Set<string>(yc.seenKeys);
+  let rawParsedCount = yc.parsedCount;
+  let mergeRejectedCount = yc.rejectedCount;
+  let relaxedMatch = yc.relaxedMatch;
+  mergeYcSeedContacts(contacts, seen, yc);
   let leadershipSatisfied = false;
 
   const domainSearchPromise =

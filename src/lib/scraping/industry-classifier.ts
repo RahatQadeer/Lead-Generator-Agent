@@ -96,6 +96,24 @@ export const INDUSTRY_PROFILES: IndustryProfile[] = [
     excludeKeywords:
       /\b(bank|oil and gas|petroleum|mining company|insurance carrier)\b/i,
   },
+  {
+    id: "education",
+    label: "Education",
+    aliases: ["edtech", "e-learning", "learning", "school", "university", "academic", "k-12", "k12"],
+    keywords:
+      /\b(edtech|e-learning|elearning|learning platform|online learning|school|university|college|academic|k-12|k12|students?|classroom|curriculum|tutoring|lms\b|learning management|mooc|courseware|educational software|higher education|primary education|secondary education|teachers?|campus)\b/i,
+    excludeKeywords:
+      /\b(b2b saas|partner program|partner channel|referral program|affiliate program|channel partner|marketplace platform|payment processing|logistics|fintech|healthcare)\b/i,
+  },
+  {
+    id: "logistics",
+    label: "Logistics",
+    aliases: ["shipping", "freight", "supply chain", "transportation", "warehousing"],
+    keywords:
+      /\b(logistics|supply chain|freight|shipping|warehouse|warehousing|fulfillment|last[- ]mile|courier|trucking|3pl|distribution center|cargo|fleet management|delivery platform)\b/i,
+    excludeKeywords:
+      /\b(bank|hospital|hotel|restaurant|university|school|edtech)\b/i,
+  },
 ];
 
 function normalizeIndustryInput(value: string): string {
@@ -108,9 +126,11 @@ export function resolveIndustryProfile(targetIndustry: string): IndustryProfile 
 
   const labelAliases: Record<string, string> = {
     saas: "technology",
-    edtech: "technology",
+    edtech: "education",
+    education: "education",
     cybersecurity: "technology",
     telecommunications: "technology",
+    logistics: "logistics",
     biotechnology: "healthcare",
     pharmaceuticals: "healthcare",
     healthtech: "healthcare",
@@ -226,13 +246,14 @@ export function companyMatchesIndustry(
     const companyIndustry = normalizeIndustryInput(company.industry ?? "");
     const aliasTerms =
       INDUSTRY_SEARCH_ALIASES[targetIndustry as keyof typeof INDUSTRY_SEARCH_ALIASES] ?? [];
-    const aliasHit = aliasTerms.some((term) => text.includes(term.toLowerCase()));
-    const looseMatch =
+    const aliasHit = aliasTerms.some((term) =>
+      new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(text)
+    );
+    const fieldMatch =
       companyIndustry === target ||
       companyIndustry.includes(target) ||
-      target.includes(companyIndustry) ||
-      text.includes(target) ||
-      aliasHit;
+      target.includes(companyIndustry);
+    const looseMatch = fieldMatch || aliasHit;
     return {
       matches: looseMatch,
       score: looseMatch ? 0.7 : 0,

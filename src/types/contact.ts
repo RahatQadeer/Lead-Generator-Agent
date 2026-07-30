@@ -6,6 +6,8 @@ export interface ContactDiscoveryTargetCompany {
   city?: string | null;
   state?: string | null;
   country?: string | null;
+  /** Directory scrape payload from step 1 (YC founders, source URL, etc.). */
+  directoryProfile?: import("@/lib/scrapers/types").DirectoryProfilePayload | null;
 }
 
 export type SocialNetwork = "twitter" | "facebook" | "instagram";

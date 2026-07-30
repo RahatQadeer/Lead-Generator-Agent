@@ -15,6 +15,7 @@ import {
   searchWebCompanies,
 } from "@/lib/scraping/web-search";
 import type { CompanyDiscoveryParams } from "@/types/company";
+import { isYcFocusedDiscovery } from "@/lib/company-discovery/yc-scraper-config";
 
 const log = createLogger("company-discovery.scraping");
 const SEARCH_RESULT_MULTIPLIER = 100;
@@ -26,6 +27,25 @@ export class ScrapingCompanyDiscoveryProvider implements CompanyDiscoveryProvide
     params: CompanyDiscoveryParams,
     ctx?: CompanyDiscoveryContext
   ): Promise<ProviderSearchResult> {
+    if (isYcFocusedDiscovery()) {
+      ctx?.onProgress?.({ phase: "Using Y Combinator as primary source…" });
+      return {
+        companies: [],
+        pagination: {
+          page: params.page,
+          perPage: params.perPage,
+          totalEntries: 0,
+          totalPages: 1,
+          hasMore: false,
+        },
+        stats: {
+          seedCount: 0,
+          enrichedCount: 0,
+          filteredCount: 0,
+        },
+      };
+    }
+
     const query = requireCompanySearchQuery(params, () =>
       buildCompanySearchQuery({
         industry: params.industry,

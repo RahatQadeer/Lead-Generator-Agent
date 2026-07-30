@@ -1,7 +1,9 @@
 import { computeCompanyFitScore } from "@/lib/scraping/company-fit-score";
 import { applyKnownBrandToCompany } from "@/lib/scraping/known-brands";
+import { profileMatchesYcIndustryFacet, profileMatchesYcRegionFacet } from "@/lib/scrapers/sources/yc-algolia-facets";
 import {
   matchesCountry,
+  matchesIndustry,
   matchesSize,
   passesHardCompanyGate,
   scoreIndustryMatch,
@@ -290,6 +292,60 @@ function supplementStrictMatches(
     companies: rankCompaniesByFit(combined, filters).slice(0, maxResults),
     relaxedMatch,
   };
+}
+
+/**
+ * Hard gate for merged discovery results — requires an actual industry and country
+ * match when the user set those filters. Unlike web-search seeds, directory/YC
+ * listings always carry this metadata so unknown values are rejected.
+ */
+export function passesStrictSearchFilters(
+  company: DiscoveredCompany,
+  filters: CompanyCriteriaFilters
+): boolean {
+  const enriched = applyKnownBrandToCompany(company);
+  const validation = validateCompanyForDiscovery(enriched, filters);
+  if (!validation.accepted) return false;
+
+  if (filters.country.trim()) {
+    const ycRegionMatch =
+      enriched.id.startsWith("ycombinator:") &&
+      profileMatchesYcRegionFacet(
+        [enriched.country, enriched.city, enriched.state, ...(enriched.technologies ?? [])],
+        filters.country
+      );
+    if (!ycRegionMatch) {
+      if (!enriched.country?.trim()) return false;
+      if (!matchesCountry(enriched, filters.country)) return false;
+    }
+  }
+
+  if (filters.industry.trim()) {
+    const ycFacetMatch =
+      enriched.id.startsWith("ycombinator:") &&
+      profileMatchesYcIndustryFacet(
+        [enriched.industry, ...(enriched.technologies ?? [])],
+        filters.industry
+      );
+    if (!ycFacetMatch && !matchesIndustry(enriched, filters.industry)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+export function filterCompaniesBySearchCriteria(
+  companies: DiscoveredCompany[],
+  filters: CompanyCriteriaFilters
+): DiscoveredCompany[] {
+  if (!filters.industry?.trim() && !filters.country?.trim()) {
+    return companies;
+  }
+
+  return companies
+    .map(applyKnownBrandToCompany)
+    .filter((company) => passesStrictSearchFilters(company, filters));
 }
 
 /**

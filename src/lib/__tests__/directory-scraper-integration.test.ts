@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  mapParamsToScraperFilters,
   getDirectoryScraperSources,
   areDirectoryScrapersEnabled,
 } from "@/lib/company-discovery/directory-scraper-source";
+import { mapParamsToScraperFilters } from "@/lib/company-discovery/map-scraper-filters";
 import { foundersToContacts } from "@/lib/companies/persist-decision-makers";
 import type { CompanyDiscoveryParams, DiscoveredCompany } from "@/types/company";
 
@@ -41,26 +41,46 @@ describe("mapParamsToScraperFilters", () => {
 });
 
 describe("getDirectoryScraperSources / enablement", () => {
-  it("defaults to venture-backed, non-restricted sources (YC)", () => {
+  it("defaults to venture-backed, non-restricted sources when YC runs separately", () => {
+    const originalYc = process.env.ENABLE_YC_SCRAPER;
     const original = process.env.DIRECTORY_SCRAPER_SOURCES;
+    process.env.ENABLE_YC_SCRAPER = "true";
     delete process.env.DIRECTORY_SCRAPER_SOURCES;
     try {
-      // General directories (GitHub, Product Hunt) are excluded; the heavier VC
-      // portfolios are restricted/opt-in, so the inline default is YC.
+      expect(getDirectoryScraperSources()).toEqual([]);
+    } finally {
+      if (originalYc === undefined) delete process.env.ENABLE_YC_SCRAPER;
+      else process.env.ENABLE_YC_SCRAPER = originalYc;
+      if (original !== undefined) process.env.DIRECTORY_SCRAPER_SOURCES = original;
+    }
+  });
+
+  it("includes YC in directory sources when the dedicated YC scraper is off", () => {
+    const originalYc = process.env.ENABLE_YC_SCRAPER;
+    const original = process.env.DIRECTORY_SCRAPER_SOURCES;
+    process.env.ENABLE_YC_SCRAPER = "false";
+    delete process.env.DIRECTORY_SCRAPER_SOURCES;
+    try {
       expect(getDirectoryScraperSources()).toEqual(["ycombinator"]);
     } finally {
+      if (originalYc === undefined) delete process.env.ENABLE_YC_SCRAPER;
+      else process.env.ENABLE_YC_SCRAPER = originalYc;
       if (original !== undefined) process.env.DIRECTORY_SCRAPER_SOURCES = original;
     }
   });
 
   it("drops invalid AND non-venture-backed (general directory) sources", () => {
+    const originalYc = process.env.ENABLE_YC_SCRAPER;
     const original = process.env.DIRECTORY_SCRAPER_SOURCES;
+    process.env.ENABLE_YC_SCRAPER = "false";
     // betalist is a general directory → rejected; not-a-source is invalid → rejected;
     // techstars is venture-backed → kept.
     process.env.DIRECTORY_SCRAPER_SOURCES = "ycombinator, not-a-source , betalist, techstars";
     try {
       expect(getDirectoryScraperSources()).toEqual(["ycombinator", "techstars"]);
     } finally {
+      if (originalYc === undefined) delete process.env.ENABLE_YC_SCRAPER;
+      else process.env.ENABLE_YC_SCRAPER = originalYc;
       if (original === undefined) delete process.env.DIRECTORY_SCRAPER_SOURCES;
       else process.env.DIRECTORY_SCRAPER_SOURCES = original;
     }

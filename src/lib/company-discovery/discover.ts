@@ -1,9 +1,13 @@
-import { applyCriteria } from "@/lib/company-discovery/apply-criteria";
+import {
+  applyCriteria,
+  filterCompaniesBySearchCriteria,
+} from "@/lib/company-discovery/apply-criteria";
 import { applyDedup, getCompanyDedupKey } from "@/lib/company-discovery/apply-dedup";
 import { applyExclusions } from "@/lib/company-discovery/apply-exclusions";
 import { isCompanyDiscoveryError } from "@/lib/company-discovery/errors";
 import { createCompanyDiscoveryProvider } from "@/lib/company-discovery/factory";
 import { runDirectoryScraperDiscovery } from "@/lib/company-discovery/directory-scraper-source";
+import { runYcScraperDiscovery } from "@/lib/company-discovery/yc-scraper-source";
 import { withRetry } from "@/lib/company-discovery/retry";
 import type {
   CompanyDiscoveryParams,
@@ -59,8 +63,13 @@ export async function discoverCompanies(
 ): Promise<CompanyDiscoveryResult & { attempts: number }> {
   const provider = createCompanyDiscoveryProvider();
 
-  // Directory scrapers (YC, Product Hunt, GitHub, …) run as a parallel discovery
-  // source. It never throws, so it can't break the primary web/directory search.
+  // YC website scraper + other venture-backed directories run as parallel sources.
+  const ycScraperPromise = runYcScraperDiscovery(params, {
+    knownDedupKeys: options.knownDedupKeys,
+    onProgress: options.onProgress,
+    userId: options.userId,
+    searchId: options.searchId,
+  });
   const directoryScraperPromise = runDirectoryScraperDiscovery(params, {
     knownDedupKeys: options.knownDedupKeys,
     onProgress: options.onProgress,
@@ -68,11 +77,12 @@ export async function discoverCompanies(
     searchId: options.searchId,
   });
 
-  const [{ result, attempts }, scrapedCompanies] = await Promise.all([
+  const [{ result, attempts }, ycCompanies, scrapedCompanies] = await Promise.all([
     withRetry(
       async () => provider.search(params, { onProgress: options.onProgress }),
       { maxAttempts: 3, baseDelayMs: 600, maxDelayMs: 5000 }
     ),
+    ycScraperPromise,
     directoryScraperPromise,
   ]);
 
@@ -102,10 +112,13 @@ export async function discoverCompanies(
   // Fold in directory-scraper companies (already filtered by the engine's own
   // matchesFilters) alongside the provider's results, then apply the shared
   // exclusions + dedup so both sources are treated identically.
-  const withDirectory = mergeDirectoryCompanies(criteriaMatched, scrapedCompanies);
+  const withYc = mergeDirectoryCompanies(criteriaMatched, ycCompanies);
+  const withDirectory = mergeDirectoryCompanies(withYc, scrapedCompanies);
+
+  const criteriaStrict = filterCompaniesBySearchCriteria(withDirectory, params);
 
   const { companies: exclusionMatched, excludedCount } = applyExclusions(
-    withDirectory,
+    criteriaStrict,
     params.exclusions
   );
 
@@ -118,7 +131,13 @@ export async function discoverCompanies(
 
   return {
     companies,
-    pagination: result.pagination,
+    pagination: {
+      page: params.page,
+      perPage: params.perPage,
+      totalEntries: companies.length,
+      totalPages: Math.max(1, Math.ceil(companies.length / params.perPage)),
+      hasMore: companies.length > params.page * params.perPage,
+    },
     provider: provider.name,
     filteredCount,
     excludedCount,
@@ -145,12 +164,14 @@ export function toDiscoveryErrorResponse(error: unknown) {
     };
   }
 
+  console.error("[company-discovery] Unhandled error:", error);
+
   return {
     success: false as const,
     error: {
       code: "PROVIDER_ERROR" as const,
       message: "Something went wrong while looking for companies. Please try again.",
-      retryable: false,
+      retryable: true,
     },
   };
 }

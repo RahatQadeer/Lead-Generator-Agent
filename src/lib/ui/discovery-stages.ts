@@ -7,7 +7,7 @@ export const COMPANY_DISCOVERY_STAGES = [
 ] as const;
 
 export const CONTACT_DISCOVERY_STAGES = [
-  "Querying People Data Labs…",
+  "Checking Y Combinator founder profiles…",
   "Scanning leadership and team pages…",
   "Extracting names and titles from websites…",
   "Matching job titles and decision-makers…",

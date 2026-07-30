@@ -9,6 +9,13 @@ import type {
 } from "@/lib/scrapers/types";
 import { normalizeDomain, normalizeTags, normalizeText, normalizeUrl } from "@/lib/scrapers/utils/normalize";
 import { normalizeScraperFilters } from "@/lib/scrapers/filters";
+import { extractYcFoundersFromHtml } from "@/lib/scrapers/utils/extract-yc-founders";
+import type { ScraperFounder } from "@/lib/scrapers/types";
+import {
+  buildYcCompaniesListingUrl,
+  ycIndustriesForSearch,
+  ycRegionsForCountry,
+} from "@/lib/scrapers/sources/yc-algolia-facets";
 import { withRetry } from "@/lib/scrapers/utils/retry";
 import { canFetchUrl } from "@/lib/scraping/robots";
 import { fetchPageWithPlaywright } from "@/lib/scraping/playwright-fetch";
@@ -65,6 +72,27 @@ const ALGOLIA_HEADERS = {
   Accept: "application/json",
 };
 
+function mergeYcFounders(
+  existing: ScraperFounder[],
+  discovered: ScraperFounder[]
+): ScraperFounder[] {
+  const byName = new Map<string, ScraperFounder>();
+  for (const person of [...existing, ...discovered]) {
+    const key = person.name.trim().toLowerCase();
+    if (!key) continue;
+    const prior = byName.get(key);
+    byName.set(key, {
+      name: person.name,
+      title: prior?.title ?? person.title ?? null,
+      linkedinUrl: prior?.linkedinUrl ?? person.linkedinUrl ?? null,
+      twitterUrl: prior?.twitterUrl ?? person.twitterUrl ?? null,
+      bio: prior?.bio ?? person.bio ?? null,
+      avatarUrl: prior?.avatarUrl ?? person.avatarUrl ?? null,
+    });
+  }
+  return [...byName.values()];
+}
+
 export class YCombinatorScraper extends BaseScraper {
   readonly sourceId = "ycombinator" as const;
   readonly displayName = "Y Combinator";
@@ -89,11 +117,57 @@ export class YCombinatorScraper extends BaseScraper {
 
   private buildQuery(ctx: ScraperRunContext): string {
     const filters = normalizeScraperFilters(ctx.filters);
-    // Algolia is full-text; feed keywords + industry + category into `query`.
-    // Precise per-field filtering still happens in the engine via matchesFilters.
-    return [...filters.keywords, ...filters.industry, ...filters.category]
-      .join(" ")
-      .trim();
+    const hasIndustryFacet = ycIndustriesForSearch(ctx.filters?.industry).length > 0;
+    const hasRegionFacet = ycRegionsForCountry(ctx.filters?.location).length > 0;
+
+    const parts = [...filters.keywords];
+    if (!hasIndustryFacet) {
+      parts.push(filters.industryPhrase ?? filters.industry.join(" "));
+    }
+    if (!hasRegionFacet) {
+      parts.push(filters.locationPhrase ?? filters.location.join(" "));
+    }
+    parts.push(...filters.category);
+
+    return parts.filter(Boolean).join(" ").trim();
+  }
+
+  private buildFacetFilters(ctx: ScraperRunContext): string[][] {
+    const facetFilters: string[][] = [];
+
+    const regions = ycRegionsForCountry(ctx.filters?.location);
+    if (regions.length > 0) {
+      facetFilters.push(regions.map((region) => `regions:${region}`));
+    }
+
+    const industries = ycIndustriesForSearch(ctx.filters?.industry);
+    if (industries.length > 0) {
+      facetFilters.push(industries.map((industry) => `industries:${industry}`));
+    }
+
+    return facetFilters;
+  }
+
+  private buildAlgoliaBody(
+    ctx: ScraperRunContext,
+    page: number,
+    hitsPerPage: number,
+    query: string
+  ): Record<string, unknown> {
+    const body: Record<string, unknown> = {
+      query,
+      page,
+      hitsPerPage,
+      tagFilters: ["ycdc_public"],
+      attributesToHighlight: [],
+    };
+
+    const facetFilters = this.buildFacetFilters(ctx);
+    if (facetFilters.length > 0) {
+      body.facetFilters = facetFilters;
+    }
+
+    return body;
   }
 
   private async collectFromPublicApi(
@@ -116,13 +190,7 @@ export class YCombinatorScraper extends BaseScraper {
         () =>
           axios.post<YcAlgoliaResponse>(
             YC_ALGOLIA_URL,
-            {
-              query,
-              page,
-              hitsPerPage,
-              tagFilters: ["ycdc_public"],
-              attributesToHighlight: [],
-            },
+            this.buildAlgoliaBody(ctx, page, hitsPerPage, query),
             { timeout: 15_000, headers: ALGOLIA_HEADERS }
           ),
         { label: "yc-algolia-listing", signal: ctx.signal }
@@ -151,7 +219,10 @@ export class YCombinatorScraper extends BaseScraper {
     ctx: ScraperRunContext,
     options: Required<ScraperRunOptions>
   ): Promise<ScraperListingSeed[]> {
-    const listingUrl = `${YC_BASE}/companies`;
+    const listingUrl = buildYcCompaniesListingUrl({
+      industry: ctx.filters?.industry,
+      country: ctx.filters?.location,
+    });
     if (options.respectRobots) {
       const allowed = await canFetchUrl(listingUrl);
       if (!allowed) {
@@ -207,12 +278,38 @@ export class YCombinatorScraper extends BaseScraper {
     const merged = apiProfile ?? pageProfile;
     if (!merged) return null;
 
+    const founders =
+      pageProfile?.founders.length
+        ? pageProfile.founders
+        : await this.fetchFoundersFromYcPage(seed.profileUrl, options);
+
     return {
       ...merged,
+      founders: mergeYcFounders(merged.founders, founders),
       sourceUrl: seed.profileUrl,
       sourceCompanyId: seed.sourceCompanyId,
       scrapedAt: new Date().toISOString(),
     };
+  }
+
+  private async fetchFoundersFromYcPage(
+    profileUrl: string,
+    options: Required<ScraperRunOptions>
+  ): Promise<ScraperFounder[]> {
+    let html: string | null = null;
+    const http = await fetchPage(profileUrl, FAST_FETCH);
+    html = http?.html ?? null;
+
+    if (!html || html.length < 500) {
+      const rendered = await fetchPageWithPlaywright(profileUrl, {
+        timeoutMs: 15_000,
+        respectRobots: options.respectRobots,
+        minIntervalMs: options.minIntervalMs,
+      });
+      html = rendered?.html ?? null;
+    }
+
+    return html ? extractYcFoundersFromHtml(html) : [];
   }
 
   private async fetchApiProfile(
@@ -272,6 +369,26 @@ export class YCombinatorScraper extends BaseScraper {
     );
   }
 
+  private resolveYcCountry(
+    hit: YcAlgoliaHit,
+    parsedCountry: string | null
+  ): string | null {
+    if (parsedCountry && !/^remote$/i.test(parsedCountry.trim())) {
+      return parsedCountry;
+    }
+
+    const regions = hit.regions ?? [];
+    if (regions.includes("Canada")) return "Canada";
+    if (regions.some((region) => /united states of america/i.test(region))) {
+      return "United States";
+    }
+    if (regions.some((region) => /united kingdom/i.test(region))) {
+      return "United Kingdom";
+    }
+
+    return parsedCountry ?? regions.find((region) => !/remote/i.test(region)) ?? null;
+  }
+
   private mapAlgoliaHit(
     hit: YcAlgoliaHit,
     profileUrl: string
@@ -279,8 +396,13 @@ export class YCombinatorScraper extends BaseScraper {
     const websiteUrl = normalizeUrl(hit.website);
     const description =
       normalizeText(hit.long_description) ?? normalizeText(hit.one_liner);
-    const tags = normalizeTags([...(hit.tags ?? []), ...(hit.industries ?? [])]);
-    const { city, state, country } = this.parseLocation(hit.all_locations);
+    const tags = normalizeTags([
+      ...(hit.tags ?? []),
+      ...(hit.industries ?? []),
+      ...(hit.regions ?? []),
+    ]);
+    const { city, state, country: parsedCountry } = this.parseLocation(hit.all_locations);
+    const country = this.resolveYcCountry(hit, parsedCountry);
     const launchDate = hit.launched_at
       ? new Date(hit.launched_at * 1000).toISOString()
       : null;
@@ -355,6 +477,8 @@ export class YCombinatorScraper extends BaseScraper {
         .get()
     );
 
+    const founders = extractYcFoundersFromHtml(html);
+
     return {
       source: "ycombinator",
       sourceUrl: seed.profileUrl,
@@ -369,7 +493,7 @@ export class YCombinatorScraper extends BaseScraper {
       country: null,
       city: null,
       state: null,
-      founders: [],
+      founders,
       publicEmail: null,
       publicPhone: null,
       contactPageUrl: null,

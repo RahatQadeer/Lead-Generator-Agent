@@ -93,9 +93,30 @@ describe("matchesFilters", () => {
     ).toBe(true);
   });
 
-  it("is lenient on unknown location", () => {
-    const p = profile({ country: null, city: null, state: null });
-    expect(matchesFilters(p, normalizeScraperFilters({ location: "Berlin" })).match).toBe(true);
+  it("matches United States filter against YC-style USA country codes", () => {
+    const p = profile({ country: "USA", city: "San Francisco", state: "CA" });
+    expect(
+      matchesFilters(p, normalizeScraperFilters({ location: "United States" })).match
+    ).toBe(true);
+  });
+
+  it("rejects unknown location when a location filter is set", () => {
+    const p = profile({ country: null, city: null, state: null, tags: [] });
+    const result = matchesFilters(p, normalizeScraperFilters({ location: "Berlin" }));
+    expect(result.match).toBe(false);
+    expect(result.reasons[0]).toMatch(/location/i);
+  });
+
+  it("rejects unknown industry when an industry filter is set", () => {
+    const p = profile({
+      industry: null,
+      category: null,
+      tags: [],
+      description: null,
+    });
+    const result = matchesFilters(p, normalizeScraperFilters({ industry: "logistics" }));
+    expect(result.match).toBe(false);
+    expect(result.reasons[0]).toMatch(/industry unknown/i);
   });
 
   it("enforces company size range when size is known", () => {

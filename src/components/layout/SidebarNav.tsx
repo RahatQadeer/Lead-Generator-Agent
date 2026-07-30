@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Search,
-  SlidersHorizontal,
   Users,
   Settings,
   X,
@@ -19,7 +18,6 @@ import type { LucideIcon } from "lucide-react";
 
 const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/search-builder", label: "Search builder", icon: SlidersHorizontal },
   { href: "/searches", label: "Searches", icon: Search },
   { href: "/leads", label: "Leads", icon: Users },
   { href: "/settings", label: "Settings", icon: Settings },
