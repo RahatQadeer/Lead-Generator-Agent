@@ -77,7 +77,7 @@ export class ScraperEngine {
           );
         }
 
-        const enrichedProfiles = await this.enrichProfiles(rawProfiles, options, input.ctx);
+        const enrichedProfiles = await this.enrichProfiles(rawProfiles, options, input.ctx, source);
         const validatedProfiles = enrichedProfiles
           .map((profile) => {
             const cleaned = cleanProfileText(profile);
@@ -153,7 +153,8 @@ export class ScraperEngine {
   private async enrichProfiles(
     profiles: ScrapedCompanyProfile[],
     options: Required<ScraperRunOptions>,
-    ctx: ScraperRunContext
+    ctx: ScraperRunContext,
+    source: ScrapedCompanyProfile["source"]
   ): Promise<ScrapedCompanyProfile[]> {
     if (!options.enrichFromWebsite) return profiles;
 
@@ -163,6 +164,7 @@ export class ScraperEngine {
 
     if (total > 0) {
       ctx.onProgress?.({
+        source,
         phase: "Enriching company websites…",
         current: 0,
         total,
@@ -178,6 +180,7 @@ export class ScraperEngine {
           });
           done += 1;
           ctx.onProgress?.({
+            source: profile.source,
             phase: "Enriching company websites…",
             current: done,
             total,

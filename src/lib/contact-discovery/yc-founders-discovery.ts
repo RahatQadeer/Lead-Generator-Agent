@@ -23,7 +23,7 @@ export function parseDirectoryProfile(
   if (typeof profile.source !== "string" || typeof profile.sourceUrl !== "string") {
     return null;
   }
-  return value as DirectoryProfilePayload;
+  return value as unknown as DirectoryProfilePayload;
 }
 
 export function isYcCompany(company: ContactDiscoveryTargetCompany): boolean {
